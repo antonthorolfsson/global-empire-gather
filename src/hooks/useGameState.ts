@@ -24,24 +24,10 @@ export interface GameState {
   totalCountries: number;
 }
 
-// Mock world data for prototype
-const WORLD_COUNTRIES: Country[] = [
-  { id: 'us', name: 'United States', population: 331900000, area: 9833517, gdp: 23315 },
-  { id: 'ca', name: 'Canada', population: 38010000, area: 9984670, gdp: 1736 },
-  { id: 'mx', name: 'Mexico', population: 128900000, area: 1964375, gdp: 1293 },
-  { id: 'br', name: 'Brazil', population: 215300000, area: 8514877, gdp: 1869 },
-  { id: 'ar', name: 'Argentina', population: 45380000, area: 2780400, gdp: 449 },
-  { id: 'uk', name: 'United Kingdom', population: 67220000, area: 243610, gdp: 2827 },
-  { id: 'fr', name: 'France', population: 67750000, area: 551695, gdp: 2603 },
-  { id: 'de', name: 'Germany', population: 83190000, area: 357022, gdp: 3846 },
-  { id: 'ru', name: 'Russia', population: 146200000, area: 17098242, gdp: 1834 },
-  { id: 'cn', name: 'China', population: 1412000000, area: 9596960, gdp: 14723 },
-  { id: 'in', name: 'India', population: 1380000000, area: 3287263, gdp: 2875 },
-  { id: 'jp', name: 'Japan', population: 125800000, area: 377944, gdp: 4231 },
-  { id: 'au', name: 'Australia', population: 25690000, area: 7692024, gdp: 1393 },
-  { id: 'za', name: 'South Africa', population: 60420000, area: 1221037, gdp: 419 },
-  { id: 'eg', name: 'Egypt', population: 104300000, area: 1001449, gdp: 404 },
-];
+import { getAllCountries } from '../utils/countryData';
+
+// Get all world countries data
+const WORLD_COUNTRIES: Country[] = getAllCountries();
 
 export const useGameState = () => {
   const [gameState, setGameState] = useState<GameState>({
