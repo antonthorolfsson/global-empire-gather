@@ -26,7 +26,8 @@ export default {
 				foreground: 'hsl(var(--foreground))',
 				primary: {
 					DEFAULT: 'hsl(var(--primary))',
-					foreground: 'hsl(var(--primary-foreground))'
+					foreground: 'hsl(var(--primary-foreground))',
+					glow: 'hsl(var(--primary-glow))'
 				},
 				secondary: {
 					DEFAULT: 'hsl(var(--secondary))',
@@ -61,6 +62,14 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				// Game-specific colors
+				ocean: 'hsl(var(--ocean))',
+				land: 'hsl(var(--land))',
+				empire: {
+					gold: 'hsl(var(--empire-gold))',
+					silver: 'hsl(var(--empire-silver))',
+					bronze: 'hsl(var(--empire-bronze))'
 				}
 			},
 			borderRadius: {
@@ -84,11 +93,53 @@ export default {
 					to: {
 						height: '0'
 					}
+				},
+				// Game-specific animations
+				'country-select': {
+					'0%': { 
+						transform: 'scale(1)', 
+						filter: 'brightness(1)' 
+					},
+					'50%': { 
+						transform: 'scale(1.05)', 
+						filter: 'brightness(1.2)' 
+					},
+					'100%': { 
+						transform: 'scale(1)', 
+						filter: 'brightness(1.1)' 
+					}
+				},
+				'empire-glow': {
+					'0%, 100%': { 
+						filter: 'drop-shadow(0 0 2px hsl(var(--empire-gold)))' 
+					},
+					'50%': { 
+						filter: 'drop-shadow(0 0 8px hsl(var(--empire-gold)))' 
+					}
+				},
+				'strategic-fade-in': {
+					'0%': {
+						opacity: '0',
+						transform: 'translateY(20px) scale(0.95)'
+					},
+					'100%': {
+						opacity: '1',
+						transform: 'translateY(0) scale(1)'
+					}
+				},
+				'map-zoom': {
+					'0%': { transform: 'scale(0.9)' },
+					'100%': { transform: 'scale(1)' }
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				// Game animations
+				'country-select': 'country-select 0.4s ease-out',
+				'empire-glow': 'empire-glow 2s ease-in-out infinite',
+				'strategic-fade-in': 'strategic-fade-in 0.5s ease-out',
+				'map-zoom': 'map-zoom 0.8s ease-out'
 			}
 		}
 	},
