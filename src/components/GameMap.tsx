@@ -61,7 +61,8 @@ const GameMap: React.FC<GameMapProps> = ({
   };
 
   const handleCountryClick = (countryId: string) => {
-    if (!selectedCountries.includes(countryId)) {
+    const owner = getCountryOwner(countryId);
+    if (!owner) {
       onCountrySelect(countryId);
     }
   };
@@ -75,41 +76,91 @@ const GameMap: React.FC<GameMapProps> = ({
 
     const paths = svgElement.querySelectorAll('path[id]') as NodeListOf<SVGPathElement>;
     
+    // Store event handlers for cleanup
+    const eventHandlers = new Map<SVGPathElement, {
+      mouseenter?: () => void;
+      mouseleave?: () => void;
+      click?: () => void;
+    }>();
+    
+    const updateCountryStyles = () => {
+      paths.forEach(path => {
+        const countryId = path.id.toLowerCase();
+        const owner = getCountryOwner(countryId);
+        
+        // Apply current styling based on ownership
+        if (owner) {
+          // Country is owned - apply player color
+          path.style.fill = owner.color;
+          path.style.stroke = 'hsl(var(--accent))';
+          path.style.strokeWidth = '2';
+          path.style.filter = `drop-shadow(0 0 4px ${owner.color})`;
+          path.style.cursor = 'default';
+          path.style.transition = 'all 0.2s ease';
+        } else {
+          // Country is unowned - apply default styling
+          path.style.fill = 'hsl(var(--land))';
+          path.style.stroke = 'hsl(var(--border))';
+          path.style.strokeWidth = '1';
+          path.style.cursor = 'pointer';
+          path.style.transition = 'all 0.2s ease';
+        }
+      });
+    };
+
+    // Initial style application
+    updateCountryStyles();
+    
     paths.forEach(path => {
       const countryId = path.id.toLowerCase();
-      
-      // Apply initial styling
-      const style = getCountryStyle(countryId);
-      Object.assign(path.style, style);
-      
-      // Add hover effects for unselected countries
       const owner = getCountryOwner(countryId);
+      const handlers: any = {};
+      
+      // Add hover effects for unowned countries only
       if (!owner) {
-        path.addEventListener('mouseenter', () => {
+        const mouseEnterHandler = () => {
           path.style.fill = 'hsl(var(--primary-glow))';
           path.style.transform = 'scale(1.02)';
           path.style.transformOrigin = 'center';
-        });
+        };
         
-        path.addEventListener('mouseleave', () => {
+        const mouseLeaveHandler = () => {
           path.style.fill = 'hsl(var(--land))';
           path.style.transform = 'scale(1)';
-        });
+        };
+        
+        path.addEventListener('mouseenter', mouseEnterHandler);
+        path.addEventListener('mouseleave', mouseLeaveHandler);
+        
+        handlers.mouseenter = mouseEnterHandler;
+        handlers.mouseleave = mouseLeaveHandler;
       }
       
       // Add click handler
-      path.addEventListener('click', () => handleCountryClick(countryId));
+      const clickHandler = () => handleCountryClick(countryId);
+      path.addEventListener('click', clickHandler);
+      handlers.click = clickHandler;
+      
+      eventHandlers.set(path, handlers);
     });
 
     // Cleanup function
     return () => {
       paths.forEach(path => {
-        path.removeEventListener('mouseenter', () => {});
-        path.removeEventListener('mouseleave', () => {});
-        path.removeEventListener('click', () => {});
+        const handlers = eventHandlers.get(path);
+        if (handlers?.mouseenter) {
+          path.removeEventListener('mouseenter', handlers.mouseenter);
+        }
+        if (handlers?.mouseleave) {
+          path.removeEventListener('mouseleave', handlers.mouseleave);
+        }
+        if (handlers?.click) {
+          path.removeEventListener('click', handlers.click);
+        }
       });
+      eventHandlers.clear();
     };
-  }, [svgContent, selectedCountries, players, onCountrySelect]);
+  }, [svgContent, players]);
 
   return (
     <Card className="w-full h-full bg-gradient-to-br from-ocean to-primary overflow-hidden">
