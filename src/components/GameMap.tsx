@@ -171,13 +171,15 @@ const GameMap: React.FC<GameMapProps> = ({
       if (!owner) {
         const mouseEnterHandler = () => {
           path.style.fill = 'hsl(var(--primary-glow))';
-          path.style.transform = 'scale(1.02)';
+          path.style.transform = 'scale(1.01)';
           path.style.transformOrigin = 'center';
+          path.style.zIndex = '10';
         };
         
         const mouseLeaveHandler = () => {
           path.style.fill = 'hsl(var(--land))';
           path.style.transform = 'scale(1)';
+          path.style.zIndex = 'auto';
         };
         
         path.addEventListener('mouseenter', mouseEnterHandler);
