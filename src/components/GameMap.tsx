@@ -288,7 +288,12 @@ const GameMap: React.FC<GameMapProps> = ({
         <div className="absolute top-4 left-4 right-4 flex justify-between items-start pointer-events-none">
           <div className="bg-card/90 backdrop-blur-sm rounded-lg p-3 animate-strategic-fade-in">
             <p className="text-sm font-medium text-card-foreground">
-              Current Turn: <span className="text-accent font-bold">{currentPlayer}</span>
+              Current Turn: <span 
+                className="font-bold" 
+                style={{ color: players.find(p => p.name === currentPlayer)?.color || 'hsl(var(--accent))' }}
+              >
+                {currentPlayer}
+              </span>
             </p>
           </div>
           
