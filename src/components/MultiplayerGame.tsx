@@ -334,6 +334,9 @@ const MultiplayerGame = () => {
       }
 
       console.log('Turn update successful! Database should now show turn:', nextPlayerTurn);
+      
+      // Update local state immediately to prevent race condition
+      setGame(prev => prev ? { ...prev, current_player_turn: nextPlayerTurn } : prev);
 
       console.log('Country selected successfully! Next turn:', nextPlayerTurn);
       toast({
