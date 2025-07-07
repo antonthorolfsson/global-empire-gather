@@ -87,6 +87,7 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
 
   const loadGameState = async () => {
     try {
+      console.log('ChessGame: Loading game state for warId:', warId);
       const { data: moves, error } = await supabase
         .from('chess_moves')
         .select('*')
@@ -95,15 +96,26 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
 
       if (error) throw error;
 
+      console.log('ChessGame: Loaded moves:', moves);
+      
       if (moves && moves.length > 0) {
         // Apply all moves to reconstruct game state
         const latestMove = moves[moves.length - 1];
+        console.log('ChessGame: Latest move:', latestMove);
         setBoard(JSON.parse(JSON.stringify(latestMove.board_state)) as ChessSquare[][]);
         setMoveNumber(latestMove.move_number);
-        setCurrentPlayer(latestMove.player_color === 'white' ? 'black' : 'white');
+        // Next player is opposite of who just moved
+        const nextPlayer = latestMove.player_color === 'white' ? 'black' : 'white';
+        console.log('ChessGame: Setting current player to:', nextPlayer);
+        setCurrentPlayer(nextPlayer);
+      } else {
+        console.log('ChessGame: No moves found, game starts with white');
+        // No moves yet, white starts
+        setCurrentPlayer('white');
+        setMoveNumber(0);
       }
     } catch (error: any) {
-      console.error('Error loading game state:', error);
+      console.error('ChessGame: Error loading game state:', error);
     }
   };
 
