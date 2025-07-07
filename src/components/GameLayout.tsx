@@ -3,15 +3,9 @@ import React, { useState } from 'react';
 import GameMap from './GameMap';
 import EmpireStats from './EmpireStats';
 import PlayerLogin from './PlayerLogin';
-import { useGameState } from '@/hooks/useGameState';
+import { useGameState, Player } from '@/hooks/useGameState';
 import { Button } from '@/components/ui/button';
 import { RotateCcw } from 'lucide-react';
-
-interface Player {
-  id: string;
-  name: string;
-  color: string;
-}
 
 const GameLayout = () => {
   const { gameState, initializeGame, selectCountry, getPlayerStats, getCurrentPlayer, getAllSelectedCountries, resetGame } = useGameState();

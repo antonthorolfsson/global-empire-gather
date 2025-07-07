@@ -3,23 +3,27 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Users, Map, Flag } from 'lucide-react';
+import { Player } from '@/hooks/useGameState';
 
 interface EmpireStatsProps {
-  playerName: string;
-  countries: string[];
-  totalPopulation: number;
-  totalArea: number;
-  totalGDP: number;
-  rank: number;
+  players: Player[];
+  getPlayerStats: (playerId: string) => {
+    playerName: string;
+    countries: string[];
+    totalPopulation: number;
+    totalArea: number;
+    totalGDP: number;
+    rank: number;
+  } | null;
+  currentPlayer: Player | undefined;
+  gamePhase: 'setup' | 'selection' | 'finished';
 }
 
 const EmpireStats: React.FC<EmpireStatsProps> = ({
-  playerName,
-  countries,
-  totalPopulation,
-  totalArea,
-  totalGDP,
-  rank
+  players,
+  getPlayerStats,
+  currentPlayer,
+  gamePhase
 }) => {
   const formatNumber = (num: number) => {
     if (num >= 1000000000) return `${(num / 1000000000).toFixed(1)}B`;
@@ -43,120 +47,109 @@ const EmpireStats: React.FC<EmpireStatsProps> = ({
   };
 
   return (
-    <Card className="animate-strategic-fade-in">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="text-xl font-bold text-primary">
-              {playerName}'s Empire
+    <div className="p-4 space-y-4">
+      {/* Current Player Turn */}
+      {gamePhase === 'selection' && currentPlayer && (
+        <Card className="bg-primary/10 border-primary">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-center text-primary">
+              {currentPlayer.name}'s Turn
             </CardTitle>
-            <CardDescription>Your global dominion</CardDescription>
-          </div>
-          <Badge 
-            className={`${getRankColor(rank)} text-sm font-bold px-3 py-1`}
-            variant="secondary"
-          >
-            #{rank} {getRankIcon(rank)}
-          </Badge>
-        </div>
-      </CardHeader>
+            <CardDescription className="text-center">
+              Select a country to expand your empire
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      )}
 
-      <CardContent className="space-y-6">
-        {/* Countries Owned */}
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <Flag className="h-4 w-4 text-primary" />
-            <span className="font-semibold">Territories</span>
-          </div>
-          <div className="flex flex-wrap gap-1">
-            {countries.map((country, index) => (
-              <Badge 
-                key={country} 
-                variant="outline" 
-                className="text-xs border-primary/30 hover:bg-primary/10"
-              >
-                {country}
-              </Badge>
-            ))}
-          </div>
-          <div className="text-sm text-muted-foreground">
-            {countries.length} countries under your rule
-          </div>
-        </div>
+      {/* Player Stats */}
+      {players.map((player) => {
+        const stats = getPlayerStats(player.id);
+        if (!stats) return null;
 
-        {/* Population Stats */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Users className="h-4 w-4 text-primary" />
-              <span className="font-semibold">Population</span>
-            </div>
-            <span className="text-lg font-bold text-primary">
-              {formatNumber(totalPopulation)}
-            </span>
-          </div>
-          <Progress 
-            value={(totalPopulation / 8000000000) * 100} 
-            className="h-2"
-          />
-          <div className="text-xs text-muted-foreground">
-            {((totalPopulation / 8000000000) * 100).toFixed(1)}% of world population
-          </div>
-        </div>
+        return (
+          <Card key={player.id} className="animate-strategic-fade-in">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div 
+                    className="w-4 h-4 rounded-full border-2 border-white shadow-sm"
+                    style={{ backgroundColor: player.color }}
+                  />
+                  <div>
+                    <CardTitle className="text-lg font-bold text-primary">
+                      {stats.playerName}
+                    </CardTitle>
+                    <CardDescription>Empire Stats</CardDescription>
+                  </div>
+                </div>
+                <Badge 
+                  className={`${getRankColor(stats.rank)} text-sm font-bold px-3 py-1`}
+                  variant="secondary"
+                >
+                  #{stats.rank} {getRankIcon(stats.rank)}
+                </Badge>
+              </div>
+            </CardHeader>
 
-        {/* Land Area Stats */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Map className="h-4 w-4 text-primary" />
-              <span className="font-semibold">Land Area</span>
-            </div>
-            <span className="text-lg font-bold text-primary">
-              {formatNumber(totalArea)} km²
-            </span>
-          </div>
-          <Progress 
-            value={(totalArea / 149000000) * 100} 
-            className="h-2"
-          />
-          <div className="text-xs text-muted-foreground">
-            {((totalArea / 149000000) * 100).toFixed(1)}% of world's land
-          </div>
-        </div>
+            <CardContent className="space-y-4">
+              {/* Countries Count */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Flag className="h-4 w-4 text-primary" />
+                  <span className="font-semibold">Countries</span>
+                </div>
+                <span className="text-lg font-bold text-primary">
+                  {stats.countries.length}
+                </span>
+              </div>
 
-        {/* GDP Stats */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-lg">💰</span>
-              <span className="font-semibold">GDP</span>
-            </div>
-            <span className="text-lg font-bold text-accent">
-              ${formatNumber(totalGDP)}
-            </span>
-          </div>
-          <Progress 
-            value={(totalGDP / 100000) * 100} 
-            className="h-2"
-          />
-          <div className="text-xs text-muted-foreground">
-            {((totalGDP / 100000) * 100).toFixed(1)}% of world GDP
-          </div>
-        </div>
+              {/* Population */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Users className="h-4 w-4 text-primary" />
+                  <span className="font-semibold">Population</span>
+                </div>
+                <span className="text-sm font-bold text-primary">
+                  {formatNumber(stats.totalPopulation)}
+                </span>
+              </div>
 
-        {/* Empire Score */}
-        <div className="pt-4 border-t border-border">
-          <div className="text-center">
-            <div className="text-2xl font-bold text-accent animate-empire-glow">
-              Empire Score: {Math.round((totalPopulation / 1000000) + (totalArea / 10000) + totalGDP)}
-            </div>
-            <div className="text-sm text-muted-foreground mt-1">
-              Based on population, territory & economy
-            </div>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+              {/* Land Area */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Map className="h-4 w-4 text-primary" />
+                  <span className="font-semibold">Land Area</span>
+                </div>
+                <span className="text-sm font-bold text-primary">
+                  {formatNumber(stats.totalArea)} km²
+                </span>
+              </div>
+
+              {/* GDP */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm">💰</span>
+                  <span className="font-semibold">GDP</span>
+                </div>
+                <span className="text-sm font-bold text-accent">
+                  ${formatNumber(stats.totalGDP)}
+                </span>
+              </div>
+
+              {/* Empire Score */}
+              <div className="pt-2 border-t border-border">
+                <div className="text-center">
+                  <div className="text-lg font-bold text-accent">
+                    Score: {Math.round((stats.totalPopulation / 1000000) + (stats.totalArea / 10000) + stats.totalGDP)}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })}
+    </div>
   );
 };
 
