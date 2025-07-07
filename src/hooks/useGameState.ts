@@ -91,7 +91,7 @@ export const useGameState = (initialPlayers?: Player[]) => {
     });
   }, []);
 
-  const getPlayerStats = useCallback((playerId: string) => {
+  const getPlayerStats = (playerId: string) => {
     const player = gameState.players.find(p => p.id === playerId);
     if (!player) return null;
 
@@ -121,7 +121,7 @@ export const useGameState = (initialPlayers?: Player[]) => {
       totalGDP,
       rank,
     };
-  }, [gameState.players, gameState.countries]);
+  };
 
   const getCurrentPlayer = useCallback(() => {
     return gameState.players[gameState.currentPlayerIndex];
