@@ -125,7 +125,8 @@ const MultiplayerGame = () => {
         schema: 'public',
         table: 'game_players',
         filter: `game_id=eq.${gameId}`
-      }, () => {
+      }, (payload) => {
+        console.log('Game players updated:', payload);
         loadGameData();
       })
       .on('postgres_changes', {
@@ -133,7 +134,8 @@ const MultiplayerGame = () => {
         schema: 'public',
         table: 'game_countries',
         filter: `game_id=eq.${gameId}`
-      }, () => {
+      }, (payload) => {
+        console.log('Game countries updated:', payload);
         loadGameData();
       })
       .on('postgres_changes', {
@@ -141,10 +143,13 @@ const MultiplayerGame = () => {
         schema: 'public',
         table: 'games',
         filter: `id=eq.${gameId}`
-      }, () => {
+      }, (payload) => {
+        console.log('Game updated:', payload);
         loadGameData();
       })
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Realtime subscription status:', status);
+      });
 
     return () => {
       supabase.removeChannel(gameChannel);
