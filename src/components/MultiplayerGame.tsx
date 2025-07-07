@@ -72,6 +72,7 @@ const MultiplayerGame = () => {
         .single();
 
       if (gameError) throw gameError;
+      console.log('Loaded game data:', gameData);
       setGame(gameData);
 
       // Load players
@@ -82,12 +83,16 @@ const MultiplayerGame = () => {
         .order('player_order');
 
       if (playersError) throw playersError;
+      console.log('Loaded players data:', playersData);
       setPlayers(playersData || []);
 
       // Check if current user is in this game
       const userPlayer = playersData?.find(p => p.user_id === user?.id);
       setIsPlayerInGame(!!userPlayer);
-      if (userPlayer) setCurrentPlayer(userPlayer);
+      if (userPlayer) {
+        console.log('Current player:', userPlayer);
+        setCurrentPlayer(userPlayer);
+      }
 
       // Load country selections
       const { data: countriesData, error: countriesError } = await supabase
@@ -96,6 +101,7 @@ const MultiplayerGame = () => {
         .eq('game_id', gameId);
 
       if (countriesError) throw countriesError;
+      console.log('Loaded countries data:', countriesData);
       setGameCountries(countriesData || []);
 
     } catch (error: any) {
@@ -271,6 +277,8 @@ const MultiplayerGame = () => {
 
       // Advance to next player's turn
       const nextPlayerTurn = (game.current_player_turn + 1) % players.length;
+      console.log('Advancing turn from', game.current_player_turn, 'to', nextPlayerTurn, 'total players:', players.length);
+      
       const { error: gameError } = await supabase
         .from('games')
         .update({ current_player_turn: nextPlayerTurn })
