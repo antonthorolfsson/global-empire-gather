@@ -121,7 +121,7 @@ export const useGameState = (initialPlayers?: Player[]) => {
       totalGDP,
       rank,
     };
-  }, [gameState]);
+  }, [gameState.players, gameState.countries]);
 
   const getCurrentPlayer = useCallback(() => {
     return gameState.players[gameState.currentPlayerIndex];
