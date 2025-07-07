@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      chess_games: {
+        Row: {
+          black_time_remaining: number
+          created_at: string
+          current_player: string
+          game_status: string
+          id: string
+          updated_at: string
+          war_id: string
+          white_time_remaining: number
+          winner: string | null
+        }
+        Insert: {
+          black_time_remaining?: number
+          created_at?: string
+          current_player?: string
+          game_status?: string
+          id?: string
+          updated_at?: string
+          war_id: string
+          white_time_remaining?: number
+          winner?: string | null
+        }
+        Update: {
+          black_time_remaining?: number
+          created_at?: string
+          current_player?: string
+          game_status?: string
+          id?: string
+          updated_at?: string
+          war_id?: string
+          white_time_remaining?: number
+          winner?: string | null
+        }
+        Relationships: []
+      }
       chess_moves: {
         Row: {
           board_state: Json

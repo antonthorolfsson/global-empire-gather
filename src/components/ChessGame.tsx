@@ -46,26 +46,208 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
   const [board, setBoard] = useState<ChessSquare[][]>([]);
   const [currentPlayer, setCurrentPlayer] = useState<'white' | 'black'>('white');
   const [selectedSquare, setSelectedSquare] = useState<{row: number, col: number} | null>(null);
-  const [gameStatus, setGameStatus] = useState<'playing' | 'checkmate' | 'stalemate' | 'draw'>('playing');
+  const [gameStatus, setGameStatus] = useState<'playing' | 'checkmate' | 'stalemate' | 'draw' | 'timeout'>('playing');
   const [winner, setWinner] = useState<'white' | 'black' | null>(null);
   const [moveNumber, setMoveNumber] = useState(0);
   const [isMyTurn, setIsMyTurn] = useState(false);
   const [gameHistory, setGameHistory] = useState<string[]>([]);
   const [isInCheck, setIsInCheck] = useState<{ white: boolean; black: boolean }>({ white: false, black: false });
+  
+  // Chess clock state
+  const [whiteTimeRemaining, setWhiteTimeRemaining] = useState(300); // 5 minutes in seconds
+  const [blackTimeRemaining, setBlackTimeRemaining] = useState(300); // 5 minutes in seconds
+  const [timerInterval, setTimerInterval] = useState<NodeJS.Timeout | null>(null);
+  const [chessGameId, setChessGameId] = useState<string | null>(null);
 
   useEffect(() => {
     console.log('ChessGame: Initializing for warId:', warId, 'userPlayerSide:', userPlayerSide);
     initializeBoard();
     loadGameState();
+    initializeChessGame();
     
     const cleanup = setupRealtimeSubscription();
-    return cleanup;
+    return () => {
+      cleanup();
+      if (timerInterval) {
+        clearInterval(timerInterval);
+      }
+    };
   }, [warId]);
 
   useEffect(() => {
     console.log('ChessGame: Turn changed - currentPlayer:', currentPlayer, 'userPlayerSide:', userPlayerSide);
     setIsMyTurn(currentPlayer === userPlayerSide);
-  }, [currentPlayer, userPlayerSide]);
+    
+    // Start/stop timer based on current player and game status
+    if (gameStatus === 'playing') {
+      startTimer();
+    } else {
+      stopTimer();
+    }
+  }, [currentPlayer, userPlayerSide, gameStatus]);
+
+  // Timer effect
+  useEffect(() => {
+    if (gameStatus === 'playing' && (whiteTimeRemaining <= 0 || blackTimeRemaining <= 0)) {
+      handleTimeout();
+    }
+  }, [whiteTimeRemaining, blackTimeRemaining, gameStatus]);
+  
+  // Timer and chess game initialization functions
+  const initializeChessGame = async () => {
+    try {
+      // Check if chess game already exists
+      const { data: existingGame, error: fetchError } = await supabase
+        .from('chess_games')
+        .select('*')
+        .eq('war_id', warId)
+        .maybeSingle();
+
+      if (fetchError) throw fetchError;
+
+      if (existingGame) {
+        // Load existing game state
+        setChessGameId(existingGame.id);
+        setWhiteTimeRemaining(existingGame.white_time_remaining);
+        setBlackTimeRemaining(existingGame.black_time_remaining);
+        setCurrentPlayer(existingGame.current_player as 'white' | 'black');
+        setGameStatus(existingGame.game_status as 'playing' | 'checkmate' | 'stalemate' | 'draw' | 'timeout');
+        if (existingGame.winner) {
+          setWinner(existingGame.winner as 'white' | 'black');
+        }
+      } else {
+        // Create new chess game
+        const { data: newGame, error: createError } = await supabase
+          .from('chess_games')
+          .insert({
+            war_id: warId,
+            white_time_remaining: 300,
+            black_time_remaining: 300,
+            current_player: 'white',
+            game_status: 'playing'
+          })
+          .select()
+          .single();
+
+        if (createError) throw createError;
+        setChessGameId(newGame.id);
+      }
+    } catch (error: any) {
+      console.error('Error initializing chess game:', error);
+    }
+  };
+
+  const startTimer = () => {
+    // Clear existing timer
+    if (timerInterval) {
+      clearInterval(timerInterval);
+    }
+
+    // Start new timer only if we're the current player and game is playing
+    if (gameStatus === 'playing' && isMyTurn) {
+      const newInterval = setInterval(() => {
+        if (currentPlayer === 'white') {
+          setWhiteTimeRemaining(prev => {
+            const newTime = Math.max(0, prev - 1);
+            // Update database every 5 seconds to reduce load
+            if (newTime % 5 === 0 && newTime !== prev) {
+              updateTimerInDatabase(newTime, blackTimeRemaining);
+            }
+            return newTime;
+          });
+        } else {
+          setBlackTimeRemaining(prev => {
+            const newTime = Math.max(0, prev - 1);
+            // Update database every 5 seconds to reduce load
+            if (newTime % 5 === 0 && newTime !== prev) {
+              updateTimerInDatabase(whiteTimeRemaining, newTime);
+            }
+            return newTime;
+          });
+        }
+      }, 1000);
+
+      setTimerInterval(newInterval);
+    }
+  };
+
+  const stopTimer = () => {
+    if (timerInterval) {
+      clearInterval(timerInterval);
+      setTimerInterval(null);
+    }
+  };
+
+  const updateTimerInDatabase = async (whiteTime: number, blackTime: number) => {
+    if (!chessGameId) return;
+
+    try {
+      await supabase
+        .from('chess_games')
+        .update({
+          white_time_remaining: whiteTime,
+          black_time_remaining: blackTime,
+          current_player: currentPlayer
+        })
+        .eq('id', chessGameId);
+    } catch (error: any) {
+      console.error('Error updating timer:', error);
+    }
+  };
+
+  const handleTimeout = async () => {
+    if (gameStatus !== 'playing') return;
+
+    const loser = whiteTimeRemaining <= 0 ? 'white' : 'black';
+    const winner = loser === 'white' ? 'black' : 'white';
+
+    try {
+      // Update chess game status
+      if (chessGameId) {
+        await supabase
+          .from('chess_games')
+          .update({
+            game_status: 'timeout',
+            winner: winner
+          })
+          .eq('id', chessGameId);
+      }
+
+      // Save timeout move
+      await supabase
+        .from('chess_moves')
+        .insert({
+          war_id: warId,
+          move_number: moveNumber + 1,
+          player_color: loser,
+          from_row: -2, // Special value for timeout
+          from_col: -2,
+          to_row: -2,
+          to_col: -2,
+          piece_type: 'timeout',
+          captured_piece: 'time', // Indicates timeout
+          board_state: JSON.parse(JSON.stringify(board))
+        });
+
+      setGameStatus('timeout');
+      setWinner(winner);
+      stopTimer();
+      onGameEnd(winner);
+
+      toast({
+        title: "Time's Up!",
+        description: `${loser.charAt(0).toUpperCase() + loser.slice(1)} ran out of time. ${winner.charAt(0).toUpperCase() + winner.slice(1)} wins!`,
+      });
+    } catch (error: any) {
+      console.error('Error handling timeout:', error);
+    }
+  };
+
+  const formatTime = (seconds: number): string => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+  };
 
   const setupRealtimeSubscription = () => {
     console.log('ChessGame: Setting up realtime subscription for warId:', warId);
@@ -81,6 +263,22 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
         console.log('ChessGame: New chess move received:', payload);
         const move = payload.new as any;
         applyMoveFromDatabase(move);
+      })
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'chess_games',
+        filter: `war_id=eq.${warId}`
+      }, (payload) => {
+        console.log('ChessGame: Chess game state updated:', payload);
+        const gameData = payload.new as any;
+        setWhiteTimeRemaining(gameData.white_time_remaining);
+        setBlackTimeRemaining(gameData.black_time_remaining);
+        setCurrentPlayer(gameData.current_player);
+        setGameStatus(gameData.game_status);
+        if (gameData.winner) {
+          setWinner(gameData.winner);
+        }
       })
       .subscribe((status) => {
         console.log('ChessGame: Subscription status:', status);
@@ -703,8 +901,48 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
                 Draw by Repetition!
               </span>
             )}
+            {gameStatus === 'timeout' && winner && (
+              <span className="flex items-center justify-center gap-2">
+                <Crown className="w-5 h-5" />
+                {winner.charAt(0).toUpperCase() + winner.slice(1)} Wins by Timeout!
+              </span>
+            )}
           </div>
         )}
+      </div>
+
+      {/* Chess Clock */}
+      <div className="flex justify-between items-center w-full max-w-md">
+        <div className={`p-3 border-2 rounded-lg transition-colors ${
+          currentPlayer === 'black' && gameStatus === 'playing' ? 'border-primary bg-primary/10' : 'border-border bg-card'
+        }`}>
+          <div className="text-center">
+            <div className="text-sm font-medium text-muted-foreground">Black</div>
+            <div className={`text-xl font-mono font-bold ${
+              blackTimeRemaining <= 30 ? 'text-destructive' : 'text-foreground'
+            }`}>
+              {formatTime(blackTimeRemaining)}
+            </div>
+          </div>
+        </div>
+        
+        <div className="text-center">
+          <div className="text-lg font-bold">VS</div>
+          <div className="text-xs text-muted-foreground">5+0</div>
+        </div>
+        
+        <div className={`p-3 border-2 rounded-lg transition-colors ${
+          currentPlayer === 'white' && gameStatus === 'playing' ? 'border-primary bg-primary/10' : 'border-border bg-card'
+        }`}>
+          <div className="text-center">
+            <div className="text-sm font-medium text-muted-foreground">White</div>
+            <div className={`text-xl font-mono font-bold ${
+              whiteTimeRemaining <= 30 ? 'text-destructive' : 'text-foreground'
+            }`}>
+              {formatTime(whiteTimeRemaining)}
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-8 gap-0 border-2 border-border bg-card">
