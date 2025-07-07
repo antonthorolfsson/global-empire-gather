@@ -197,7 +197,7 @@ const MultiplayerGame = () => {
 
       toast({
         title: "Game started!",
-        description: "The conquest begins!",
+        description: "The conquest begins! Select countries to expand your empire.",
       });
     } catch (error: any) {
       toast({
@@ -320,7 +320,7 @@ const MultiplayerGame = () => {
   }
 
   // Game waiting room for players
-  if (game.status === 'waiting') {
+  if (game.status === 'waiting' && isPlayerInGame) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-ocean to-primary p-4">
         <div className="max-w-4xl mx-auto">
@@ -371,7 +371,8 @@ const MultiplayerGame = () => {
     );
   }
 
-  // Active game interface  
+  // Active game interface (this will show when game.status === 'active')
+  console.log('Game status:', game.status, 'Game phase:', game.game_phase, 'Is player in game:', isPlayerInGame);
   const selectedCountriesArray = gameCountries.map(gc => gc.country_id);
   
   const selectedCountriesMap: Record<string, string> = {};
