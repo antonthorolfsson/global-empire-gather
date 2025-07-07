@@ -54,20 +54,15 @@ export const useGameState = (initialPlayers?: Player[]) => {
   }, []);
 
   const selectCountry = useCallback((countryId: string) => {
-    console.log('selectCountry called with:', countryId);
     setGameState(prev => {
       const currentPlayer = prev.players[prev.currentPlayerIndex];
-      console.log('Current player:', currentPlayer.name);
       
       // Check if country is already selected
       const isAlreadySelected = prev.players.some(player => 
         player.countries.includes(countryId)
       );
       
-      if (isAlreadySelected) {
-        console.log('Country already selected');
-        return prev;
-      }
+      if (isAlreadySelected) return prev;
 
       // Add country to current player
       const updatedPlayers = prev.players.map((player, index) => 
@@ -75,8 +70,6 @@ export const useGameState = (initialPlayers?: Player[]) => {
           ? { ...player, countries: [...player.countries, countryId] }
           : player
       );
-
-      console.log('Updated players:', updatedPlayers);
 
       // Move to next player
       const nextPlayerIndex = (prev.currentPlayerIndex + 1) % prev.players.length;
@@ -89,15 +82,12 @@ export const useGameState = (initialPlayers?: Player[]) => {
       
       const gamePhase: 'setup' | 'selection' | 'finished' = totalSelectedCountries >= prev.totalCountries ? 'finished' : 'selection';
 
-      const newState = {
+      return {
         ...prev,
         players: updatedPlayers,
         currentPlayerIndex: nextPlayerIndex,
         gamePhase,
       };
-      
-      console.log('New game state:', newState);
-      return newState;
     });
   }, []);
 

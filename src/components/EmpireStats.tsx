@@ -26,11 +26,6 @@ const EmpireStats: React.FC<EmpireStatsProps> = ({
       player.countries.includes(country.id)
     );
 
-    console.log(`Stats for ${player.name}:`, {
-      playerCountries: playerCountries.length,
-      countriesOwned: player.countries
-    });
-
     const totalPopulation = playerCountries.reduce((sum, c) => sum + c.population, 0);
     const totalArea = playerCountries.reduce((sum, c) => sum + c.area, 0);
     const totalGDP = playerCountries.reduce((sum, c) => sum + c.gdp, 0);
