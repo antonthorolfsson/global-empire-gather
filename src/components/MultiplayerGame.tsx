@@ -267,6 +267,13 @@ const MultiplayerGame = () => {
     }
 
     // Check if it's this player's turn
+    console.log('=== TURN CHECK DEBUG ===');
+    console.log('Game current_player_turn:', game.current_player_turn);
+    console.log('User player order:', userPlayer.player_order);
+    console.log('Is user turn?', game.current_player_turn === userPlayer.player_order);
+    console.log('All players orders:', players.map(p => ({ name: p.player_name, order: p.player_order, id: p.id })));
+    console.log('========================');
+    
     if (game.current_player_turn !== userPlayer.player_order) {
       const currentTurnPlayer = players.find(p => p.player_order === game.current_player_turn);
       console.log('Not your turn! Current turn belongs to:', currentTurnPlayer?.player_name);
