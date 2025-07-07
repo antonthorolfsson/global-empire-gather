@@ -160,7 +160,7 @@ const GameMap: React.FC<GameMapProps> = ({
       });
       eventHandlers.clear();
     };
-  }, [svgContent, players]);
+  }, [svgContent, players, selectedCountries]);
 
   return (
     <Card className="w-full h-full bg-gradient-to-br from-ocean to-primary overflow-hidden">
