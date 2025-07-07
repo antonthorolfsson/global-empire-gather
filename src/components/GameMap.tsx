@@ -1,5 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 
 interface Country {
   id: string;
@@ -26,6 +28,11 @@ const GameMap: React.FC<GameMapProps> = ({
   players
 }) => {
   const [svgContent, setSvgContent] = useState<string>('');
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [lastMousePos, setLastMousePos] = useState({ x: 0, y: 0 });
+  const mapContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Import the SVG content directly
@@ -65,6 +72,50 @@ const GameMap: React.FC<GameMapProps> = ({
     if (!owner) {
       onCountrySelect(countryId);
     }
+  };
+
+  // Zoom and pan handlers
+  const handleWheel = (e: React.WheelEvent) => {
+    e.preventDefault();
+    const zoomSpeed = 0.1;
+    const newZoom = Math.max(0.5, Math.min(5, zoom + (e.deltaY > 0 ? -zoomSpeed : zoomSpeed)));
+    setZoom(newZoom);
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    setIsDragging(true);
+    setLastMousePos({ x: e.clientX, y: e.clientY });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging) return;
+    
+    const deltaX = e.clientX - lastMousePos.x;
+    const deltaY = e.clientY - lastMousePos.y;
+    
+    setPan(prev => ({
+      x: prev.x + deltaX / zoom,
+      y: prev.y + deltaY / zoom
+    }));
+    
+    setLastMousePos({ x: e.clientX, y: e.clientY });
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const handleZoomIn = () => {
+    setZoom(prev => Math.min(5, prev + 0.5));
+  };
+
+  const handleZoomOut = () => {
+    setZoom(prev => Math.max(0.5, prev - 0.5));
+  };
+
+  const handleResetView = () => {
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
   };
 
   useEffect(() => {
@@ -167,20 +218,62 @@ const GameMap: React.FC<GameMapProps> = ({
       <div className="relative w-full h-full animate-map-zoom">
         {svgContent ? (
           <div 
-            id="world-map-container"
-            className="w-full h-full"
-            dangerouslySetInnerHTML={{ 
-              __html: svgContent.replace('<svg', '<svg id="world-map-svg"')
-            }}
-            style={{
-              background: 'linear-gradient(135deg, hsl(var(--ocean)), hsl(220 80% 35%))'
-            }}
-          />
+            ref={mapContainerRef}
+            className="w-full h-full overflow-hidden cursor-grab active:cursor-grabbing"
+            onWheel={handleWheel}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
+            style={{ userSelect: 'none' }}
+          >
+            <div
+              id="world-map-container"
+              className="w-full h-full transition-transform duration-200 ease-out"
+              dangerouslySetInnerHTML={{ 
+                __html: svgContent.replace('<svg', '<svg id="world-map-svg"')
+              }}
+              style={{
+                background: 'linear-gradient(135deg, hsl(var(--ocean)), hsl(220 80% 35%))',
+                transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+                transformOrigin: 'center'
+              }}
+            />
+          </div>
         ) : (
           <div className="flex items-center justify-center h-full">
             <div className="text-primary-foreground">Loading world map...</div>
           </div>
         )}
+
+        {/* Zoom Controls */}
+        <div className="absolute bottom-4 right-4 flex flex-col gap-2 pointer-events-auto">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleZoomIn}
+            className="w-10 h-10 p-0"
+          >
+            <ZoomIn className="w-4 h-4" />
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleZoomOut}
+            className="w-10 h-10 p-0"
+          >
+            <ZoomOut className="w-4 h-4" />
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleResetView}
+            className="w-10 h-10 p-0"
+            title="Reset view"
+          >
+            <RotateCcw className="w-4 h-4" />
+          </Button>
+        </div>
 
         {/* Game UI Overlay */}
         <div className="absolute top-4 left-4 right-4 flex justify-between items-start pointer-events-none">
@@ -195,6 +288,13 @@ const GameMap: React.FC<GameMapProps> = ({
               Countries Selected: <span className="text-primary font-bold">{selectedCountries.length}</span>
             </p>
           </div>
+        </div>
+
+        {/* Zoom indicator */}
+        <div className="absolute bottom-4 left-4 bg-card/90 backdrop-blur-sm rounded-lg p-2 pointer-events-none">
+          <p className="text-xs text-card-foreground">
+            Zoom: {Math.round(zoom * 100)}%
+          </p>
         </div>
       </div>
     </Card>
