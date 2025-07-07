@@ -57,7 +57,9 @@ const MultiplayerGame = () => {
     if (!gameId) return;
     
     loadGameData();
-    setupRealtimeSubscriptions();
+    const cleanup = setupRealtimeSubscriptions();
+    
+    return cleanup;
   }, [gameId, user]);
 
   const loadGameData = async () => {
