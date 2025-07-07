@@ -121,6 +121,8 @@ const GameMap: React.FC<GameMapProps> = ({
   useEffect(() => {
     if (!svgContent) return;
 
+    console.log('GameMap: Updating country styles, players:', players);
+
     // Add click handlers and styling to all country paths
     const svgElement = document.getElementById('world-map-svg');
     if (!svgElement) return;
@@ -135,9 +137,14 @@ const GameMap: React.FC<GameMapProps> = ({
     }>();
     
     const updateCountryStyles = () => {
+      console.log('GameMap: Applying styles to', paths.length, 'countries');
       paths.forEach(path => {
         const countryId = path.id.toLowerCase();
         const owner = getCountryOwner(countryId);
+        
+        if (owner) {
+          console.log(`GameMap: Country ${countryId} owned by ${owner.name} (${owner.color})`);
+        }
         
         // Apply current styling based on ownership
         if (owner) {
