@@ -1,3 +1,4 @@
+
 import { useState, useCallback } from 'react';
 
 export interface Country {
@@ -30,17 +31,27 @@ import { getAllCountries } from '../utils/countryData';
 // Get all world countries data
 const WORLD_COUNTRIES: Country[] = getAllCountries();
 
-export const useGameState = () => {
+export const useGameState = (initialPlayers?: Player[]) => {
   const [gameState, setGameState] = useState<GameState>({
-    players: [
-      { id: 'player1', name: 'You', countries: [], isActive: true, color: 'hsl(var(--player-1))' },
-      { id: 'player2', name: 'Opponent', countries: [], isActive: false, color: 'hsl(var(--player-2))' },
-    ],
+    players: initialPlayers || [],
     countries: WORLD_COUNTRIES,
     currentPlayerIndex: 0,
-    gamePhase: 'selection',
+    gamePhase: initialPlayers ? 'selection' : 'setup',
     totalCountries: WORLD_COUNTRIES.length,
   });
+
+  const initializeGame = useCallback((players: Player[]) => {
+    setGameState(prev => ({
+      ...prev,
+      players: players.map((player, index) => ({
+        ...player,
+        countries: [],
+        isActive: index === 0,
+      })),
+      currentPlayerIndex: 0,
+      gamePhase: 'selection',
+    }));
+  }, []);
 
   const selectCountry = useCallback((countryId: string) => {
     setGameState(prev => {
@@ -131,6 +142,7 @@ export const useGameState = () => {
 
   return {
     gameState,
+    initializeGame,
     selectCountry,
     getPlayerStats,
     getCurrentPlayer,
