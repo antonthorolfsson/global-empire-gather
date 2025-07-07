@@ -567,7 +567,7 @@ const MultiplayerGame = () => {
 
         {/* Sidebar */}
         <div className="w-80 bg-card/95 backdrop-blur-sm border-l overflow-y-auto">
-          {game.game_phase === 'battle' ? (
+          {game.game_phase === 'finished' ? (
             <div className="p-4">
               <WarDeclaration
                 gameId={gameId!}
