@@ -26,10 +26,9 @@ const GameMap: React.FC<GameMapProps> = ({
   const [svgContent, setSvgContent] = useState<string>('');
 
   useEffect(() => {
-    // Load the SVG content
-    fetch('/src/assets/world-map.svg')
-      .then(response => response.text())
-      .then(content => setSvgContent(content))
+    // Import the SVG content directly
+    import('/src/assets/world-map.svg?raw')
+      .then(module => setSvgContent(module.default))
       .catch(error => console.error('Error loading world map:', error));
   }, []);
 
