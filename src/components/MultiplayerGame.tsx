@@ -588,8 +588,8 @@ const MultiplayerGame = () => {
 
         {/* Sidebar */}
         <div className="w-80 bg-card/95 backdrop-blur-sm border-l overflow-y-auto">
-          {game.game_phase === 'finished' ? (
-            <div className="p-4">
+          <div className="p-4 space-y-4">
+            {game.game_phase === 'finished' && (
               <WarDeclaration
                 gameId={gameId!}
                 currentPlayer={userPlayer!}
@@ -597,8 +597,8 @@ const MultiplayerGame = () => {
                 gameCountries={gameCountries}
                 isPlayerTurn={game.current_player_turn === userPlayer?.player_order}
               />
-            </div>
-          ) : (
+            )}
+            
             <EmpireStats
               players={players.map(p => ({ 
                 id: p.id, 
@@ -615,9 +615,9 @@ const MultiplayerGame = () => {
                 countries: gameStatsCountries.filter(c => c.selectedBy === userPlayer.player_name).map(c => c.id),
                 isActive: false
               } : undefined}
-              gamePhase="selection"
+              gamePhase={game.game_phase as 'setup' | 'selection' | 'finished'}
             />
-          )}
+          </div>
         </div>
       </div>
     </div>
