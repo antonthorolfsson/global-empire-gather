@@ -26,14 +26,14 @@ const EmpireStats: React.FC<EmpireStatsProps> = ({
       player.countries.includes(country.id)
     );
 
-    const totalPopulation = playerCountries.reduce((sum, c) => sum + c.population, 0);
-    const totalArea = playerCountries.reduce((sum, c) => sum + c.area, 0);
-    const totalGDP = playerCountries.reduce((sum, c) => sum + c.gdp, 0);
+    const totalPopulation = playerCountries.reduce((sum, c) => sum + (c.population || 0), 0);
+    const totalArea = playerCountries.reduce((sum, c) => sum + (c.area || 0), 0);
+    const totalGDP = playerCountries.reduce((sum, c) => sum + (c.gdp || 0), 0);
 
     // Calculate rank
     const allPlayerStats = players.map(p => {
       const pCountries = countries.filter(c => p.countries.includes(c.id));
-      const pGDP = pCountries.reduce((sum, c) => sum + c.gdp, 0);
+      const pGDP = pCountries.reduce((sum, c) => sum + (c.gdp || 0), 0);
       return { playerId: p.id, gdp: pGDP };
     });
     
@@ -50,6 +50,10 @@ const EmpireStats: React.FC<EmpireStatsProps> = ({
     };
   };
   const formatNumber = (num: number) => {
+    // Check for NaN, null, undefined, or Infinity
+    if (isNaN(num) || num == null || !isFinite(num)) {
+      return '0';
+    }
     if (num >= 1000000000) return `${(num / 1000000000).toFixed(1)}B`;
     if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
     if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
@@ -165,7 +169,7 @@ const EmpireStats: React.FC<EmpireStatsProps> = ({
               <div className="pt-2 border-t border-border">
                 <div className="text-center">
                   <div className="text-lg font-bold text-accent">
-                    Score: {Math.round((stats.totalPopulation / 1000000) + (stats.totalArea / 10000) + stats.totalGDP)}
+                    Score: {formatNumber(Math.round((stats.totalPopulation / 1000000) + (stats.totalArea / 10000) + stats.totalGDP))}
                   </div>
                 </div>
               </div>
