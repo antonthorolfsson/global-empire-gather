@@ -15,13 +15,15 @@ interface GameMapProps {
   onCountrySelect: (countryId: string) => void;
   currentPlayer: string;
   selectedCountries: string[];
+  players: Array<{ id: string; name: string; countries: string[]; color: string }>;
 }
 
 const GameMap: React.FC<GameMapProps> = ({ 
   countries, 
   onCountrySelect, 
   currentPlayer, 
-  selectedCountries 
+  selectedCountries,
+  players
 }) => {
   const [svgContent, setSvgContent] = useState<string>('');
 
@@ -32,15 +34,23 @@ const GameMap: React.FC<GameMapProps> = ({
       .catch(error => console.error('Error loading world map:', error));
   }, []);
 
+  const getCountryOwner = (countryId: string) => {
+    return players.find(player => player.countries.includes(countryId));
+  };
+
   const getCountryStyle = (countryId: string) => {
-    if (selectedCountries.includes(countryId)) {
+    const owner = getCountryOwner(countryId);
+    
+    if (owner) {
       return {
-        fill: 'hsl(var(--empire-gold))',
+        fill: owner.color,
         stroke: 'hsl(var(--accent))',
         strokeWidth: '2',
-        filter: 'drop-shadow(0 0 4px hsl(var(--empire-gold)))'
+        filter: `drop-shadow(0 0 4px ${owner.color})`,
+        cursor: 'default'
       };
     }
+    
     return {
       fill: 'hsl(var(--land))',
       stroke: 'hsl(var(--border))',
@@ -73,7 +83,8 @@ const GameMap: React.FC<GameMapProps> = ({
       Object.assign(path.style, style);
       
       // Add hover effects for unselected countries
-      if (!selectedCountries.includes(countryId)) {
+      const owner = getCountryOwner(countryId);
+      if (!owner) {
         path.addEventListener('mouseenter', () => {
           path.style.fill = 'hsl(var(--primary-glow))';
           path.style.transform = 'scale(1.02)';
@@ -98,7 +109,7 @@ const GameMap: React.FC<GameMapProps> = ({
         path.removeEventListener('click', () => {});
       });
     };
-  }, [svgContent, selectedCountries, onCountrySelect]);
+  }, [svgContent, selectedCountries, players, onCountrySelect]);
 
   return (
     <Card className="w-full h-full bg-gradient-to-br from-ocean to-primary overflow-hidden">

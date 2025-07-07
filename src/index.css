@@ -55,6 +55,12 @@ All colors MUST be HSL. Rich oceanic theme with golden accents.
     --empire-silver: 210 15% 70%;
     --empire-bronze: 25 70% 65%;
     
+    /* Player colors */
+    --player-1: 215 80% 45%;     /* Strategic blue */
+    --player-2: 0 75% 55%;       /* Strong red */
+    --player-3: 120 60% 45%;     /* Forest green */
+    --player-4: 45 90% 60%;      /* Empire gold */
+    
     /* Gradients */
     --gradient-ocean: linear-gradient(135deg, hsl(210 85% 25%), hsl(220 80% 35%));
     --gradient-empire: linear-gradient(135deg, hsl(45 90% 60%), hsl(35 85% 55%));

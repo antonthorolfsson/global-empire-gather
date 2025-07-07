@@ -14,6 +14,7 @@ export interface Player {
   name: string;
   countries: string[];
   isActive: boolean;
+  color: string;
 }
 
 export interface GameState {
@@ -32,8 +33,8 @@ const WORLD_COUNTRIES: Country[] = getAllCountries();
 export const useGameState = () => {
   const [gameState, setGameState] = useState<GameState>({
     players: [
-      { id: 'player1', name: 'You', countries: [], isActive: true },
-      { id: 'player2', name: 'Opponent', countries: [], isActive: false },
+      { id: 'player1', name: 'You', countries: [], isActive: true, color: 'hsl(var(--player-1))' },
+      { id: 'player2', name: 'Opponent', countries: [], isActive: false, color: 'hsl(var(--player-2))' },
     ],
     countries: WORLD_COUNTRIES,
     currentPlayerIndex: 0,

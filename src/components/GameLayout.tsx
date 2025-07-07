@@ -87,6 +87,7 @@ const GameLayout: React.FC = () => {
                   onCountrySelect={handleCountrySelect}
                   currentPlayer={currentPlayer?.name || 'Unknown'}
                   selectedCountries={selectedCountries}
+                  players={gameState.players}
                 />
               </CardContent>
             </Card>
