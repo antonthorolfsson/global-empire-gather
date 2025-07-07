@@ -30,6 +30,7 @@ const GameLobby = () => {
   const [loading, setLoading] = useState(false);
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [selectedGameId, setSelectedGameId] = useState<string>('');
+  const [isCreatingGame, setIsCreatingGame] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -79,27 +80,10 @@ const GameLobby = () => {
 
       if (gameError) throw gameError;
 
-      // Add creator as first player
-      const { error: playerError } = await supabase
-        .from('game_players')
-        .insert({
-          game_id: game.id,
-          user_id: user?.id,
-          player_name: user?.user_metadata?.display_name || user?.email || 'Player',
-          color: 'hsl(215 80% 45%)',
-          player_order: 0,
-          is_host: true
-        });
-
-      if (playerError) throw playerError;
-
-      toast({
-        title: "Game created!",
-        description: `${newGameName} is ready for players to join.`,
-      });
-
+      setSelectedGameId(game.id);
+      setIsCreatingGame(true);
+      setShowColorPicker(true);
       setNewGameName('');
-      navigate(`/game/${game.id}`);
     } catch (error: any) {
       toast({
         title: "Error",
@@ -161,6 +145,7 @@ const GameLobby = () => {
         .limit(1);
 
       const nextOrder = players && players.length > 0 ? players[0].player_order + 1 : 0;
+      const isHost = isCreatingGame;
 
       const { error } = await supabase
         .from('game_players')
@@ -170,16 +155,25 @@ const GameLobby = () => {
           player_name: user?.user_metadata?.display_name || user?.email || 'Player',
           color: selectedColor,
           player_order: nextOrder,
-          is_host: false
+          is_host: isHost
         });
 
       if (error) throw error;
 
       setShowColorPicker(false);
+      
+      if (isCreatingGame) {
+        toast({
+          title: "Game created!",
+          description: "Your game is ready for players to join.",
+        });
+        setIsCreatingGame(false);
+      }
+      
       navigate(`/game/${selectedGameId}`);
     } catch (error: any) {
       toast({
-        title: "Error joining game",
+        title: isCreatingGame ? "Error creating game" : "Error joining game",
         description: error.message,
         variant: "destructive",
       });
@@ -189,6 +183,12 @@ const GameLobby = () => {
   const handleColorPickerCancel = () => {
     setShowColorPicker(false);
     setSelectedGameId('');
+    
+    if (isCreatingGame) {
+      setIsCreatingGame(false);
+      // If canceling game creation, we should delete the created game
+      supabase.from('games').delete().eq('id', selectedGameId);
+    }
   };
 
   return (
