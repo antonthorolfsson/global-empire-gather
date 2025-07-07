@@ -239,7 +239,7 @@ const MultiplayerGame = () => {
       const { error } = await supabase
         .from('games')
         .update({ 
-          game_phase: 'battle'
+          game_phase: 'finished'
         })
         .eq('id', gameId);
 
