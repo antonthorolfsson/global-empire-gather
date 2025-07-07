@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { GAME_COUNTRIES } from '@/data/gameCountries';
-import { Sword, Shield, Crown } from 'lucide-react';
+import { Sword, Shield, Crown, Target } from 'lucide-react';
 
 interface GamePlayer {
   id: string;
@@ -46,6 +47,7 @@ const WarDeclaration: React.FC<WarDeclarationProps> = ({
   isPlayerTurn
 }) => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [warDeclarations, setWarDeclarations] = useState<WarDeclaration[]>([]);
   const [selectedOwnCountry, setSelectedOwnCountry] = useState<string>('');
   const [selectedEnemyCountry, setSelectedEnemyCountry] = useState<string>('');
@@ -144,10 +146,21 @@ const WarDeclaration: React.FC<WarDeclarationProps> = ({
 
       if (error) throw error;
 
-      toast({
-        title: accept ? "War accepted!" : "War declined",
-        description: accept ? "Prepare for battle!" : "The war declaration was declined.",
-      });
+      if (accept) {
+        toast({
+          title: "War accepted!",
+          description: "Redirecting to chess battle...",
+        });
+        // Redirect to chess game
+        setTimeout(() => {
+          navigate(`/chess/${warId}`);
+        }, 1500);
+      } else {
+        toast({
+          title: "War declined",
+          description: "The war declaration was declined.",
+        });
+      }
     } catch (error: any) {
       toast({
         title: "Error responding to war",
@@ -271,13 +284,27 @@ const WarDeclaration: React.FC<WarDeclarationProps> = ({
           <h3 className="font-semibold mb-3">Recent Wars</h3>
           <div className="space-y-2">
             {warDeclarations.slice(0, 3).map(wd => (
-              <div key={wd.id} className="text-sm p-2 bg-muted/30 rounded">
-                <span className="font-medium">{getPlayerName(wd.attacking_player_id)}</span> declared war on{' '}
-                <span className="font-medium">{getPlayerName(wd.defending_player_id)}</span>
-                <br />
-                <span className="text-xs text-muted-foreground">
-                  {getCountryName(wd.attacking_country_id)} vs {getCountryName(wd.defending_country_id)} - {wd.status}
-                </span>
+              <div key={wd.id} className="text-sm p-2 bg-muted/30 rounded flex justify-between items-center">
+                <div>
+                  <div>
+                    <span className="font-medium">{getPlayerName(wd.attacking_player_id)}</span> declared war on{' '}
+                    <span className="font-medium">{getPlayerName(wd.defending_player_id)}</span>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {getCountryName(wd.attacking_country_id)} vs {getCountryName(wd.defending_country_id)} - {wd.status}
+                  </div>
+                </div>
+                {wd.status === 'accepted' && (wd.attacking_player_id === currentPlayer.id || wd.defending_player_id === currentPlayer.id) && (
+                  <Button
+                    onClick={() => navigate(`/chess/${wd.id}`)}
+                    size="sm"
+                    variant="outline"
+                    className="ml-2"
+                  >
+                    <Target className="w-3 h-3 mr-1" />
+                    Battle
+                  </Button>
+                )}
               </div>
             ))}
           </div>

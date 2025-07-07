@@ -7,6 +7,7 @@ import AuthWrapper from "./components/AuthWrapper";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import GameLobby from "./pages/GameLobby";
+import ChessBattle from "./pages/ChessBattle";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -27,6 +28,11 @@ const App = () => (
           <Route path="/game/:gameId" element={
             <AuthWrapper>
               <Index />
+            </AuthWrapper>
+          } />
+          <Route path="/chess/:warId" element={
+            <AuthWrapper>
+              <ChessBattle />
             </AuthWrapper>
           } />
           <Route path="/" element={
