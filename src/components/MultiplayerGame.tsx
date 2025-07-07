@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/AuthWrapper';
 import GameMap from './GameMap';
 import EmpireStats from './EmpireStats';
+import ColorPickerDialog from './ColorPickerDialog';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
@@ -50,6 +51,7 @@ const MultiplayerGame = () => {
   const [currentPlayer, setCurrentPlayer] = useState<GamePlayer | null>(null);
   const [loading, setLoading] = useState(true);
   const [isPlayerInGame, setIsPlayerInGame] = useState(false);
+  const [showColorPicker, setShowColorPicker] = useState(false);
 
   useEffect(() => {
     if (!gameId) return;
@@ -142,18 +144,21 @@ const MultiplayerGame = () => {
   };
 
   const joinGame = async () => {
+    if (players.length >= 8) {
+      toast({
+        title: "Game is full",
+        description: "This game already has the maximum number of players.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setShowColorPicker(true);
+  };
+
+  const handleColorSelect = async (selectedColor: string) => {
     try {
       const nextOrder = players.length;
-      const colors = [
-        'hsl(215 80% 45%)',   // Strategic blue
-        'hsl(0 75% 55%)',     // Strong red
-        'hsl(120 60% 45%)',   // Forest green
-        'hsl(45 90% 60%)',    // Empire gold
-        'hsl(280 70% 55%)',   // Royal purple
-        'hsl(30 80% 55%)',    // Orange
-        'hsl(190 70% 45%)',   // Teal
-        'hsl(320 60% 55%)',   // Pink
-      ];
 
       const { error } = await supabase
         .from('game_players')
@@ -161,13 +166,14 @@ const MultiplayerGame = () => {
           game_id: gameId,
           user_id: user?.id,
           player_name: user?.user_metadata?.display_name || user?.email || 'Player',
-          color: colors[nextOrder % colors.length],
+          color: selectedColor,
           player_order: nextOrder,
           is_host: false
         });
 
       if (error) throw error;
 
+      setShowColorPicker(false);
       toast({
         title: "Joined game!",
         description: "You've successfully joined the game.",
@@ -179,6 +185,10 @@ const MultiplayerGame = () => {
         variant: "destructive",
       });
     }
+  };
+
+  const handleColorPickerCancel = () => {
+    setShowColorPicker(false);
   };
 
   const startGame = async () => {
@@ -302,6 +312,13 @@ const MultiplayerGame = () => {
               Join Game
             </Button>
           </Card>
+          
+          <ColorPickerDialog
+            open={showColorPicker}
+            onColorSelect={handleColorSelect}
+            onCancel={handleColorPickerCancel}
+            takenColors={players.map(p => p.color)}
+          />
         </div>
       </div>
     );
