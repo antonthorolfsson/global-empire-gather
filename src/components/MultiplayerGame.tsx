@@ -221,12 +221,18 @@ const MultiplayerGame = () => {
   };
 
   const selectCountry = async (countryId: string) => {
-    if (!isPlayerInGame || !currentPlayer || game?.status !== 'active') return;
+    console.log('Selecting country:', countryId, 'Current player:', currentPlayer, 'Game status:', game?.status);
+    
+    if (!isPlayerInGame || !currentPlayer || game?.status !== 'active') {
+      console.log('Cannot select country:', { isPlayerInGame, hasCurrentPlayer: !!currentPlayer, gameStatus: game?.status });
+      return;
+    }
 
     try {
       // Check if country is already selected
       const existingSelection = gameCountries.find(gc => gc.country_id === countryId);
       if (existingSelection) {
+        console.log('Country already selected by player:', existingSelection.player_id);
         toast({
           title: "Country already selected",
           description: "This country has already been claimed.",
@@ -234,6 +240,8 @@ const MultiplayerGame = () => {
         });
         return;
       }
+
+      console.log('Inserting country selection:', { gameId, countryId, playerId: currentPlayer.id });
 
       const { error } = await supabase
         .from('game_countries')
@@ -243,13 +251,18 @@ const MultiplayerGame = () => {
           player_id: currentPlayer.id
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error inserting country:', error);
+        throw error;
+      }
 
+      console.log('Country selected successfully!');
       toast({
         title: "Country selected!",
         description: `You've claimed ${countryId}!`,
       });
     } catch (error: any) {
+      console.error('selectCountry error:', error);
       toast({
         title: "Error selecting country",
         description: error.message,
