@@ -1,8 +1,8 @@
 import React from 'react';
-import GameLayout from '@/components/GameLayout';
+import MultiplayerGame from '@/components/MultiplayerGame';
 
 const Index = () => {
-  return <GameLayout />;
+  return <MultiplayerGame />;
 };
 
 export default Index;
