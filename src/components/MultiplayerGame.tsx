@@ -309,7 +309,12 @@ const MultiplayerGame = () => {
 
       // Advance to next player's turn
       const nextPlayerTurn = (game.current_player_turn + 1) % players.length;
-      console.log('Advancing turn from', game.current_player_turn, 'to', nextPlayerTurn, 'total players:', players.length);
+      console.log('=== TURN ADVANCEMENT DEBUG ===');
+      console.log('Current turn:', game.current_player_turn);
+      console.log('Total players:', players.length);
+      console.log('Players array:', players.map(p => ({ order: p.player_order, name: p.player_name })));
+      console.log('Next turn calculated:', nextPlayerTurn);
+      console.log('===============================');
       
       const { error: gameError } = await supabase
         .from('games')
