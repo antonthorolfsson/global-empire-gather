@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Users, LogOut, Play } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import ColorPickerDialog from '@/components/ColorPickerDialog';
 
 interface Game {
   id: string;
@@ -27,6 +28,8 @@ const GameLobby = () => {
   const [games, setGames] = useState<Game[]>([]);
   const [newGameName, setNewGameName] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showColorPicker, setShowColorPicker] = useState(false);
+  const [selectedGameId, setSelectedGameId] = useState<string>('');
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -122,39 +125,23 @@ const GameLobby = () => {
         return;
       }
 
+      // Check if game is full
       const { data: players } = await supabase
         .from('game_players')
-        .select('player_order')
-        .eq('game_id', gameId)
-        .order('player_order', { ascending: false })
-        .limit(1);
+        .select('*')
+        .eq('game_id', gameId);
 
-      const nextOrder = players && players.length > 0 ? players[0].player_order + 1 : 0;
-      const colors = [
-        'hsl(215 80% 45%)',   // Strategic blue
-        'hsl(0 75% 55%)',     // Strong red
-        'hsl(120 60% 45%)',   // Forest green
-        'hsl(45 90% 60%)',    // Empire gold
-        'hsl(280 70% 55%)',   // Royal purple
-        'hsl(30 80% 55%)',    // Orange
-        'hsl(190 70% 45%)',   // Teal
-        'hsl(320 60% 55%)',   // Pink
-      ];
-
-      const { error } = await supabase
-        .from('game_players')
-        .insert({
-          game_id: gameId,
-          user_id: user?.id,
-          player_name: user?.user_metadata?.display_name || user?.email || 'Player',
-          color: colors[nextOrder % colors.length],
-          player_order: nextOrder,
-          is_host: false
+      if (players && players.length >= 8) {
+        toast({
+          title: "Game is full",
+          description: "This game already has the maximum number of players.",
+          variant: "destructive",
         });
+        return;
+      }
 
-      if (error) throw error;
-
-      navigate(`/game/${gameId}`);
+      setSelectedGameId(gameId);
+      setShowColorPicker(true);
     } catch (error: any) {
       toast({
         title: "Error",
@@ -162,6 +149,46 @@ const GameLobby = () => {
         variant: "destructive",
       });
     }
+  };
+
+  const handleColorSelect = async (selectedColor: string) => {
+    try {
+      const { data: players } = await supabase
+        .from('game_players')
+        .select('player_order')
+        .eq('game_id', selectedGameId)
+        .order('player_order', { ascending: false })
+        .limit(1);
+
+      const nextOrder = players && players.length > 0 ? players[0].player_order + 1 : 0;
+
+      const { error } = await supabase
+        .from('game_players')
+        .insert({
+          game_id: selectedGameId,
+          user_id: user?.id,
+          player_name: user?.user_metadata?.display_name || user?.email || 'Player',
+          color: selectedColor,
+          player_order: nextOrder,
+          is_host: false
+        });
+
+      if (error) throw error;
+
+      setShowColorPicker(false);
+      navigate(`/game/${selectedGameId}`);
+    } catch (error: any) {
+      toast({
+        title: "Error joining game",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleColorPickerCancel = () => {
+    setShowColorPicker(false);
+    setSelectedGameId('');
   };
 
   return (
@@ -242,6 +269,13 @@ const GameLobby = () => {
             </div>
           )}
         </div>
+        
+        <ColorPickerDialog
+          open={showColorPicker}
+          onColorSelect={handleColorSelect}
+          onCancel={handleColorPickerCancel}
+          takenColors={games.find(g => g.id === selectedGameId)?.game_players.map(p => p.color) || []}
+        />
       </div>
     </div>
   );
