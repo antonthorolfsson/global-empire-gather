@@ -50,7 +50,9 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
     console.log('ChessGame: Initializing for warId:', warId, 'userPlayerSide:', userPlayerSide);
     initializeBoard();
     loadGameState();
-    setupRealtimeSubscription();
+    
+    const cleanup = setupRealtimeSubscription();
+    return cleanup;
   }, [warId]);
 
   useEffect(() => {
@@ -59,6 +61,8 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
   }, [currentPlayer, userPlayerSide]);
 
   const setupRealtimeSubscription = () => {
+    console.log('ChessGame: Setting up realtime subscription for warId:', warId);
+    
     const channel = supabase
       .channel(`chess-${warId}`)
       .on('postgres_changes', {
@@ -67,13 +71,16 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
         table: 'chess_moves',
         filter: `war_id=eq.${warId}`
       }, (payload) => {
-        console.log('New chess move:', payload);
-        const move = payload.new as ChessMove;
+        console.log('ChessGame: New chess move received:', payload);
+        const move = payload.new as any;
         applyMoveFromDatabase(move);
       })
-      .subscribe();
+      .subscribe((status) => {
+        console.log('ChessGame: Subscription status:', status);
+      });
 
     return () => {
+      console.log('ChessGame: Cleaning up subscription');
       supabase.removeChannel(channel);
     };
   };
