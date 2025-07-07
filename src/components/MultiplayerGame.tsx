@@ -231,6 +231,32 @@ const MultiplayerGame = () => {
     }
   };
 
+  const endVotingPhase = async () => {
+    if (!currentPlayer?.is_host) return;
+
+    try {
+      const { error } = await supabase
+        .from('games')
+        .update({ 
+          game_phase: 'battle'
+        })
+        .eq('id', gameId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Voting phase ended!",
+        description: "Moving to the next phase of the game.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error ending voting phase",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
   const selectCountry = async (countryId: string) => {
     console.log('Selecting country:', countryId, 'Current player:', currentPlayer, 'Game status:', game?.status);
     
@@ -477,6 +503,11 @@ const MultiplayerGame = () => {
               <h1 className="text-xl font-bold text-card-foreground">{game.name}</h1>
             </div>
             <div className="flex items-center gap-4">
+              {currentPlayer?.is_host && game.game_phase === 'playing' && (
+                <Button onClick={endVotingPhase} variant="outline" size="sm">
+                  End voting
+                </Button>
+              )}
               <span className="text-sm text-muted-foreground">
                 {players.length} Players
               </span>
