@@ -49,7 +49,7 @@ const MultiplayerGame = () => {
   const [game, setGame] = useState<Game | null>(null);
   const [players, setPlayers] = useState<GamePlayer[]>([]);
   const [gameCountries, setGameCountries] = useState<GameCountry[]>([]);
-  const [currentPlayer, setCurrentPlayer] = useState<GamePlayer | null>(null);
+  const [userPlayer, setUserPlayer] = useState<GamePlayer | null>(null); // The logged-in user's player record
   const [loading, setLoading] = useState(true);
   const [isPlayerInGame, setIsPlayerInGame] = useState(false);
   const [showColorPicker, setShowColorPicker] = useState(false);
@@ -91,8 +91,8 @@ const MultiplayerGame = () => {
       const userPlayer = playersData?.find(p => p.user_id === user?.id);
       setIsPlayerInGame(!!userPlayer);
       if (userPlayer) {
-        console.log('Current player:', userPlayer);
-        setCurrentPlayer(userPlayer);
+        console.log('User player:', userPlayer);
+        setUserPlayer(userPlayer);
       }
 
       // Load country selections
@@ -206,7 +206,7 @@ const MultiplayerGame = () => {
   };
 
   const startGame = async () => {
-    if (!currentPlayer?.is_host) return;
+    if (!userPlayer?.is_host) return;
 
     try {
       const { error } = await supabase
@@ -233,7 +233,7 @@ const MultiplayerGame = () => {
   };
 
   const endVotingPhase = async () => {
-    if (!currentPlayer?.is_host) return;
+    if (!userPlayer?.is_host) return;
 
     try {
       const { error } = await supabase
@@ -259,15 +259,15 @@ const MultiplayerGame = () => {
   };
 
   const selectCountry = async (countryId: string) => {
-    console.log('Selecting country:', countryId, 'Current player:', currentPlayer, 'Game status:', game?.status);
+    console.log('Selecting country:', countryId, 'User player:', userPlayer, 'Game status:', game?.status);
     
-    if (!isPlayerInGame || !currentPlayer || game?.status !== 'active') {
-      console.log('Cannot select country:', { isPlayerInGame, hasCurrentPlayer: !!currentPlayer, gameStatus: game?.status });
+    if (!isPlayerInGame || !userPlayer || game?.status !== 'active') {
+      console.log('Cannot select country:', { isPlayerInGame, hasUserPlayer: !!userPlayer, gameStatus: game?.status });
       return;
     }
 
     // Check if it's this player's turn
-    if (game.current_player_turn !== currentPlayer.player_order) {
+    if (game.current_player_turn !== userPlayer.player_order) {
       const currentTurnPlayer = players.find(p => p.player_order === game.current_player_turn);
       console.log('Not your turn! Current turn belongs to:', currentTurnPlayer?.player_name);
       toast({
@@ -291,7 +291,7 @@ const MultiplayerGame = () => {
         return;
       }
 
-      console.log('Inserting country selection:', { gameId, countryId, playerId: currentPlayer.id });
+      console.log('Inserting country selection:', { gameId, countryId, playerId: userPlayer.id });
 
       // Insert the country selection and advance the turn
       const { error: countryError } = await supabase
@@ -299,7 +299,7 @@ const MultiplayerGame = () => {
         .insert({
           game_id: gameId,
           country_id: countryId,
-          player_id: currentPlayer.id
+          player_id: userPlayer.id
         });
 
       if (countryError) {
@@ -455,7 +455,7 @@ const MultiplayerGame = () => {
               ))}
             </div>
             
-            {currentPlayer?.is_host && players.length >= 2 && (
+            {userPlayer?.is_host && players.length >= 2 && (
               <div className="text-center">
                 <Button onClick={startGame} size="lg" className="gap-2">
                   <Play className="w-5 h-5" />
@@ -464,7 +464,7 @@ const MultiplayerGame = () => {
               </div>
             )}
             
-            {currentPlayer?.is_host && players.length < 2 && (
+            {userPlayer?.is_host && players.length < 2 && (
               <p className="text-center text-muted-foreground">Need at least 2 players to start</p>
             )}
           </Card>
@@ -509,7 +509,7 @@ const MultiplayerGame = () => {
               <h1 className="text-xl font-bold text-card-foreground">{game.name}</h1>
             </div>
             <div className="flex items-center gap-4">
-              {currentPlayer?.is_host && game.game_phase === 'playing' && (
+              {userPlayer?.is_host && game.game_phase === 'playing' && (
                 <Button onClick={endVotingPhase} variant="outline" size="sm">
                   End voting
                 </Button>
@@ -547,10 +547,10 @@ const MultiplayerGame = () => {
             <div className="p-4">
               <WarDeclaration
                 gameId={gameId!}
-                currentPlayer={currentPlayer!}
+                currentPlayer={userPlayer!}
                 players={players}
                 gameCountries={gameCountries}
-                isPlayerTurn={game.current_player_turn === currentPlayer?.player_order}
+                isPlayerTurn={game.current_player_turn === userPlayer?.player_order}
               />
             </div>
           ) : (
@@ -563,11 +563,11 @@ const MultiplayerGame = () => {
                 isActive: p.player_order === game?.current_player_turn
               }))}
               countries={gameStatsCountries}
-              currentPlayer={currentPlayer ? { 
-                id: currentPlayer.id, 
-                name: currentPlayer.player_name, 
-                color: currentPlayer.color,
-                countries: gameStatsCountries.filter(c => c.selectedBy === currentPlayer.player_name).map(c => c.id),
+              currentPlayer={userPlayer ? { 
+                id: userPlayer.id, 
+                name: userPlayer.player_name, 
+                color: userPlayer.color,
+                countries: gameStatsCountries.filter(c => c.selectedBy === userPlayer.player_name).map(c => c.id),
                 isActive: false
               } : undefined}
               gamePhase="selection"
