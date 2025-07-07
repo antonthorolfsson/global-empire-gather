@@ -148,6 +148,27 @@ const MultiplayerGame = () => {
         console.log('Game updated:', payload);
         loadGameData();
       })
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'war_declarations',
+        filter: `game_id=eq.${gameId}`
+      }, (payload) => {
+        console.log('War declaration updated:', payload);
+        // Check if war was accepted and current user is involved
+        if (payload.new.status === 'accepted' && userPlayer) {
+          const warData = payload.new as any;
+          if (warData.attacking_player_id === userPlayer.id || warData.defending_player_id === userPlayer.id) {
+            toast({
+              title: "War accepted!",
+              description: "Redirecting to chess battle...",
+            });
+            setTimeout(() => {
+              navigate(`/chess/${warData.id}`);
+            }, 1500);
+          }
+        }
+      })
       .subscribe((status) => {
         console.log('Realtime subscription status:', status);
       });
