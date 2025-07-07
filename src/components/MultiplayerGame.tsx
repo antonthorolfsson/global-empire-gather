@@ -5,6 +5,7 @@ import { useAuth } from '@/components/AuthWrapper';
 import GameMap from './GameMap';
 import EmpireStats from './EmpireStats';
 import ColorPickerDialog from './ColorPickerDialog';
+import WarDeclaration from './WarDeclaration';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
@@ -537,24 +538,36 @@ const MultiplayerGame = () => {
 
         {/* Sidebar */}
         <div className="w-80 bg-card/95 backdrop-blur-sm border-l overflow-y-auto">
-          <EmpireStats
-            players={players.map(p => ({ 
-              id: p.id, 
-              name: p.player_name, 
-              color: p.color,
-              countries: gameStatsCountries.filter(c => c.selectedBy === p.player_name).map(c => c.id),
-              isActive: p.player_order === game?.current_player_turn
-            }))}
-            countries={gameStatsCountries}
-            currentPlayer={currentPlayer ? { 
-              id: currentPlayer.id, 
-              name: currentPlayer.player_name, 
-              color: currentPlayer.color,
-              countries: gameStatsCountries.filter(c => c.selectedBy === currentPlayer.player_name).map(c => c.id),
-              isActive: false
-            } : undefined}
-            gamePhase="selection"
-          />
+          {game.game_phase === 'battle' ? (
+            <div className="p-4">
+              <WarDeclaration
+                gameId={gameId!}
+                currentPlayer={currentPlayer!}
+                players={players}
+                gameCountries={gameCountries}
+                isPlayerTurn={game.current_player_turn === currentPlayer?.player_order}
+              />
+            </div>
+          ) : (
+            <EmpireStats
+              players={players.map(p => ({ 
+                id: p.id, 
+                name: p.player_name, 
+                color: p.color,
+                countries: gameStatsCountries.filter(c => c.selectedBy === p.player_name).map(c => c.id),
+                isActive: p.player_order === game?.current_player_turn
+              }))}
+              countries={gameStatsCountries}
+              currentPlayer={currentPlayer ? { 
+                id: currentPlayer.id, 
+                name: currentPlayer.player_name, 
+                color: currentPlayer.color,
+                countries: gameStatsCountries.filter(c => c.selectedBy === currentPlayer.player_name).map(c => c.id),
+                isActive: false
+              } : undefined}
+              gamePhase="selection"
+            />
+          )}
         </div>
       </div>
     </div>

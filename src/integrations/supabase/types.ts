@@ -157,6 +157,45 @@ export type Database = {
         }
         Relationships: []
       }
+      war_declarations: {
+        Row: {
+          attacking_country_id: string
+          attacking_player_id: string
+          created_at: string
+          defending_country_id: string
+          defending_player_id: string
+          game_id: string
+          id: string
+          status: string
+          updated_at: string
+          winner_player_id: string | null
+        }
+        Insert: {
+          attacking_country_id: string
+          attacking_player_id: string
+          created_at?: string
+          defending_country_id: string
+          defending_player_id: string
+          game_id: string
+          id?: string
+          status?: string
+          updated_at?: string
+          winner_player_id?: string | null
+        }
+        Update: {
+          attacking_country_id?: string
+          attacking_player_id?: string
+          created_at?: string
+          defending_country_id?: string
+          defending_player_id?: string
+          game_id?: string
+          id?: string
+          status?: string
+          updated_at?: string
+          winner_player_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
