@@ -333,6 +333,8 @@ const MultiplayerGame = () => {
         throw gameError;
       }
 
+      console.log('Turn update successful! Database should now show turn:', nextPlayerTurn);
+
       console.log('Country selected successfully! Next turn:', nextPlayerTurn);
       toast({
         title: "Country selected!",
