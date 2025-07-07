@@ -69,7 +69,7 @@ const GameLayout = () => {
         <div className="w-80 bg-card/95 backdrop-blur-sm border-l overflow-y-auto">
           <EmpireStats
             players={gameState.players}
-            getPlayerStats={getPlayerStats}
+            countries={gameState.countries}
             currentPlayer={currentPlayer}
             gamePhase={gameState.gamePhase}
           />

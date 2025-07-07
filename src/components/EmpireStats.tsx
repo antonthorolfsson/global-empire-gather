@@ -3,28 +3,52 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Users, Map, Flag } from 'lucide-react';
-import { Player } from '@/hooks/useGameState';
+import { Player, Country } from '@/hooks/useGameState';
 
 interface EmpireStatsProps {
   players: Player[];
-  getPlayerStats: (playerId: string) => {
-    playerName: string;
-    countries: string[];
-    totalPopulation: number;
-    totalArea: number;
-    totalGDP: number;
-    rank: number;
-  } | null;
+  countries: Country[];
   currentPlayer: Player | undefined;
   gamePhase: 'setup' | 'selection' | 'finished';
 }
 
 const EmpireStats: React.FC<EmpireStatsProps> = ({
   players,
-  getPlayerStats,
+  countries,
   currentPlayer,
   gamePhase
 }) => {
+  const getPlayerStats = (playerId: string) => {
+    const player = players.find(p => p.id === playerId);
+    if (!player) return null;
+
+    const playerCountries = countries.filter(country => 
+      player.countries.includes(country.id)
+    );
+
+    const totalPopulation = playerCountries.reduce((sum, c) => sum + c.population, 0);
+    const totalArea = playerCountries.reduce((sum, c) => sum + c.area, 0);
+    const totalGDP = playerCountries.reduce((sum, c) => sum + c.gdp, 0);
+
+    // Calculate rank
+    const allPlayerStats = players.map(p => {
+      const pCountries = countries.filter(c => p.countries.includes(c.id));
+      const pGDP = pCountries.reduce((sum, c) => sum + c.gdp, 0);
+      return { playerId: p.id, gdp: pGDP };
+    });
+    
+    allPlayerStats.sort((a, b) => b.gdp - a.gdp);
+    const rank = allPlayerStats.findIndex(p => p.playerId === playerId) + 1;
+
+    return {
+      playerName: player.name,
+      countries: player.countries,
+      totalPopulation,
+      totalArea,
+      totalGDP,
+      rank,
+    };
+  };
   const formatNumber = (num: number) => {
     if (num >= 1000000000) return `${(num / 1000000000).toFixed(1)}B`;
     if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
