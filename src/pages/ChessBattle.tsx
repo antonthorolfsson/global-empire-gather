@@ -107,7 +107,7 @@ const ChessBattle = () => {
       const winningPlayerId = winner === 'white' ? war.attacking_player_id : war.defending_player_id;
       
       // Update the war declaration with the winner
-      const { error } = await supabase
+      const { error: warError } = await supabase
         .from('war_declarations')
         .update({ 
           status: 'completed',
@@ -115,13 +115,23 @@ const ChessBattle = () => {
         })
         .eq('id', warId);
 
-      if (error) throw error;
+      if (warError) throw warError;
+
+      // Transfer the defending country to the winner
+      const { error: countryError } = await supabase
+        .from('game_countries')
+        .update({ player_id: winningPlayerId })
+        .eq('game_id', war.game_id)
+        .eq('country_id', war.defending_country_id);
+
+      if (countryError) throw countryError;
 
       const winnerName = players[winningPlayerId]?.player_name || 'Unknown';
+      const countryName = getCountryName(war.defending_country_id);
       
       toast({
         title: "War Concluded!",
-        description: `${winnerName} has won the chess battle!`,
+        description: `${winnerName} has won the chess battle and conquered ${countryName}!`,
       });
 
       // Navigate back to the game after a delay
