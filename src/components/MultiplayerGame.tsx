@@ -349,9 +349,11 @@ const MultiplayerGame = () => {
       setGame(prev => prev ? { ...prev, current_player_turn: nextPlayerTurn } : prev);
 
       console.log('Country selected successfully! Next turn:', nextPlayerTurn);
+      const selectedCountry = GAME_COUNTRIES.find(c => c.id === countryId);
+      const countryName = selectedCountry ? selectedCountry.name : countryId;
       toast({
         title: "Country selected!",
-        description: `You've claimed ${countryId}!`,
+        description: `You've claimed ${countryName}!`,
       });
     } catch (error: any) {
       console.error('selectCountry error:', error);
