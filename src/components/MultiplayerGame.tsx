@@ -323,14 +323,24 @@ const MultiplayerGame = () => {
       console.log('Next turn calculated:', nextPlayerTurn);
       console.log('===============================');
       
-      const { error: gameError } = await supabase
+      console.log('Attempting to update turn to:', nextPlayerTurn, 'for game:', gameId);
+      
+      const { data: updateData, error: gameError } = await supabase
         .from('games')
         .update({ current_player_turn: nextPlayerTurn })
-        .eq('id', gameId);
+        .eq('id', gameId)
+        .select();
+
+      console.log('Turn update response:', { data: updateData, error: gameError });
 
       if (gameError) {
         console.error('Error updating turn:', gameError);
         throw gameError;
+      }
+
+      if (!updateData || updateData.length === 0) {
+        console.error('No rows updated! Game might not exist or update failed');
+        throw new Error('Failed to update game turn');
       }
 
       console.log('Turn update successful! Database should now show turn:', nextPlayerTurn);
