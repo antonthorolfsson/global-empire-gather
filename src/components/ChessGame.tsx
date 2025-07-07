@@ -35,16 +35,23 @@ interface ChessMove {
   board_state: ChessSquare[][];
 }
 
+interface Position {
+  row: number;
+  col: number;
+}
+
 const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd }) => {
   const { toast } = useToast();
   const { user } = useAuth();
   const [board, setBoard] = useState<ChessSquare[][]>([]);
   const [currentPlayer, setCurrentPlayer] = useState<'white' | 'black'>('white');
   const [selectedSquare, setSelectedSquare] = useState<{row: number, col: number} | null>(null);
-  const [gameStatus, setGameStatus] = useState<'playing' | 'checkmate' | 'draw'>('playing');
+  const [gameStatus, setGameStatus] = useState<'playing' | 'checkmate' | 'stalemate' | 'draw'>('playing');
   const [winner, setWinner] = useState<'white' | 'black' | null>(null);
   const [moveNumber, setMoveNumber] = useState(0);
   const [isMyTurn, setIsMyTurn] = useState(false);
+  const [gameHistory, setGameHistory] = useState<string[]>([]);
+  const [isInCheck, setIsInCheck] = useState<{ white: boolean; black: boolean }>({ white: false, black: false });
 
   useEffect(() => {
     console.log('ChessGame: Initializing for warId:', warId, 'userPlayerSide:', userPlayerSide);
@@ -133,12 +140,42 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
       console.log('ChessGame: Setting current player from', currentPlayer, 'to', nextPlayer);
       setCurrentPlayer(nextPlayer);
       
-      // Check for game end
-      if (move.captured_piece === 'king') {
-        console.log('ChessGame: Game ended, winner:', move.player_color);
+      // Update game history for repetition detection
+      const boardHash = getBoardHash(newBoard);
+      setGameHistory(prev => [...prev, boardHash]);
+      
+      // Check for game end conditions
+      if (move.piece_type === 'forfeit' || move.captured_piece === 'king') {
+        console.log('ChessGame: Game ended by forfeit or king capture, winner:', move.player_color);
         setGameStatus('checkmate');
         setWinner(move.player_color);
         onGameEnd(move.player_color);
+      } else {
+        // Check for natural game endings (checkmate, stalemate, draw)
+        const gameResult = checkGameEnd(newBoard, nextPlayer);
+        if (gameResult !== 'playing') {
+          console.log('ChessGame: Game ended naturally:', gameResult);
+          setGameStatus(gameResult);
+          
+          if (gameResult === 'checkmate') {
+            setWinner(move.player_color); // Player who just moved wins
+            onGameEnd(move.player_color);
+          } else {
+            setWinner(null); // Draw/stalemate
+          }
+          
+          // Show appropriate message
+          const messages = {
+            checkmate: `Checkmate! ${move.player_color.charAt(0).toUpperCase() + move.player_color.slice(1)} wins!`,
+            stalemate: "Stalemate! The game is a draw.",
+            draw: "Draw by repetition!"
+          };
+          
+          toast({
+            title: "Game Over",
+            description: messages[gameResult],
+          });
+        }
       }
       
       console.log('ChessGame: Move applied successfully');
@@ -181,15 +218,186 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
     return symbols[piece.color][piece.type];
   };
 
-  const isValidMove = (fromRow: number, fromCol: number, toRow: number, toCol: number): boolean => {
-    const piece = board[fromRow][fromCol].piece;
-    if (!piece || piece.color !== currentPlayer) return false;
+  // Chess logic functions
+  const isPathClear = (fromRow: number, fromCol: number, toRow: number, toCol: number): boolean => {
+    const rowDiff = toRow - fromRow;
+    const colDiff = toCol - fromCol;
+    const steps = Math.max(Math.abs(rowDiff), Math.abs(colDiff));
     
-    // Basic validation - just check if target square is empty or has enemy piece
-    const targetPiece = board[toRow][toCol].piece;
+    if (steps <= 1) return true;
+    
+    const rowStep = rowDiff === 0 ? 0 : rowDiff / Math.abs(rowDiff);
+    const colStep = colDiff === 0 ? 0 : colDiff / Math.abs(colDiff);
+    
+    for (let i = 1; i < steps; i++) {
+      const checkRow = fromRow + (rowStep * i);
+      const checkCol = fromCol + (colStep * i);
+      if (board[checkRow][checkCol].piece) return false;
+    }
+    
+    return true;
+  };
+
+  const findKing = (color: 'white' | 'black', gameBoard: ChessSquare[][]): Position | null => {
+    for (let row = 0; row < 8; row++) {
+      for (let col = 0; col < 8; col++) {
+        const piece = gameBoard[row][col].piece;
+        if (piece && piece.type === 'king' && piece.color === color) {
+          return { row, col };
+        }
+      }
+    }
+    return null;
+  };
+
+  const isSquareAttacked = (row: number, col: number, byColor: 'white' | 'black', gameBoard: ChessSquare[][]): boolean => {
+    for (let r = 0; r < 8; r++) {
+      for (let c = 0; c < 8; c++) {
+        const piece = gameBoard[r][c].piece;
+        if (piece && piece.color === byColor) {
+          if (canPieceAttackSquare(r, c, row, col, piece, gameBoard)) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  };
+
+  const canPieceAttackSquare = (fromRow: number, fromCol: number, toRow: number, toCol: number, piece: ChessPiece, gameBoard: ChessSquare[][]): boolean => {
+    const rowDiff = Math.abs(fromRow - toRow);
+    const colDiff = Math.abs(fromCol - toCol);
+    
+    switch (piece.type) {
+      case 'pawn':
+        const direction = piece.color === 'white' ? -1 : 1;
+        return toRow === fromRow + direction && Math.abs(fromCol - toCol) === 1;
+        
+      case 'rook':
+        return (fromRow === toRow || fromCol === toCol) && isPathClearForBoard(fromRow, fromCol, toRow, toCol, gameBoard);
+        
+      case 'bishop':
+        return rowDiff === colDiff && isPathClearForBoard(fromRow, fromCol, toRow, toCol, gameBoard);
+        
+      case 'queen':
+        return (fromRow === toRow || fromCol === toCol || rowDiff === colDiff) && 
+               isPathClearForBoard(fromRow, fromCol, toRow, toCol, gameBoard);
+        
+      case 'king':
+        return rowDiff <= 1 && colDiff <= 1;
+        
+      case 'knight':
+        return (rowDiff === 2 && colDiff === 1) || (rowDiff === 1 && colDiff === 2);
+        
+      default:
+        return false;
+    }
+  };
+
+  const isPathClearForBoard = (fromRow: number, fromCol: number, toRow: number, toCol: number, gameBoard: ChessSquare[][]): boolean => {
+    const rowDiff = toRow - fromRow;
+    const colDiff = toCol - fromCol;
+    const steps = Math.max(Math.abs(rowDiff), Math.abs(colDiff));
+    
+    if (steps <= 1) return true;
+    
+    const rowStep = rowDiff === 0 ? 0 : rowDiff / Math.abs(rowDiff);
+    const colStep = colDiff === 0 ? 0 : colDiff / Math.abs(colDiff);
+    
+    for (let i = 1; i < steps; i++) {
+      const checkRow = fromRow + (rowStep * i);
+      const checkCol = fromCol + (colStep * i);
+      if (gameBoard[checkRow][checkCol].piece) return false;
+    }
+    
+    return true;
+  };
+
+  const isInCheckAfterMove = (fromRow: number, fromCol: number, toRow: number, toCol: number, color: 'white' | 'black'): boolean => {
+    // Create a temporary board to test the move
+    const tempBoard = board.map(row => row.map(square => ({ ...square })));
+    const piece = tempBoard[fromRow][fromCol].piece;
+    
+    if (!piece) return false;
+    
+    // Make the move on temp board
+    tempBoard[toRow][toCol].piece = piece;
+    tempBoard[fromRow][fromCol].piece = null;
+    
+    // Find king position after move
+    const kingPos = findKing(color, tempBoard);
+    if (!kingPos) return true; // King captured = check
+    
+    // Check if king is attacked
+    const oppositeColor = color === 'white' ? 'black' : 'white';
+    return isSquareAttacked(kingPos.row, kingPos.col, oppositeColor, tempBoard);
+  };
+
+  const getBoardHash = (gameBoard: ChessSquare[][]): string => {
+    return JSON.stringify(gameBoard.map(row => 
+      row.map(square => square.piece ? `${square.piece.color}${square.piece.type}` : null)
+    ));
+  };
+
+  const isThreefoldRepetition = (gameBoard: ChessSquare[][]): boolean => {
+    const currentHash = getBoardHash(gameBoard);
+    const positions = [...gameHistory, currentHash];
+    
+    let count = 0;
+    for (const position of positions) {
+      if (position === currentHash) count++;
+      if (count >= 3) return true;
+    }
+    
+    return false;
+  };
+
+  const getAllLegalMoves = (color: 'white' | 'black', gameBoard: ChessSquare[][]): Position[] => {
+    const legalMoves: Position[] = [];
+    
+    for (let fromRow = 0; fromRow < 8; fromRow++) {
+      for (let fromCol = 0; fromCol < 8; fromCol++) {
+        const piece = gameBoard[fromRow][fromCol].piece;
+        if (piece && piece.color === color) {
+          for (let toRow = 0; toRow < 8; toRow++) {
+            for (let toCol = 0; toCol < 8; toCol++) {
+              if (isValidMoveComplete(fromRow, fromCol, toRow, toCol, gameBoard)) {
+                legalMoves.push({ row: toRow, col: toCol });
+              }
+            }
+          }
+        }
+      }
+    }
+    
+    return legalMoves;
+  };
+
+  const isValidMoveComplete = (fromRow: number, fromCol: number, toRow: number, toCol: number, gameBoard: ChessSquare[][]): boolean => {
+    const piece = gameBoard[fromRow][fromCol].piece;
+    if (!piece) return false;
+    
+    // Can't move to same square
+    if (fromRow === toRow && fromCol === toCol) return false;
+    
+    // Can't capture own pieces
+    const targetPiece = gameBoard[toRow][toCol].piece;
     if (targetPiece && targetPiece.color === piece.color) return false;
     
-    // Simplified move validation for demo
+    // Check piece-specific movement rules
+    if (!isValidPieceMove(fromRow, fromCol, toRow, toCol, piece, gameBoard)) return false;
+    
+    // Check if move leaves king in check
+    if (isInCheckAfterMove(fromRow, fromCol, toRow, toCol, piece.color)) return false;
+    
+    return true;
+  };
+
+  const isValidPieceMove = (fromRow: number, fromCol: number, toRow: number, toCol: number, piece: ChessPiece, gameBoard: ChessSquare[][]): boolean => {
+    const rowDiff = Math.abs(fromRow - toRow);
+    const colDiff = Math.abs(fromCol - toCol);
+    const targetPiece = gameBoard[toRow][toCol].piece;
+    
     switch (piece.type) {
       case 'pawn':
         const direction = piece.color === 'white' ? -1 : 1;
@@ -207,20 +415,19 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
         return false;
         
       case 'rook':
-        return fromRow === toRow || fromCol === toCol;
+        return (fromRow === toRow || fromCol === toCol) && isPathClearForBoard(fromRow, fromCol, toRow, toCol, gameBoard);
         
       case 'bishop':
-        return Math.abs(fromRow - toRow) === Math.abs(fromCol - toCol);
+        return rowDiff === colDiff && isPathClearForBoard(fromRow, fromCol, toRow, toCol, gameBoard);
         
       case 'queen':
-        return fromRow === toRow || fromCol === toCol || Math.abs(fromRow - toRow) === Math.abs(fromCol - toCol);
+        return (fromRow === toRow || fromCol === toCol || rowDiff === colDiff) && 
+               isPathClearForBoard(fromRow, fromCol, toRow, toCol, gameBoard);
         
       case 'king':
-        return Math.abs(fromRow - toRow) <= 1 && Math.abs(fromCol - toCol) <= 1;
+        return rowDiff <= 1 && colDiff <= 1;
         
       case 'knight':
-        const rowDiff = Math.abs(fromRow - toRow);
-        const colDiff = Math.abs(fromCol - toCol);
         return (rowDiff === 2 && colDiff === 1) || (rowDiff === 1 && colDiff === 2);
         
       default:
@@ -228,8 +435,28 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
     }
   };
 
+  const checkGameEnd = (gameBoard: ChessSquare[][], playerToMove: 'white' | 'black'): 'playing' | 'checkmate' | 'stalemate' | 'draw' => {
+    const legalMoves = getAllLegalMoves(playerToMove, gameBoard);
+    const kingPos = findKing(playerToMove, gameBoard);
+    
+    if (!kingPos) return 'checkmate'; // King captured
+    
+    const oppositeColor = playerToMove === 'white' ? 'black' : 'white';
+    const inCheck = isSquareAttacked(kingPos.row, kingPos.col, oppositeColor, gameBoard);
+    
+    if (legalMoves.length === 0) {
+      return inCheck ? 'checkmate' : 'stalemate';
+    }
+    
+    if (isThreefoldRepetition(gameBoard)) {
+      return 'draw';
+    }
+    
+    return 'playing';
+  };
+
   const makeMove = async (fromRow: number, fromCol: number, toRow: number, toCol: number) => {
-    if (!isValidMove(fromRow, fromCol, toRow, toCol)) return false;
+    if (!isValidMoveComplete(fromRow, fromCol, toRow, toCol, board)) return false;
     if (!isMyTurn) {
       toast({
         title: "Not your turn",
@@ -247,6 +474,14 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
 
     newBoard[toRow][toCol].piece = movingPiece;
     newBoard[fromRow][fromCol].piece = null;
+    
+    // Check for game ending conditions
+    const nextPlayer = currentPlayer === 'white' ? 'black' : 'white';
+    const gameResult = checkGameEnd(newBoard, nextPlayer);
+    
+    // Update game history for repetition detection
+    const boardHash = getBoardHash(newBoard);
+    setGameHistory(prev => [...prev, boardHash]);
     
     // Save move to database
     try {
@@ -280,7 +515,36 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
       if (error) throw error;
 
       console.log('ChessGame: Move saved successfully to database');
-      // Local update will be handled by the realtime subscription
+      
+      // Handle game ending
+      if (gameResult !== 'playing') {
+        setGameStatus(gameResult);
+        
+        let winnerId: string | null = null;
+        if (gameResult === 'checkmate') {
+          winnerId = currentPlayer; // Current player wins by checkmate
+          setWinner(currentPlayer);
+        } else if (gameResult === 'stalemate' || gameResult === 'draw') {
+          setWinner(null);
+        }
+        
+        if (winnerId) {
+          onGameEnd(winnerId);
+        }
+        
+        // Show appropriate message
+        const messages = {
+          checkmate: `Checkmate! ${currentPlayer.charAt(0).toUpperCase() + currentPlayer.slice(1)} wins!`,
+          stalemate: "Stalemate! The game is a draw.",
+          draw: "Draw by repetition!"
+        };
+        
+        toast({
+          title: "Game Over",
+          description: messages[gameResult],
+        });
+      }
+      
       setSelectedSquare(null);
       
     } catch (error: any) {
@@ -347,10 +611,10 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
     const newBoard = board.map(boardRow => boardRow.map(square => ({ ...square, isSelected: false, isPossibleMove: false })));
     newBoard[row][col].isSelected = true;
     
-    // Highlight possible moves (simplified)
+    // Highlight possible moves
     for (let r = 0; r < 8; r++) {
       for (let c = 0; c < 8; c++) {
-        if (isValidMove(row, col, r, c)) {
+        if (isValidMoveComplete(row, col, r, c, board)) {
           newBoard[r][c].isPossibleMove = true;
         }
       }
@@ -422,14 +686,24 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
             )}
           </div>
         ) : (
-          <p className="text-lg font-semibold">
-            {winner && (
+          <div className="text-lg font-semibold">
+            {gameStatus === 'checkmate' && winner && (
               <span className="flex items-center justify-center gap-2">
                 <Crown className="w-5 h-5" />
                 {winner.charAt(0).toUpperCase() + winner.slice(1)} Wins!
               </span>
             )}
-          </p>
+            {gameStatus === 'stalemate' && (
+              <span className="flex items-center justify-center">
+                Stalemate - Draw!
+              </span>
+            )}
+            {gameStatus === 'draw' && (
+              <span className="flex items-center justify-center">
+                Draw by Repetition!
+              </span>
+            )}
+          </div>
         )}
       </div>
 
