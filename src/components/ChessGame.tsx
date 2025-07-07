@@ -313,9 +313,9 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
     return true;
   };
 
-  const isInCheckAfterMove = (fromRow: number, fromCol: number, toRow: number, toCol: number, color: 'white' | 'black'): boolean => {
+  const isInCheckAfterMove = (fromRow: number, fromCol: number, toRow: number, toCol: number, color: 'white' | 'black', gameBoard: ChessSquare[][]): boolean => {
     // Create a temporary board to test the move
-    const tempBoard = board.map(row => row.map(square => ({ ...square })));
+    const tempBoard = gameBoard.map(row => row.map(square => ({ ...square })));
     const piece = tempBoard[fromRow][fromCol].piece;
     
     if (!piece) return false;
@@ -388,7 +388,7 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
     if (!isValidPieceMove(fromRow, fromCol, toRow, toCol, piece, gameBoard)) return false;
     
     // Check if move leaves king in check
-    if (isInCheckAfterMove(fromRow, fromCol, toRow, toCol, piece.color)) return false;
+    if (isInCheckAfterMove(fromRow, fromCol, toRow, toCol, piece.color, gameBoard)) return false;
     
     return true;
   };
