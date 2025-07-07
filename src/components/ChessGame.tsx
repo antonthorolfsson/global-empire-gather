@@ -77,14 +77,17 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
   useEffect(() => {
     console.log('ChessGame: Turn changed - currentPlayer:', currentPlayer, 'userPlayerSide:', userPlayerSide);
     setIsMyTurn(currentPlayer === userPlayerSide);
-    
+  }, [currentPlayer, userPlayerSide]);
+
+  useEffect(() => {
+    console.log('ChessGame: Timer effect - gameStatus:', gameStatus, 'isMyTurn:', isMyTurn);
     // Start/stop timer based on current player and game status
-    if (gameStatus === 'playing') {
+    if (gameStatus === 'playing' && isMyTurn) {
       startTimer();
     } else {
       stopTimer();
     }
-  }, [currentPlayer, userPlayerSide, gameStatus]);
+  }, [gameStatus, isMyTurn]);
 
   // Timer effect
   useEffect(() => {
@@ -96,6 +99,8 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
   // Timer and chess game initialization functions
   const initializeChessGame = async () => {
     try {
+      console.log('ChessGame: Initializing chess game for warId:', warId);
+      
       // Check if chess game already exists
       const { data: existingGame, error: fetchError } = await supabase
         .from('chess_games')
@@ -103,9 +108,13 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
         .eq('war_id', warId)
         .maybeSingle();
 
-      if (fetchError) throw fetchError;
+      if (fetchError) {
+        console.error('ChessGame: Error fetching chess game:', fetchError);
+        throw fetchError;
+      }
 
       if (existingGame) {
+        console.log('ChessGame: Found existing chess game:', existingGame);
         // Load existing game state
         setChessGameId(existingGame.id);
         setWhiteTimeRemaining(existingGame.white_time_remaining);
@@ -116,6 +125,7 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
           setWinner(existingGame.winner as 'white' | 'black');
         }
       } else {
+        console.log('ChessGame: Creating new chess game');
         // Create new chess game
         const { data: newGame, error: createError } = await supabase
           .from('chess_games')
@@ -129,7 +139,12 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
           .select()
           .single();
 
-        if (createError) throw createError;
+        if (createError) {
+          console.error('ChessGame: Error creating chess game:', createError);
+          throw createError;
+        }
+        
+        console.log('ChessGame: Created new chess game:', newGame);
         setChessGameId(newGame.id);
       }
     } catch (error: any) {
@@ -713,6 +728,22 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
       if (error) throw error;
 
       console.log('ChessGame: Move saved successfully to database');
+      
+      // Update chess game state with new player turn
+      if (chessGameId) {
+        const { error: updateError } = await supabase
+          .from('chess_games')
+          .update({
+            current_player: nextPlayer,
+            white_time_remaining: whiteTimeRemaining,
+            black_time_remaining: blackTimeRemaining
+          })
+          .eq('id', chessGameId);
+          
+        if (updateError) {
+          console.error('Error updating chess game state:', updateError);
+        }
+      }
       
       // Handle game ending
       if (gameResult !== 'playing') {
