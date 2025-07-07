@@ -14,7 +14,149 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      game_countries: {
+        Row: {
+          country_id: string
+          game_id: string
+          id: string
+          player_id: string | null
+          selected_at: string | null
+        }
+        Insert: {
+          country_id: string
+          game_id: string
+          id?: string
+          player_id?: string | null
+          selected_at?: string | null
+        }
+        Update: {
+          country_id?: string
+          game_id?: string
+          id?: string
+          player_id?: string | null
+          selected_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_countries_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_countries_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "game_players"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      game_players: {
+        Row: {
+          color: string
+          game_id: string
+          id: string
+          is_host: boolean
+          joined_at: string
+          player_name: string
+          player_order: number
+          user_id: string
+        }
+        Insert: {
+          color: string
+          game_id: string
+          id?: string
+          is_host?: boolean
+          joined_at?: string
+          player_name: string
+          player_order: number
+          user_id: string
+        }
+        Update: {
+          color?: string
+          game_id?: string
+          id?: string
+          is_host?: boolean
+          joined_at?: string
+          player_name?: string
+          player_order?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_players_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      games: {
+        Row: {
+          created_at: string
+          created_by: string
+          current_player_turn: number | null
+          game_phase: string
+          id: string
+          max_players: number
+          name: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          current_player_turn?: number | null
+          game_phase?: string
+          id?: string
+          max_players?: number
+          name: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          current_player_turn?: number | null
+          game_phase?: string
+          id?: string
+          max_players?: number
+          name?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          display_name: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
