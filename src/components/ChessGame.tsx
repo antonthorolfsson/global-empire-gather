@@ -119,16 +119,31 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
     }
   };
 
-  const applyMoveFromDatabase = (move: ChessMove) => {
-    setBoard(JSON.parse(JSON.stringify(move.board_state)) as ChessSquare[][]);
-    setMoveNumber(move.move_number);
-    setCurrentPlayer(move.player_color === 'white' ? 'black' : 'white');
+  const applyMoveFromDatabase = (move: any) => {
+    console.log('ChessGame: Applying move from database:', move);
+    console.log('ChessGame: Current board before update:', board.length, 'x', board[0]?.length);
     
-    // Check for game end
-    if (move.captured_piece === 'king') {
-      setGameStatus('checkmate');
-      setWinner(move.player_color);
-      onGameEnd(move.player_color);
+    try {
+      const newBoard = JSON.parse(JSON.stringify(move.board_state)) as ChessSquare[][];
+      console.log('ChessGame: Parsed new board:', newBoard.length, 'x', newBoard[0]?.length);
+      
+      setBoard(newBoard);
+      setMoveNumber(move.move_number);
+      const nextPlayer = move.player_color === 'white' ? 'black' : 'white';
+      console.log('ChessGame: Setting current player from', currentPlayer, 'to', nextPlayer);
+      setCurrentPlayer(nextPlayer);
+      
+      // Check for game end
+      if (move.captured_piece === 'king') {
+        console.log('ChessGame: Game ended, winner:', move.player_color);
+        setGameStatus('checkmate');
+        setWinner(move.player_color);
+        onGameEnd(move.player_color);
+      }
+      
+      console.log('ChessGame: Move applied successfully');
+    } catch (error) {
+      console.error('ChessGame: Error applying move from database:', error);
     }
   };
 
@@ -235,6 +250,18 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
     
     // Save move to database
     try {
+      console.log('ChessGame: Saving move to database:', {
+        war_id: warId,
+        move_number: moveNumber + 1,
+        player_color: currentPlayer,
+        from_row: fromRow,
+        from_col: fromCol,
+        to_row: toRow,
+        to_col: toCol,
+        piece_type: movingPiece.type,
+        captured_piece: capturedPiece?.type || null
+      });
+      
       const { error } = await supabase
         .from('chess_moves')
         .insert({
@@ -252,6 +279,7 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
 
       if (error) throw error;
 
+      console.log('ChessGame: Move saved successfully to database');
       // Local update will be handled by the realtime subscription
       setSelectedSquare(null);
       
