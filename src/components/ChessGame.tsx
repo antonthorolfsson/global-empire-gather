@@ -47,12 +47,14 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
   const [isMyTurn, setIsMyTurn] = useState(false);
 
   useEffect(() => {
+    console.log('ChessGame: Initializing for warId:', warId, 'userPlayerSide:', userPlayerSide);
     initializeBoard();
     loadGameState();
     setupRealtimeSubscription();
   }, [warId]);
 
   useEffect(() => {
+    console.log('ChessGame: Turn changed - currentPlayer:', currentPlayer, 'userPlayerSide:', userPlayerSide);
     setIsMyTurn(currentPlayer === userPlayerSide);
   }, [currentPlayer, userPlayerSide]);
 
@@ -247,28 +249,45 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
   };
 
   const handleSquareClick = (row: number, col: number) => {
-    if (gameStatus !== 'playing' || !isMyTurn) return;
+    console.log('ChessGame: Square clicked:', row, col, 'gameStatus:', gameStatus, 'isMyTurn:', isMyTurn, 'currentPlayer:', currentPlayer, 'userPlayerSide:', userPlayerSide);
+    
+    if (gameStatus !== 'playing') {
+      console.log('ChessGame: Game not in playing status');
+      return;
+    }
+    
+    if (!isMyTurn) {
+      console.log('ChessGame: Not user\'s turn');
+      return;
+    }
 
     const clickedSquare = board[row][col];
+    console.log('ChessGame: Clicked square has piece:', clickedSquare.piece);
     
     if (selectedSquare) {
+      console.log('ChessGame: Trying to make move from', selectedSquare, 'to', {row, col});
       // Try to make a move
       if (makeMove(selectedSquare.row, selectedSquare.col, row, col)) {
         return;
       }
       // If move failed, check if clicking on own piece
       if (clickedSquare.piece && clickedSquare.piece.color === currentPlayer) {
+        console.log('ChessGame: Selecting new piece');
         setSelectedSquare({ row, col });
         highlightPossibleMoves(row, col);
       } else {
+        console.log('ChessGame: Clearing selection');
         setSelectedSquare(null);
         clearHighlights();
       }
     } else {
       // Select a piece
       if (clickedSquare.piece && clickedSquare.piece.color === currentPlayer) {
+        console.log('ChessGame: Selecting piece');
         setSelectedSquare({ row, col });
         highlightPossibleMoves(row, col);
+      } else {
+        console.log('ChessGame: Cannot select this square - no piece or wrong color');
       }
     }
   };
