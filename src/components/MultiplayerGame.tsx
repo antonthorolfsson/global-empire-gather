@@ -228,6 +228,18 @@ const MultiplayerGame = () => {
       return;
     }
 
+    // Check if it's this player's turn
+    if (game.current_player_turn !== currentPlayer.player_order) {
+      const currentTurnPlayer = players.find(p => p.player_order === game.current_player_turn);
+      console.log('Not your turn! Current turn belongs to:', currentTurnPlayer?.player_name);
+      toast({
+        title: "Not your turn",
+        description: `Wait for ${currentTurnPlayer?.player_name || 'another player'} to make their move.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       // Check if country is already selected
       const existingSelection = gameCountries.find(gc => gc.country_id === countryId);
@@ -243,7 +255,8 @@ const MultiplayerGame = () => {
 
       console.log('Inserting country selection:', { gameId, countryId, playerId: currentPlayer.id });
 
-      const { error } = await supabase
+      // Insert the country selection and advance the turn
+      const { error: countryError } = await supabase
         .from('game_countries')
         .insert({
           game_id: gameId,
@@ -251,12 +264,24 @@ const MultiplayerGame = () => {
           player_id: currentPlayer.id
         });
 
-      if (error) {
-        console.error('Error inserting country:', error);
-        throw error;
+      if (countryError) {
+        console.error('Error inserting country:', countryError);
+        throw countryError;
       }
 
-      console.log('Country selected successfully!');
+      // Advance to next player's turn
+      const nextPlayerTurn = (game.current_player_turn + 1) % players.length;
+      const { error: gameError } = await supabase
+        .from('games')
+        .update({ current_player_turn: nextPlayerTurn })
+        .eq('id', gameId);
+
+      if (gameError) {
+        console.error('Error updating turn:', gameError);
+        throw gameError;
+      }
+
+      console.log('Country selected successfully! Next turn:', nextPlayerTurn);
       toast({
         title: "Country selected!",
         description: `You've claimed ${countryId}!`,
@@ -450,14 +475,17 @@ const MultiplayerGame = () => {
             <GameMap
               countries={GAME_COUNTRIES}
               onCountrySelect={selectCountry}
-              currentPlayer={currentPlayer?.player_name || ''}
+              currentPlayer={(() => {
+                const currentTurnPlayer = players.find(p => p.player_order === game?.current_player_turn);
+                return currentTurnPlayer?.player_name || '';
+              })()}
               selectedCountries={selectedCountriesArray}
               players={players.map(p => ({ 
                 id: p.id, 
                 name: p.player_name, 
                 color: p.color, 
                 countries: gameStatsCountries.filter(c => c.selectedBy === p.player_name).map(c => c.id),
-                isActive: false
+                isActive: p.player_order === game?.current_player_turn
               }))}
             />
           </div>
@@ -471,7 +499,7 @@ const MultiplayerGame = () => {
               name: p.player_name, 
               color: p.color,
               countries: gameStatsCountries.filter(c => c.selectedBy === p.player_name).map(c => c.id),
-              isActive: false
+              isActive: p.player_order === game?.current_player_turn
             }))}
             countries={gameStatsCountries}
             currentPlayer={currentPlayer ? { 
