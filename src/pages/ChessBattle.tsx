@@ -187,7 +187,7 @@ const ChessBattle = () => {
             </div>
           </div>
 
-          <ChessGame warId={warId!} onGameEnd={handleGameEnd} />
+          <ChessGame warId={warId!} userPlayerSide={userPlayerSide} onGameEnd={handleGameEnd} />
         </Card>
       </div>
     </div>

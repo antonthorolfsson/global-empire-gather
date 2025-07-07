@@ -1,14 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/AuthWrapper';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Crown, Sword } from 'lucide-react';
+import { Crown, Sword } from 'lucide-react';
 
 interface ChessGameProps {
   warId: string;
+  userPlayerSide: 'white' | 'black' | null;
   onGameEnd: (winnerId: string) => void;
 }
 
@@ -23,17 +22,94 @@ interface ChessSquare {
   isPossibleMove: boolean;
 }
 
-const ChessGame: React.FC<ChessGameProps> = ({ warId, onGameEnd }) => {
+interface ChessMove {
+  id: string;
+  move_number: number;
+  player_color: 'white' | 'black';
+  from_row: number;
+  from_col: number;
+  to_row: number;
+  to_col: number;
+  piece_type: string;
+  captured_piece: string | null;
+  board_state: ChessSquare[][];
+}
+
+const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd }) => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [board, setBoard] = useState<ChessSquare[][]>([]);
   const [currentPlayer, setCurrentPlayer] = useState<'white' | 'black'>('white');
   const [selectedSquare, setSelectedSquare] = useState<{row: number, col: number} | null>(null);
   const [gameStatus, setGameStatus] = useState<'playing' | 'checkmate' | 'draw'>('playing');
   const [winner, setWinner] = useState<'white' | 'black' | null>(null);
+  const [moveNumber, setMoveNumber] = useState(0);
+  const [isMyTurn, setIsMyTurn] = useState(false);
 
   useEffect(() => {
     initializeBoard();
-  }, []);
+    loadGameState();
+    setupRealtimeSubscription();
+  }, [warId]);
+
+  useEffect(() => {
+    setIsMyTurn(currentPlayer === userPlayerSide);
+  }, [currentPlayer, userPlayerSide]);
+
+  const setupRealtimeSubscription = () => {
+    const channel = supabase
+      .channel(`chess-${warId}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'chess_moves',
+        filter: `war_id=eq.${warId}`
+      }, (payload) => {
+        console.log('New chess move:', payload);
+        const move = payload.new as ChessMove;
+        applyMoveFromDatabase(move);
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  };
+
+  const loadGameState = async () => {
+    try {
+      const { data: moves, error } = await supabase
+        .from('chess_moves')
+        .select('*')
+        .eq('war_id', warId)
+        .order('move_number', { ascending: true });
+
+      if (error) throw error;
+
+      if (moves && moves.length > 0) {
+        // Apply all moves to reconstruct game state
+        const latestMove = moves[moves.length - 1];
+        setBoard(JSON.parse(JSON.stringify(latestMove.board_state)) as ChessSquare[][]);
+        setMoveNumber(latestMove.move_number);
+        setCurrentPlayer(latestMove.player_color === 'white' ? 'black' : 'white');
+      }
+    } catch (error: any) {
+      console.error('Error loading game state:', error);
+    }
+  };
+
+  const applyMoveFromDatabase = (move: ChessMove) => {
+    setBoard(JSON.parse(JSON.stringify(move.board_state)) as ChessSquare[][]);
+    setMoveNumber(move.move_number);
+    setCurrentPlayer(move.player_color === 'white' ? 'black' : 'white');
+    
+    // Check for game end
+    if (move.captured_piece === 'king') {
+      setGameStatus('checkmate');
+      setWinner(move.player_color);
+      onGameEnd(move.player_color);
+    }
+  };
 
   const initializeBoard = () => {
     const newBoard: ChessSquare[][] = Array(8).fill(null).map(() => 
@@ -116,32 +192,62 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, onGameEnd }) => {
     }
   };
 
-  const makeMove = (fromRow: number, fromCol: number, toRow: number, toCol: number) => {
+  const makeMove = async (fromRow: number, fromCol: number, toRow: number, toCol: number) => {
     if (!isValidMove(fromRow, fromCol, toRow, toCol)) return false;
+    if (!isMyTurn) {
+      toast({
+        title: "Not your turn",
+        description: "Please wait for your opponent to move.",
+        variant: "destructive",
+      });
+      return false;
+    }
 
     const newBoard = board.map(row => row.map(square => ({ ...square, isSelected: false, isPossibleMove: false })));
     const movingPiece = newBoard[fromRow][fromCol].piece;
     const capturedPiece = newBoard[toRow][toCol].piece;
     
+    if (!movingPiece) return false;
+
     newBoard[toRow][toCol].piece = movingPiece;
     newBoard[fromRow][fromCol].piece = null;
     
-    setBoard(newBoard);
-    setSelectedSquare(null);
-    setCurrentPlayer(currentPlayer === 'white' ? 'black' : 'white');
-    
-    // Check for king capture (simplified win condition)
-    if (capturedPiece && capturedPiece.type === 'king') {
-      setGameStatus('checkmate');
-      setWinner(currentPlayer);
-      onGameEnd(currentPlayer === 'white' ? 'white' : 'black');
+    // Save move to database
+    try {
+      const { error } = await supabase
+        .from('chess_moves')
+        .insert({
+          war_id: warId,
+          move_number: moveNumber + 1,
+          player_color: currentPlayer,
+          from_row: fromRow,
+          from_col: fromCol,
+          to_row: toRow,
+          to_col: toCol,
+          piece_type: movingPiece.type,
+          captured_piece: capturedPiece?.type || null,
+          board_state: JSON.parse(JSON.stringify(newBoard))
+        });
+
+      if (error) throw error;
+
+      // Local update will be handled by the realtime subscription
+      setSelectedSquare(null);
+      
+    } catch (error: any) {
+      toast({
+        title: "Error making move",
+        description: error.message,
+        variant: "destructive",
+      });
+      return false;
     }
     
     return true;
   };
 
   const handleSquareClick = (row: number, col: number) => {
-    if (gameStatus !== 'playing') return;
+    if (gameStatus !== 'playing' || !isMyTurn) return;
 
     const clickedSquare = board[row][col];
     
@@ -188,17 +294,40 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, onGameEnd }) => {
     setBoard(newBoard);
   };
 
-  const forfeitGame = () => {
-    const loser = currentPlayer;
-    const winner = currentPlayer === 'white' ? 'black' : 'white';
-    setGameStatus('checkmate');
-    setWinner(winner);
-    onGameEnd(winner);
-    
-    toast({
-      title: "Game Forfeited",
-      description: `${loser} player forfeited the game.`,
-    });
+  const forfeitGame = async () => {
+    try {
+      const winner = currentPlayer === 'white' ? 'black' : 'white';
+      
+      await supabase
+        .from('chess_moves')
+        .insert({
+          war_id: warId,
+          move_number: moveNumber + 1,
+          player_color: currentPlayer,
+          from_row: -1, // Special value for forfeit
+          from_col: -1,
+          to_row: -1,
+          to_col: -1,
+          piece_type: 'forfeit',
+          captured_piece: 'king', // Indicates game end
+          board_state: JSON.parse(JSON.stringify(board))
+        });
+
+      setGameStatus('checkmate');
+      setWinner(winner);
+      onGameEnd(winner);
+      
+      toast({
+        title: "Game Forfeited",
+        description: `You forfeited the game.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error forfeiting game",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -209,9 +338,19 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, onGameEnd }) => {
           Chess Battle
         </h2>
         {gameStatus === 'playing' ? (
-          <p className="text-lg">
-            Current Turn: <span className="font-semibold capitalize">{currentPlayer}</span>
-          </p>
+          <div>
+            <p className="text-lg">
+              Current Turn: <span className="font-semibold capitalize">{currentPlayer}</span>
+            </p>
+            <p className="text-sm text-muted-foreground">
+              {isMyTurn ? "Your turn!" : "Waiting for opponent..."}
+            </p>
+            {userPlayerSide && (
+              <p className="text-sm text-muted-foreground">
+                You are playing as <span className="font-medium capitalize">{userPlayerSide}</span>
+              </p>
+            )}
+          </div>
         ) : (
           <p className="text-lg font-semibold">
             {winner && (
@@ -234,7 +373,8 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, onGameEnd }) => {
                 ${(rowIndex + colIndex) % 2 === 0 ? 'bg-amber-100 dark:bg-amber-900/30' : 'bg-amber-200 dark:bg-amber-800/30'}
                 ${square.isSelected ? 'bg-blue-300 dark:bg-blue-600' : ''}
                 ${square.isPossibleMove ? 'bg-green-300 dark:bg-green-600' : ''}
-                hover:bg-accent/50 transition-colors
+                ${!isMyTurn ? 'cursor-not-allowed opacity-75' : 'hover:bg-accent/50'}
+                transition-colors
               `}
               onClick={() => handleSquareClick(rowIndex, colIndex)}
             >
@@ -245,7 +385,7 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, onGameEnd }) => {
       </div>
 
       <div className="flex gap-4">
-        {gameStatus === 'playing' && (
+        {gameStatus === 'playing' && isMyTurn && (
           <Button onClick={forfeitGame} variant="destructive">
             Forfeit Game
           </Button>

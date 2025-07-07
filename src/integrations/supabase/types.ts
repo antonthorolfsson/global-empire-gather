@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      chess_moves: {
+        Row: {
+          board_state: Json
+          captured_piece: string | null
+          created_at: string
+          from_col: number
+          from_row: number
+          id: string
+          move_number: number
+          piece_type: string
+          player_color: string
+          to_col: number
+          to_row: number
+          war_id: string
+        }
+        Insert: {
+          board_state: Json
+          captured_piece?: string | null
+          created_at?: string
+          from_col: number
+          from_row: number
+          id?: string
+          move_number: number
+          piece_type: string
+          player_color: string
+          to_col: number
+          to_row: number
+          war_id: string
+        }
+        Update: {
+          board_state?: Json
+          captured_piece?: string | null
+          created_at?: string
+          from_col?: number
+          from_row?: number
+          id?: string
+          move_number?: number
+          piece_type?: string
+          player_color?: string
+          to_col?: number
+          to_row?: number
+          war_id?: string
+        }
+        Relationships: []
+      }
       game_countries: {
         Row: {
           country_id: string
