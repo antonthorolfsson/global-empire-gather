@@ -296,7 +296,11 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
   };
 
   const handleSquareClick = (row: number, col: number) => {
-    console.log('ChessGame: Square clicked:', row, col, 'gameStatus:', gameStatus, 'isMyTurn:', isMyTurn, 'currentPlayer:', currentPlayer, 'userPlayerSide:', userPlayerSide);
+    // Flip coordinates for black player
+    const actualRow = userPlayerSide === 'black' ? 7 - row : row;
+    const actualCol = userPlayerSide === 'black' ? 7 - col : col;
+    
+    console.log('ChessGame: Square clicked:', row, col, 'actual coordinates:', actualRow, actualCol, 'gameStatus:', gameStatus, 'isMyTurn:', isMyTurn, 'currentPlayer:', currentPlayer, 'userPlayerSide:', userPlayerSide);
     
     if (gameStatus !== 'playing') {
       console.log('ChessGame: Game not in playing status');
@@ -308,20 +312,20 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
       return;
     }
 
-    const clickedSquare = board[row][col];
+    const clickedSquare = board[actualRow][actualCol];
     console.log('ChessGame: Clicked square has piece:', clickedSquare.piece);
     
     if (selectedSquare) {
-      console.log('ChessGame: Trying to make move from', selectedSquare, 'to', {row, col});
-      // Try to make a move
-      if (makeMove(selectedSquare.row, selectedSquare.col, row, col)) {
+      console.log('ChessGame: Trying to make move from', selectedSquare, 'to', {row: actualRow, col: actualCol});
+      // Try to make a move (use actual coordinates)
+      if (makeMove(selectedSquare.row, selectedSquare.col, actualRow, actualCol)) {
         return;
       }
       // If move failed, check if clicking on own piece
       if (clickedSquare.piece && clickedSquare.piece.color === currentPlayer) {
         console.log('ChessGame: Selecting new piece');
-        setSelectedSquare({ row, col });
-        highlightPossibleMoves(row, col);
+        setSelectedSquare({ row: actualRow, col: actualCol });
+        highlightPossibleMoves(actualRow, actualCol);
       } else {
         console.log('ChessGame: Clearing selection');
         setSelectedSquare(null);
@@ -331,8 +335,8 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
       // Select a piece
       if (clickedSquare.piece && clickedSquare.piece.color === currentPlayer) {
         console.log('ChessGame: Selecting piece');
-        setSelectedSquare({ row, col });
-        highlightPossibleMoves(row, col);
+        setSelectedSquare({ row: actualRow, col: actualCol });
+        highlightPossibleMoves(actualRow, actualCol);
       } else {
         console.log('ChessGame: Cannot select this square - no piece or wrong color');
       }
@@ -430,23 +434,30 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
       </div>
 
       <div className="grid grid-cols-8 gap-0 border-2 border-border bg-card">
-        {board.map((row, rowIndex) =>
-          row.map((square, colIndex) => (
-            <div
-              key={`${rowIndex}-${colIndex}`}
-              className={`
-                w-12 h-12 flex items-center justify-center text-2xl cursor-pointer border border-border/20
-                ${(rowIndex + colIndex) % 2 === 0 ? 'bg-amber-100 dark:bg-amber-900/30' : 'bg-amber-200 dark:bg-amber-800/30'}
-                ${square.isSelected ? 'bg-blue-300 dark:bg-blue-600' : ''}
-                ${square.isPossibleMove ? 'bg-green-300 dark:bg-green-600' : ''}
-                ${!isMyTurn ? 'cursor-not-allowed opacity-75' : 'hover:bg-accent/50'}
-                transition-colors
-              `}
-              onClick={() => handleSquareClick(rowIndex, colIndex)}
-            >
-              {getPieceSymbol(square.piece)}
-            </div>
-          ))
+        {(userPlayerSide === 'black' ? [...board].reverse() : board).map((row, displayRowIndex) => 
+          (userPlayerSide === 'black' ? [...row].reverse() : row).map((square, displayColIndex) => {
+            // Calculate actual indices for highlighting
+            const actualRowIndex = userPlayerSide === 'black' ? 7 - displayRowIndex : displayRowIndex;
+            const actualColIndex = userPlayerSide === 'black' ? 7 - displayColIndex : displayColIndex;
+            const actualSquare = board[actualRowIndex][actualColIndex];
+            
+            return (
+              <div
+                key={`${actualRowIndex}-${actualColIndex}`}
+                className={`
+                  w-12 h-12 flex items-center justify-center text-2xl cursor-pointer border border-border/20
+                  ${(actualRowIndex + actualColIndex) % 2 === 0 ? 'bg-amber-100 dark:bg-amber-900/30' : 'bg-amber-200 dark:bg-amber-800/30'}
+                  ${actualSquare.isSelected ? 'bg-blue-300 dark:bg-blue-600' : ''}
+                  ${actualSquare.isPossibleMove ? 'bg-green-300 dark:bg-green-600' : ''}
+                  ${!isMyTurn ? 'cursor-not-allowed opacity-75' : 'hover:bg-accent/50'}
+                  transition-colors
+                `}
+                onClick={() => handleSquareClick(displayRowIndex, displayColIndex)}
+              >
+                {getPieceSymbol(actualSquare.piece)}
+              </div>
+            );
+          })
         )}
       </div>
 
