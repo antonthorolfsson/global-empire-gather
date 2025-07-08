@@ -434,6 +434,17 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
     return symbols[piece.color][piece.type];
   };
 
+  const getPieceClasses = (piece: ChessPiece | null): string => {
+    if (!piece) return '';
+    
+    const baseClasses = "select-none pointer-events-none font-bold transition-all duration-200";
+    const colorClasses = piece.color === 'white' 
+      ? "text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)] stroke-black stroke-[0.5px]" 
+      : "text-gray-900 drop-shadow-[0_1px_1px_rgba(255,255,255,0.3)]";
+    
+    return `${baseClasses} ${colorClasses}`;
+  };
+
   // Chess logic functions
   const isPathClear = (fromRow: number, fromCol: number, toRow: number, toCol: number): boolean => {
     const rowDiff = toRow - fromRow;
@@ -964,7 +975,7 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
         </div>
 
         {/* Chess Board */}
-        <div className="grid grid-cols-8 gap-0 border-2 border-border bg-card">
+        <div className="grid grid-cols-8 gap-0 border-4 border-primary/20 shadow-lg rounded-lg overflow-hidden bg-card">
           {(userPlayerSide === 'black' ? [...board].reverse() : board).map((row, displayRowIndex) => 
             (userPlayerSide === 'black' ? [...row].reverse() : row).map((square, displayColIndex) => {
               // Calculate actual indices for highlighting
@@ -972,20 +983,33 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
               const actualColIndex = userPlayerSide === 'black' ? 7 - displayColIndex : displayColIndex;
               const actualSquare = board[actualRowIndex][actualColIndex];
               
+              const isLightSquare = (actualRowIndex + actualColIndex) % 2 === 0;
+              
               return (
                 <div
                   key={`${actualRowIndex}-${actualColIndex}`}
                   className={`
-                    w-12 h-12 flex items-center justify-center text-2xl cursor-pointer border border-border/20
-                    ${(actualRowIndex + actualColIndex) % 2 === 0 ? 'bg-amber-100 dark:bg-amber-900/30' : 'bg-amber-200 dark:bg-amber-800/30'}
-                    ${actualSquare.isSelected ? 'bg-blue-300 dark:bg-blue-600' : ''}
-                    ${actualSquare.isPossibleMove ? 'bg-green-300 dark:bg-green-600' : ''}
-                    ${!isMyTurn ? 'cursor-not-allowed opacity-75' : 'hover:bg-accent/50'}
-                    transition-colors
+                    w-16 h-16 flex items-center justify-center text-4xl cursor-pointer relative
+                    ${isLightSquare 
+                      ? 'bg-amber-50 dark:bg-amber-100/20' 
+                      : 'bg-amber-800/40 dark:bg-amber-900/40'
+                    }
+                    ${actualSquare.isSelected ? 'bg-blue-400/60 dark:bg-blue-500/60 ring-2 ring-blue-500' : ''}
+                    ${actualSquare.isPossibleMove ? 'bg-green-400/60 dark:bg-green-500/60 ring-2 ring-green-500' : ''}
+                    ${!isMyTurn ? 'cursor-not-allowed opacity-75' : 'hover:bg-primary/10'}
+                    transition-all duration-200
                   `}
                   onClick={() => handleSquareClick(displayRowIndex, displayColIndex)}
                 >
-                  {getPieceSymbol(actualSquare.piece)}
+                  {actualSquare.isPossibleMove && !actualSquare.piece && (
+                    <div className="w-4 h-4 bg-green-500/70 rounded-full" />
+                  )}
+                  {actualSquare.isPossibleMove && actualSquare.piece && (
+                    <div className="absolute inset-0 ring-4 ring-green-500/70 rounded-sm" />
+                  )}
+                  <span className={getPieceClasses(actualSquare.piece)}>
+                    {getPieceSymbol(actualSquare.piece)}
+                  </span>
                 </div>
               );
             })
