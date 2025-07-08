@@ -823,21 +823,24 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
     console.log('ChessGame: Clicked square has piece:', clickedSquare.piece);
     
     if (selectedSquare) {
-      console.log('ChessGame: Trying to make move from', selectedSquare, 'to', {row: actualRow, col: actualCol});
-      // Try to make a move (use actual coordinates)
-      if (makeMove(selectedSquare.row, selectedSquare.col, actualRow, actualCol)) {
-        return;
-      }
-      // If move failed, check if clicking on own piece
+      // If clicking on own piece, select it instead of trying to move
       if (clickedSquare.piece && clickedSquare.piece.color === currentPlayer) {
         console.log('ChessGame: Selecting new piece');
         setSelectedSquare({ row: actualRow, col: actualCol });
         highlightPossibleMoves(actualRow, actualCol);
-      } else {
-        console.log('ChessGame: Clearing selection');
-        setSelectedSquare(null);
-        clearHighlights();
+        return;
       }
+      
+      // Try to make a move (use actual coordinates)
+      console.log('ChessGame: Trying to make move from', selectedSquare, 'to', {row: actualRow, col: actualCol});
+      if (makeMove(selectedSquare.row, selectedSquare.col, actualRow, actualCol)) {
+        return;
+      }
+      
+      // If move failed and not clicking on own piece, clear selection
+      console.log('ChessGame: Clearing selection');
+      setSelectedSquare(null);
+      clearHighlights();
     } else {
       // Select a piece
       if (clickedSquare.piece && clickedSquare.piece.color === currentPlayer) {
