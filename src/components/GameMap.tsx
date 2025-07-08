@@ -221,120 +221,95 @@ const GameMap: React.FC<GameMapProps> = ({
 
     console.log('GameMap: Updating country styles, players:', players);
 
-    // Add click handlers and styling to all country paths
+    // Add CSS styles for countries directly to the document
+    const styleElement = document.getElementById('map-country-styles') || document.createElement('style');
+    styleElement.id = 'map-country-styles';
+    
+    let cssRules = `
+      #world-map-svg path {
+        fill: #000000 !important;
+        stroke: #ffffff !important;
+        stroke-width: 2px !important;
+        cursor: pointer !important;
+        transition: all 0.2s ease !important;
+        opacity: 1 !important;
+      }
+    `;
+    
+    // Add specific rules for owned countries
+    players.forEach(player => {
+      player.countries.forEach(countryId => {
+        cssRules += `
+          #world-map-svg path#${countryId.toUpperCase()} {
+            fill: ${player.color} !important;
+            stroke: none !important;
+            stroke-width: 0 !important;
+            cursor: default !important;
+            filter: drop-shadow(0 0 4px ${player.color}) !important;
+          }
+        `;
+      });
+    });
+    
+    // Add hover effects for unowned countries
+    const ownedCountries = players.flatMap(player => player.countries.map(id => id.toUpperCase()));
+    cssRules += `
+      #world-map-svg path:not(${ownedCountries.map(id => `#${id}`).join(', ')}):hover {
+        fill: hsl(var(--primary-glow)) !important;
+        transform: scale(1.01) !important;
+        transform-origin: center !important;
+        z-index: 10 !important;
+      }
+    `;
+    
+    styleElement.textContent = cssRules;
+    if (!document.getElementById('map-country-styles')) {
+      document.head.appendChild(styleElement);
+    }
+
+    // Add click handlers to all country paths
     const svgElement = document.getElementById('world-map-svg');
     if (!svgElement) return;
 
     const paths = svgElement.querySelectorAll('path[id]') as NodeListOf<SVGPathElement>;
     
     // Store event handlers for cleanup
-    const eventHandlers = new Map<SVGPathElement, {
-      mouseenter?: () => void;
-      mouseleave?: () => void;
-      click?: () => void;
-    }>();
-    
-    const updateCountryStyles = () => {
-      console.log('GameMap: Applying styles to', paths.length, 'countries');
-      paths.forEach(path => {
-        const countryId = path.id.toLowerCase();
-        const owner = getCountryOwner(countryId);
-        
-        if (owner) {
-          console.log(`GameMap: Country ${countryId} owned by ${owner.name} (${owner.color})`);
-        }
-        
-        // Remove any existing styles and attributes first
-        path.removeAttribute('fill');
-        path.removeAttribute('stroke');
-        path.removeAttribute('stroke-width');
-        path.removeAttribute('style');
-        path.removeAttribute('class');
-        path.style.cssText = '';
-        
-        // Apply current styling based on ownership using SVG attributes
-        if (owner) {
-          // Country is owned - apply player color without outline
-          path.setAttribute('fill', owner.color);
-          path.setAttribute('stroke', 'none');
-          path.setAttribute('stroke-width', '0');
-          path.setAttribute('style', `
-            filter: drop-shadow(0 0 4px ${owner.color});
-            cursor: default;
-            transition: all 0.2s ease;
-            opacity: 1;
-          `);
-          console.log(`GameMap: Applied owned styling to ${countryId}:`, owner.color);
-        } else {
-          // Country is unowned - black with white outline
-          path.setAttribute('fill', '#000000');
-          path.setAttribute('stroke', '#ffffff');
-          path.setAttribute('stroke-width', '2');
-          path.setAttribute('style', `
-            cursor: pointer;
-            transition: all 0.2s ease;
-            opacity: 1;
-          `);
-          console.log(`GameMap: Applied unowned styling to ${countryId}:`, '#000000 with #ffffff stroke');
-        }
-      });
-    };
-
-    // Initial style application
-    updateCountryStyles();
+    const eventHandlers = new Map<SVGPathElement, { click?: () => void }>();
     
     paths.forEach(path => {
       const countryId = path.id.toLowerCase();
       const owner = getCountryOwner(countryId);
-      const handlers: any = {};
-      
-      // Add hover effects for unowned countries only
-      if (!owner) {
-        const mouseEnterHandler = () => {
-          path.style.fill = 'hsl(var(--primary-glow))';
-          path.style.transform = 'scale(1.01)';
-          path.style.transformOrigin = 'center';
-          path.style.zIndex = '10';
-        };
-        
-        const mouseLeaveHandler = () => {
-          path.style.fill = '#000000';
-          path.style.transform = 'scale(1)';
-          path.style.zIndex = 'auto';
-        };
-        
-        path.addEventListener('mouseenter', mouseEnterHandler);
-        path.addEventListener('mouseleave', mouseLeaveHandler);
-        
-        handlers.mouseenter = mouseEnterHandler;
-        handlers.mouseleave = mouseLeaveHandler;
-      }
       
       // Add click handler
       const clickHandler = () => handleCountryClick(countryId);
       path.addEventListener('click', clickHandler);
-      handlers.click = clickHandler;
+      path.addEventListener('touchend', (e) => {
+        if (!touchMoved) {
+          e.preventDefault();
+          handleCountryClick(countryId);
+        }
+      });
       
-      eventHandlers.set(path, handlers);
+      eventHandlers.set(path, { click: clickHandler });
     });
 
     // Cleanup function
     return () => {
       paths.forEach(path => {
         const handlers = eventHandlers.get(path);
-        if (handlers?.mouseenter) {
-          path.removeEventListener('mouseenter', handlers.mouseenter);
-        }
-        if (handlers?.mouseleave) {
-          path.removeEventListener('mouseleave', handlers.mouseleave);
-        }
         if (handlers?.click) {
           path.removeEventListener('click', handlers.click);
         }
       });
       eventHandlers.clear();
+      
+      // Remove the style element when component unmounts
+      const styleEl = document.getElementById('map-country-styles');
+      if (styleEl) {
+        styleEl.remove();
+      }
     };
-  }, [svgContent, players, selectedCountries]);
+  }, [svgContent, players, selectedCountries, touchMoved]);
 
   return (
     <Card className="w-full h-full bg-gradient-to-br from-ocean to-primary overflow-hidden">
