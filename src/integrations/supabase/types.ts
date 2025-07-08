@@ -180,6 +180,7 @@ export type Database = {
           created_at: string
           created_by: string
           current_player_turn: number | null
+          deleted_at: string | null
           game_phase: string
           id: string
           max_players: number
@@ -191,6 +192,7 @@ export type Database = {
           created_at?: string
           created_by: string
           current_player_turn?: number | null
+          deleted_at?: string | null
           game_phase?: string
           id?: string
           max_players?: number
@@ -202,6 +204,7 @@ export type Database = {
           created_at?: string
           created_by?: string
           current_player_turn?: number | null
+          deleted_at?: string | null
           game_phase?: string
           id?: string
           max_players?: number

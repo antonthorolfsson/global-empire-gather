@@ -279,6 +279,33 @@ const MultiplayerGame = () => {
     }
   };
 
+  const completeGame = async () => {
+    if (!userPlayer?.is_host) return;
+
+    try {
+      const { error } = await supabase
+        .from('games')
+        .update({ 
+          status: 'completed',
+          game_phase: 'finished'
+        })
+        .eq('id', gameId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Game completed!",
+        description: "The game has been marked as completed.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error completing game",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
   const selectCountry = async (countryId: string) => {
     console.log('Selecting country:', countryId, 'User player:', userPlayer, 'Game status:', game?.status);
     
@@ -557,6 +584,11 @@ const MultiplayerGame = () => {
               {userPlayer?.is_host && game.game_phase === 'playing' && (
                 <Button onClick={endVotingPhase} variant="outline" size="sm">
                   End voting
+                </Button>
+              )}
+              {userPlayer?.is_host && game.game_phase === 'finished' && (
+                <Button onClick={completeGame} variant="outline" size="sm">
+                  Complete Game
                 </Button>
               )}
               <span className="text-sm text-muted-foreground">

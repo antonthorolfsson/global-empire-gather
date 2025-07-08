@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Users, LogOut, Play } from 'lucide-react';
+import { Plus, Users, LogOut, Play, Trash2, GamepadIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ColorPickerDialog from '@/components/ColorPickerDialog';
 
@@ -20,6 +20,7 @@ interface Game {
     player_name: string;
     color: string;
     is_host: boolean;
+    user_id: string;
   }>;
 }
 
@@ -47,10 +48,12 @@ const GameLobby = () => {
           game_players (
             player_name,
             color,
-            is_host
+            is_host,
+            user_id
           )
         `)
-        .eq('status', 'waiting')
+        .in('status', ['waiting', 'active'])
+        .is('deleted_at', null)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -191,6 +194,30 @@ const GameLobby = () => {
     }
   };
 
+  const deleteGame = async (gameId: string) => {
+    try {
+      const { error } = await supabase
+        .from('games')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('id', gameId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Game deleted",
+        description: "The game has been deleted successfully.",
+      });
+
+      fetchGames();
+    } catch (error: any) {
+      toast({
+        title: "Error deleting game",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-ocean to-primary p-4">
       <div className="max-w-4xl mx-auto">
@@ -229,43 +256,86 @@ const GameLobby = () => {
 
         {/* Games List */}
         <div className="space-y-4">
-          <h2 className="text-2xl font-bold text-white">Available Games</h2>
+          <h2 className="text-2xl font-bold text-white">Your Games</h2>
           {games.length === 0 ? (
             <Card className="p-8 text-center bg-card/95 backdrop-blur-sm">
               <p className="text-muted-foreground">No games available. Create one to get started!</p>
             </Card>
           ) : (
             <div className="grid gap-4">
-              {games.map((game) => (
-                <Card key={game.id} className="p-4 bg-card/95 backdrop-blur-sm">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <h3 className="text-lg font-semibold">{game.name}</h3>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
-                        <Users className="w-4 h-4" />
-                        <span>{game.game_players.length}/8 players</span>
+              {games.map((game) => {
+                const isCreator = game.created_by === user?.id;
+                const isInGame = game.game_players.some(p => p.user_id === user?.id);
+                const canJoin = game.status === 'waiting' && !isInGame && game.game_players.length < 8;
+                const canResume = game.status === 'active' && isInGame;
+                
+                return (
+                  <Card key={game.id} className="p-4 bg-card/95 backdrop-blur-sm">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="text-lg font-semibold">{game.name}</h3>
+                          {game.status === 'active' && (
+                            <div className="flex items-center gap-1 text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                              <GamepadIcon className="w-3 h-3" />
+                              Active
+                            </div>
+                          )}
+                          {game.status === 'waiting' && (
+                            <div className="flex items-center gap-1 text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">
+                              <Users className="w-3 h-3" />
+                              Waiting
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Users className="w-4 h-4" />
+                          <span>{game.game_players.length}/8 players</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {game.game_players.slice(0, 3).map((player, idx) => (
+                          <div
+                            key={idx}
+                            className="w-6 h-6 rounded-full border-2 border-white shadow-sm"
+                            style={{ backgroundColor: player.color }}
+                            title={player.player_name}
+                          />
+                        ))}
+                        {game.game_players.length > 3 && (
+                          <span className="text-sm text-muted-foreground">+{game.game_players.length - 3}</span>
+                        )}
+                        
+                        {canJoin && (
+                          <Button onClick={() => joinGame(game.id)} className="gap-2">
+                            <Play className="w-4 h-4" />
+                            Join Game
+                          </Button>
+                        )}
+                        
+                        {canResume && (
+                          <Button onClick={() => navigate(`/game/${game.id}`)} className="gap-2">
+                            <GamepadIcon className="w-4 h-4" />
+                            Resume Game
+                          </Button>
+                        )}
+                        
+                        {isCreator && (
+                          <Button 
+                            onClick={() => deleteGame(game.id)} 
+                            variant="destructive" 
+                            size="sm"
+                            className="gap-2"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            Delete
+                          </Button>
+                        )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      {game.game_players.slice(0, 3).map((player, idx) => (
-                        <div
-                          key={idx}
-                          className="w-6 h-6 rounded-full border-2 border-white shadow-sm"
-                          style={{ backgroundColor: player.color }}
-                          title={player.player_name}
-                        />
-                      ))}
-                      {game.game_players.length > 3 && (
-                        <span className="text-sm text-muted-foreground">+{game.game_players.length - 3}</span>
-                      )}
-                      <Button onClick={() => joinGame(game.id)} className="gap-2">
-                        <Play className="w-4 h-4" />
-                        Join Game
-                      </Button>
-                    </div>
-                  </div>
-                </Card>
-              ))}
+                  </Card>
+                );
+              })}
             </div>
           )}
         </div>
