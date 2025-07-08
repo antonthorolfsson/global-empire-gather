@@ -143,39 +143,30 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
   };
 
   const startTimer = useCallback(() => {
-    // Clear existing timer
+    // Don't start timer until first move is made
+    if (moveNumber === 0) return;
+    
+    // Clear any existing timer
     if (timerInterval) {
       clearInterval(timerInterval);
+      setTimerInterval(null);
     }
 
-    // Start new timer only if we're the current player and game is playing
-    if (gameStatus === 'playing' && isMyTurn && moveNumber > 0) { // Only start after first move
+    // Only start timer if it's my turn and game is playing
+    if (gameStatus === 'playing' && isMyTurn) {
       console.log('ChessGame: Starting timer for', currentPlayer);
+      
       const newInterval = setInterval(() => {
         if (currentPlayer === 'white') {
-          setWhiteTimeRemaining(prev => {
-            const newTime = Math.max(0, prev - 1);
-            // Update database every 10 seconds to reduce load
-            if (newTime % 10 === 0) {
-              updateTimerInDatabase(newTime, null);
-            }
-            return newTime;
-          });
+          setWhiteTimeRemaining(prev => Math.max(0, prev - 1));
         } else {
-          setBlackTimeRemaining(prev => {
-            const newTime = Math.max(0, prev - 1);
-            // Update database every 10 seconds to reduce load
-            if (newTime % 10 === 0) {
-              updateTimerInDatabase(null, newTime);
-            }
-            return newTime;
-          });
+          setBlackTimeRemaining(prev => Math.max(0, prev - 1));
         }
       }, 1000);
 
       setTimerInterval(newInterval);
     }
-  }, [gameStatus, isMyTurn, currentPlayer, moveNumber]);
+  }, [gameStatus, isMyTurn, currentPlayer, moveNumber, timerInterval]);
 
   const stopTimer = useCallback(() => {
     console.log('ChessGame: Stopping timer');
@@ -185,17 +176,30 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
     }
   }, [timerInterval]);
 
-  const updateTimerInDatabase = async (whiteTime: number | null, blackTime: number | null) => {
+  // Update database periodically (every 10 seconds) instead of on every tick
+  useEffect(() => {
+    if (gameStatus === 'playing' && isMyTurn && moveNumber > 0) {
+      const updateInterval = setInterval(() => {
+        if (chessGameId) {
+          updateTimerInDatabase(whiteTimeRemaining, blackTimeRemaining);
+        }
+      }, 10000); // Update every 10 seconds
+
+      return () => clearInterval(updateInterval);
+    }
+  }, [gameStatus, isMyTurn, moveNumber, chessGameId, whiteTimeRemaining, blackTimeRemaining]);
+
+  const updateTimerInDatabase = async (whiteTime: number, blackTime: number) => {
     if (!chessGameId) return;
 
     try {
-      const updateData: any = { current_player: currentPlayer };
-      if (whiteTime !== null) updateData.white_time_remaining = whiteTime;
-      if (blackTime !== null) updateData.black_time_remaining = blackTime;
-      
       await supabase
         .from('chess_games')
-        .update(updateData)
+        .update({
+          white_time_remaining: whiteTime,
+          black_time_remaining: blackTime,
+          current_player: currentPlayer
+        })
         .eq('id', chessGameId);
     } catch (error: any) {
       console.error('Error updating timer:', error);
@@ -220,19 +224,19 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
           .eq('id', chessGameId);
       }
 
-      // Save timeout move
+      // Save timeout move with valid coordinates and piece type
       await supabase
         .from('chess_moves')
         .insert({
           war_id: warId,
           move_number: moveNumber + 1,
           player_color: loser,
-          from_row: -2, // Special value for timeout
-          from_col: -2,
-          to_row: -2,
-          to_col: -2,
-          piece_type: 'timeout',
-          captured_piece: 'time', // Indicates timeout
+          from_row: 0,
+          from_col: 0,
+          to_row: 0,
+          to_col: 0,
+          piece_type: 'king', // Use valid piece type
+          captured_piece: 'timeout', // This indicates it's a timeout
           board_state: JSON.parse(JSON.stringify(board))
         });
 
@@ -360,9 +364,10 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
       setGameHistory(prev => [...prev, boardHash]);
       
       // Check for game end conditions
-      if (move.piece_type === 'forfeit' || move.captured_piece === 'king') {
-        console.log('ChessGame: Game ended by forfeit or king capture, winner:', move.player_color);
-        setGameStatus('checkmate');
+      if (move.captured_piece === 'forfeit' || move.captured_piece === 'timeout' || move.captured_piece === 'king') {
+        console.log('ChessGame: Game ended by forfeit/timeout or king capture, winner:', move.player_color);
+        const gameEndStatus = move.captured_piece === 'timeout' ? 'timeout' : 'checkmate';
+        setGameStatus(gameEndStatus);
         setWinner(move.player_color);
         onGameEnd(move.player_color);
       } else {
@@ -869,12 +874,12 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
           war_id: warId,
           move_number: moveNumber + 1,
           player_color: currentPlayer,
-          from_row: -1, // Special value for forfeit
-          from_col: -1,
-          to_row: -1,
-          to_col: -1,
-          piece_type: 'forfeit',
-          captured_piece: 'king', // Indicates game end
+          from_row: 0,
+          from_col: 0,
+          to_row: 0,
+          to_col: 0,
+          piece_type: 'king', // Use valid piece type
+          captured_piece: 'forfeit', // This indicates it's a forfeit
           board_state: JSON.parse(JSON.stringify(board))
         });
 
