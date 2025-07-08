@@ -146,12 +146,6 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
     // Don't start timer until first move is made
     if (moveNumber === 0) return;
     
-    // Clear any existing timer
-    if (timerInterval) {
-      clearInterval(timerInterval);
-      setTimerInterval(null);
-    }
-
     // Only start timer if it's my turn and game is playing
     if (gameStatus === 'playing' && isMyTurn) {
       console.log('ChessGame: Starting timer for', currentPlayer);
@@ -166,15 +160,17 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
 
       setTimerInterval(newInterval);
     }
-  }, [gameStatus, isMyTurn, currentPlayer, moveNumber, timerInterval]);
+  }, [gameStatus, isMyTurn, currentPlayer, moveNumber]);
 
   const stopTimer = useCallback(() => {
     console.log('ChessGame: Stopping timer');
-    if (timerInterval) {
-      clearInterval(timerInterval);
-      setTimerInterval(null);
-    }
-  }, [timerInterval]);
+    setTimerInterval(prev => {
+      if (prev) {
+        clearInterval(prev);
+      }
+      return null;
+    });
+  }, []);
 
   // Update database periodically (every 10 seconds) instead of on every tick
   useEffect(() => {
