@@ -569,36 +569,36 @@ const MultiplayerGame = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-ocean to-primary">
-      <div className="flex h-screen">
+      <div className="flex flex-col lg:flex-row h-screen">
         {/* Main Game Area */}
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col min-h-0">
           {/* Header */}
-          <div className="h-16 flex items-center justify-between px-6 bg-card/90 backdrop-blur-sm border-b">
-            <div className="flex items-center gap-4">
+          <div className="h-16 flex items-center justify-between px-4 lg:px-6 bg-card/90 backdrop-blur-sm border-b">
+            <div className="flex items-center gap-2 lg:gap-4">
               <Button variant="ghost" size="sm" onClick={() => navigate('/lobby')}>
                 <ArrowLeft className="w-4 h-4" />
               </Button>
-              <h1 className="text-xl font-bold text-card-foreground">{game.name}</h1>
+              <h1 className="text-lg lg:text-xl font-bold text-card-foreground truncate">{game.name}</h1>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 lg:gap-4">
               {userPlayer?.is_host && game.game_phase === 'playing' && (
-                <Button onClick={endVotingPhase} variant="outline" size="sm">
+                <Button onClick={endVotingPhase} variant="outline" size="sm" className="text-xs lg:text-sm">
                   End voting
                 </Button>
               )}
               {userPlayer?.is_host && game.game_phase === 'finished' && (
-                <Button onClick={completeGame} variant="outline" size="sm">
+                <Button onClick={completeGame} variant="outline" size="sm" className="text-xs lg:text-sm">
                   Complete Game
                 </Button>
               )}
-              <span className="text-sm text-muted-foreground">
+              <span className="text-xs lg:text-sm text-muted-foreground hidden sm:block">
                 {players.length} Players
               </span>
             </div>
           </div>
 
           {/* Game Map */}
-          <div className="flex-1">
+          <div className="flex-1 min-h-0">
             <GameMap
               countries={GAME_COUNTRIES}
               onCountrySelect={selectCountry}
@@ -618,17 +618,20 @@ const MultiplayerGame = () => {
           </div>
         </div>
 
-        {/* Sidebar */}
-        <div className="w-80 bg-card/95 backdrop-blur-sm border-l overflow-y-auto">
-          <div className="p-4 space-y-4">
+        {/* Sidebar - Mobile: Bottom panel, Desktop: Right sidebar */}
+        <div className="w-full lg:w-80 bg-card/95 backdrop-blur-sm border-t lg:border-t-0 lg:border-l overflow-y-auto max-h-96 lg:max-h-none">
+          <div className="p-3 lg:p-4 space-y-3 lg:space-y-4">
             {game.game_phase === 'finished' && (
-              <WarDeclaration
-                gameId={gameId!}
-                currentPlayer={userPlayer!}
-                players={players}
-                gameCountries={gameCountries}
-                isPlayerTurn={game.current_player_turn === userPlayer?.player_order}
-              />
+              <div className="space-y-3">
+                <h3 className="font-semibold text-sm lg:text-base">War Declaration</h3>
+                <WarDeclaration
+                  gameId={gameId!}
+                  currentPlayer={userPlayer!}
+                  players={players}
+                  gameCountries={gameCountries}
+                  isPlayerTurn={game.current_player_turn === userPlayer?.player_order}
+                />
+              </div>
             )}
             
             <EmpireStats
