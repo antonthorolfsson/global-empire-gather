@@ -944,66 +944,68 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
         )}
       </div>
 
-      {/* Chess Clock */}
-      <div className="flex justify-between items-center w-full max-w-md">
-        <div className={`p-3 border-2 rounded-lg transition-colors ${
-          currentPlayer === 'black' && gameStatus === 'playing' ? 'border-primary bg-primary/10' : 'border-border bg-card'
-        }`}>
-          <div className="text-center">
-            <div className="text-sm font-medium text-muted-foreground">Black</div>
-            <div className={`text-xl font-mono font-bold ${
-              blackTimeRemaining <= 30 ? 'text-destructive' : 'text-foreground'
-            }`}>
-              {formatTime(blackTimeRemaining)}
-            </div>
-          </div>
+      <div className="flex items-start gap-6">
+        <div className="grid grid-cols-8 gap-0 border-2 border-border bg-card">
+          {(userPlayerSide === 'black' ? [...board].reverse() : board).map((row, displayRowIndex) => 
+            (userPlayerSide === 'black' ? [...row].reverse() : row).map((square, displayColIndex) => {
+              // Calculate actual indices for highlighting
+              const actualRowIndex = userPlayerSide === 'black' ? 7 - displayRowIndex : displayRowIndex;
+              const actualColIndex = userPlayerSide === 'black' ? 7 - displayColIndex : displayColIndex;
+              const actualSquare = board[actualRowIndex][actualColIndex];
+              
+              return (
+                <div
+                  key={`${actualRowIndex}-${actualColIndex}`}
+                  className={`
+                    w-12 h-12 flex items-center justify-center text-2xl cursor-pointer border border-border/20
+                    ${(actualRowIndex + actualColIndex) % 2 === 0 ? 'bg-amber-100 dark:bg-amber-900/30' : 'bg-amber-200 dark:bg-amber-800/30'}
+                    ${actualSquare.isSelected ? 'bg-blue-300 dark:bg-blue-600' : ''}
+                    ${actualSquare.isPossibleMove ? 'bg-green-300 dark:bg-green-600' : ''}
+                    ${!isMyTurn ? 'cursor-not-allowed opacity-75' : 'hover:bg-accent/50'}
+                    transition-colors
+                  `}
+                  onClick={() => handleSquareClick(displayRowIndex, displayColIndex)}
+                >
+                  {getPieceSymbol(actualSquare.piece)}
+                </div>
+              );
+            })
+          )}
         </div>
-        
-        <div className="text-center">
-          <div className="text-lg font-bold">VS</div>
-          <div className="text-xs text-muted-foreground">5+0</div>
-        </div>
-        
-        <div className={`p-3 border-2 rounded-lg transition-colors ${
-          currentPlayer === 'white' && gameStatus === 'playing' ? 'border-primary bg-primary/10' : 'border-border bg-card'
-        }`}>
-          <div className="text-center">
-            <div className="text-sm font-medium text-muted-foreground">White</div>
-            <div className={`text-xl font-mono font-bold ${
-              whiteTimeRemaining <= 30 ? 'text-destructive' : 'text-foreground'
-            }`}>
-              {formatTime(whiteTimeRemaining)}
-            </div>
-          </div>
-        </div>
-      </div>
 
-      <div className="grid grid-cols-8 gap-0 border-2 border-border bg-card">
-        {(userPlayerSide === 'black' ? [...board].reverse() : board).map((row, displayRowIndex) => 
-          (userPlayerSide === 'black' ? [...row].reverse() : row).map((square, displayColIndex) => {
-            // Calculate actual indices for highlighting
-            const actualRowIndex = userPlayerSide === 'black' ? 7 - displayRowIndex : displayRowIndex;
-            const actualColIndex = userPlayerSide === 'black' ? 7 - displayColIndex : displayColIndex;
-            const actualSquare = board[actualRowIndex][actualColIndex];
-            
-            return (
-              <div
-                key={`${actualRowIndex}-${actualColIndex}`}
-                className={`
-                  w-12 h-12 flex items-center justify-center text-2xl cursor-pointer border border-border/20
-                  ${(actualRowIndex + actualColIndex) % 2 === 0 ? 'bg-amber-100 dark:bg-amber-900/30' : 'bg-amber-200 dark:bg-amber-800/30'}
-                  ${actualSquare.isSelected ? 'bg-blue-300 dark:bg-blue-600' : ''}
-                  ${actualSquare.isPossibleMove ? 'bg-green-300 dark:bg-green-600' : ''}
-                  ${!isMyTurn ? 'cursor-not-allowed opacity-75' : 'hover:bg-accent/50'}
-                  transition-colors
-                `}
-                onClick={() => handleSquareClick(displayRowIndex, displayColIndex)}
-              >
-                {getPieceSymbol(actualSquare.piece)}
+        {/* Chess Clock - Right side */}
+        <div className="flex flex-col space-y-4">
+          <div className={`p-3 border-2 rounded-lg transition-colors ${
+            currentPlayer === 'black' && gameStatus === 'playing' ? 'border-primary bg-primary/10' : 'border-border bg-card'
+          }`}>
+            <div className="text-center">
+              <div className="text-sm font-medium text-muted-foreground">Black</div>
+              <div className={`text-xl font-mono font-bold ${
+                blackTimeRemaining <= 30 ? 'text-destructive' : 'text-foreground'
+              }`}>
+                {formatTime(blackTimeRemaining)}
               </div>
-            );
-          })
-        )}
+            </div>
+          </div>
+          
+          <div className="text-center">
+            <div className="text-lg font-bold">VS</div>
+            <div className="text-xs text-muted-foreground">5+0</div>
+          </div>
+          
+          <div className={`p-3 border-2 rounded-lg transition-colors ${
+            currentPlayer === 'white' && gameStatus === 'playing' ? 'border-primary bg-primary/10' : 'border-border bg-card'
+          }`}>
+            <div className="text-center">
+              <div className="text-sm font-medium text-muted-foreground">White</div>
+              <div className={`text-xl font-mono font-bold ${
+                whiteTimeRemaining <= 30 ? 'text-destructive' : 'text-foreground'
+              }`}>
+                {formatTime(whiteTimeRemaining)}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="flex gap-4">
