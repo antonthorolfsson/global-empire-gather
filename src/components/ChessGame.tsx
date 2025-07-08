@@ -149,24 +149,24 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
     }
 
     // Start new timer only if we're the current player and game is playing
-    if (gameStatus === 'playing' && isMyTurn) {
+    if (gameStatus === 'playing' && isMyTurn && moveNumber > 0) { // Only start after first move
       console.log('ChessGame: Starting timer for', currentPlayer);
       const newInterval = setInterval(() => {
         if (currentPlayer === 'white') {
           setWhiteTimeRemaining(prev => {
             const newTime = Math.max(0, prev - 1);
-            // Update database every 5 seconds to reduce load
-            if (newTime % 5 === 0 && newTime !== prev) {
-              updateTimerInDatabase(newTime, blackTimeRemaining);
+            // Update database every 10 seconds to reduce load
+            if (newTime % 10 === 0) {
+              updateTimerInDatabase(newTime, null);
             }
             return newTime;
           });
         } else {
           setBlackTimeRemaining(prev => {
             const newTime = Math.max(0, prev - 1);
-            // Update database every 5 seconds to reduce load
-            if (newTime % 5 === 0 && newTime !== prev) {
-              updateTimerInDatabase(whiteTimeRemaining, newTime);
+            // Update database every 10 seconds to reduce load
+            if (newTime % 10 === 0) {
+              updateTimerInDatabase(null, newTime);
             }
             return newTime;
           });
@@ -175,7 +175,7 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
 
       setTimerInterval(newInterval);
     }
-  }, [gameStatus, isMyTurn, currentPlayer, timerInterval, blackTimeRemaining, whiteTimeRemaining]);
+  }, [gameStatus, isMyTurn, currentPlayer, moveNumber]);
 
   const stopTimer = useCallback(() => {
     console.log('ChessGame: Stopping timer');
@@ -185,17 +185,17 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
     }
   }, [timerInterval]);
 
-  const updateTimerInDatabase = async (whiteTime: number, blackTime: number) => {
+  const updateTimerInDatabase = async (whiteTime: number | null, blackTime: number | null) => {
     if (!chessGameId) return;
 
     try {
+      const updateData: any = { current_player: currentPlayer };
+      if (whiteTime !== null) updateData.white_time_remaining = whiteTime;
+      if (blackTime !== null) updateData.black_time_remaining = blackTime;
+      
       await supabase
         .from('chess_games')
-        .update({
-          white_time_remaining: whiteTime,
-          black_time_remaining: blackTime,
-          current_player: currentPlayer
-        })
+        .update(updateData)
         .eq('id', chessGameId);
     } catch (error: any) {
       console.error('Error updating timer:', error);
