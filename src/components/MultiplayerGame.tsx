@@ -660,7 +660,7 @@ const MultiplayerGame = () => {
       {/* Mobile Tabbed Layout */}
       <div className="lg:hidden h-[calc(100vh-4rem)]">
         <Tabs defaultValue="map" className="flex flex-col h-full">
-          <TabsList className="grid w-full grid-cols-3 mx-4 my-2">
+          <TabsList className={`grid w-full mx-4 my-2 ${game.game_phase === 'finished' ? 'grid-cols-3' : 'grid-cols-2'}`}>
             <TabsTrigger value="map" className="gap-2">
               <Map className="w-4 h-4" />
               <span className="hidden sm:inline">Map</span>
