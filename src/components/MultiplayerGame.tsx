@@ -8,9 +8,10 @@ import ColorPickerDialog from './ColorPickerDialog';
 import WarDeclaration from './WarDeclaration';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { GAME_COUNTRIES } from '@/data/gameCountries';
-import { ArrowLeft, Play, Users, Crown } from 'lucide-react';
+import { ArrowLeft, Play, Users, Crown, Map, BarChart3, Swords } from 'lucide-react';
 import { Loader2 } from 'lucide-react';
 
 interface GamePlayer {
@@ -569,35 +570,35 @@ const MultiplayerGame = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-ocean to-primary">
-      <div className="flex flex-col lg:flex-row h-screen">
+      {/* Header */}
+      <div className="h-16 flex items-center justify-between px-4 lg:px-6 bg-card/90 backdrop-blur-sm border-b">
+        <div className="flex items-center gap-2 lg:gap-4">
+          <Button variant="ghost" size="sm" onClick={() => navigate('/lobby')}>
+            <ArrowLeft className="w-4 h-4" />
+          </Button>
+          <h1 className="text-lg lg:text-xl font-bold text-card-foreground truncate">{game.name}</h1>
+        </div>
+        <div className="flex items-center gap-2 lg:gap-4">
+          {userPlayer?.is_host && game.game_phase === 'playing' && (
+            <Button onClick={endVotingPhase} variant="outline" size="sm" className="text-xs lg:text-sm">
+              End voting
+            </Button>
+          )}
+          {userPlayer?.is_host && game.game_phase === 'finished' && (
+            <Button onClick={completeGame} variant="outline" size="sm" className="text-xs lg:text-sm">
+              Complete Game
+            </Button>
+          )}
+          <span className="text-xs lg:text-sm text-muted-foreground hidden sm:block">
+            {players.length} Players
+          </span>
+        </div>
+      </div>
+
+      {/* Desktop Layout */}
+      <div className="hidden lg:flex h-[calc(100vh-4rem)]">
         {/* Main Game Area */}
         <div className="flex-1 flex flex-col min-h-0">
-          {/* Header */}
-          <div className="h-16 flex items-center justify-between px-4 lg:px-6 bg-card/90 backdrop-blur-sm border-b">
-            <div className="flex items-center gap-2 lg:gap-4">
-              <Button variant="ghost" size="sm" onClick={() => navigate('/lobby')}>
-                <ArrowLeft className="w-4 h-4" />
-              </Button>
-              <h1 className="text-lg lg:text-xl font-bold text-card-foreground truncate">{game.name}</h1>
-            </div>
-            <div className="flex items-center gap-2 lg:gap-4">
-              {userPlayer?.is_host && game.game_phase === 'playing' && (
-                <Button onClick={endVotingPhase} variant="outline" size="sm" className="text-xs lg:text-sm">
-                  End voting
-                </Button>
-              )}
-              {userPlayer?.is_host && game.game_phase === 'finished' && (
-                <Button onClick={completeGame} variant="outline" size="sm" className="text-xs lg:text-sm">
-                  Complete Game
-                </Button>
-              )}
-              <span className="text-xs lg:text-sm text-muted-foreground hidden sm:block">
-                {players.length} Players
-              </span>
-            </div>
-          </div>
-
-          {/* Game Map */}
           <div className="flex-1 min-h-0">
             <GameMap
               countries={GAME_COUNTRIES}
@@ -618,12 +619,12 @@ const MultiplayerGame = () => {
           </div>
         </div>
 
-        {/* Sidebar - Mobile: Bottom panel, Desktop: Right sidebar */}
-        <div className="w-full lg:w-80 bg-card/95 backdrop-blur-sm border-t lg:border-t-0 lg:border-l overflow-y-auto max-h-96 lg:max-h-none">
-          <div className="p-3 lg:p-4 space-y-3 lg:space-y-4">
+        {/* Desktop Sidebar */}
+        <div className="w-80 bg-card/95 backdrop-blur-sm border-l overflow-y-auto">
+          <div className="p-4 space-y-4">
             {game.game_phase === 'finished' && (
               <div className="space-y-3">
-                <h3 className="font-semibold text-sm lg:text-base">War Declaration</h3>
+                <h3 className="font-semibold">War Declaration</h3>
                 <WarDeclaration
                   gameId={gameId!}
                   currentPlayer={userPlayer!}
@@ -654,6 +655,83 @@ const MultiplayerGame = () => {
             />
           </div>
         </div>
+      </div>
+
+      {/* Mobile Tabbed Layout */}
+      <div className="lg:hidden h-[calc(100vh-4rem)]">
+        <Tabs defaultValue="map" className="flex flex-col h-full">
+          <TabsList className="grid w-full grid-cols-3 mx-4 my-2">
+            <TabsTrigger value="map" className="gap-2">
+              <Map className="w-4 h-4" />
+              <span className="hidden sm:inline">Map</span>
+            </TabsTrigger>
+            <TabsTrigger value="stats" className="gap-2">
+              <BarChart3 className="w-4 h-4" />
+              <span className="hidden sm:inline">Stats</span>
+            </TabsTrigger>
+            {game.game_phase === 'finished' && (
+              <TabsTrigger value="wars" className="gap-2">
+                <Swords className="w-4 h-4" />
+                <span className="hidden sm:inline">Wars</span>
+              </TabsTrigger>
+            )}
+          </TabsList>
+          
+          <TabsContent value="map" className="flex-1 m-0 p-0">
+            <GameMap
+              countries={GAME_COUNTRIES}
+              onCountrySelect={selectCountry}
+              currentPlayer={(() => {
+                const currentTurnPlayer = players.find(p => p.player_order === game?.current_player_turn);
+                return currentTurnPlayer?.player_name || '';
+              })()}
+              selectedCountries={selectedCountriesArray}
+              players={players.map(p => ({ 
+                id: p.id, 
+                name: p.player_name, 
+                color: p.color, 
+                countries: gameStatsCountries.filter(c => c.selectedBy === p.player_name).map(c => c.id),
+                isActive: p.player_order === game?.current_player_turn
+              }))}
+            />
+          </TabsContent>
+          
+          <TabsContent value="stats" className="flex-1 m-0 p-0 overflow-y-auto">
+            <EmpireStats
+              players={players.map(p => ({ 
+                id: p.id, 
+                name: p.player_name, 
+                color: p.color,
+                countries: gameStatsCountries.filter(c => c.selectedBy === p.player_name).map(c => c.id),
+                isActive: p.player_order === game?.current_player_turn
+              }))}
+              countries={gameStatsCountries}
+              currentPlayer={userPlayer ? { 
+                id: userPlayer.id, 
+                name: userPlayer.player_name, 
+                color: userPlayer.color,
+                countries: gameStatsCountries.filter(c => c.selectedBy === userPlayer.player_name).map(c => c.id),
+                isActive: false
+              } : undefined}
+              gamePhase={game.game_phase as 'setup' | 'selection' | 'finished'}
+            />
+          </TabsContent>
+          
+          {game.game_phase === 'finished' && (
+            <TabsContent value="wars" className="flex-1 m-0 p-4 overflow-y-auto">
+              <div className="space-y-3">
+                <h3 className="font-semibold">War Declaration</h3>
+                <WarDeclaration
+                  gameId={gameId!}
+                  currentPlayer={userPlayer!}
+                  players={players}
+                  gameCountries={gameCountries}
+                  isPlayerTurn={game.current_player_turn === userPlayer?.player_order}
+                />
+              </div>
+            </TabsContent>
+          )}
+        </Tabs>
       </div>
     </div>
   );
