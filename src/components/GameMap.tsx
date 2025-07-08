@@ -225,8 +225,12 @@ const GameMap: React.FC<GameMapProps> = ({
           console.log(`GameMap: Country ${countryId} owned by ${owner.name} (${owner.color})`);
         }
         
-        // Remove any existing styles first
+        // Remove any existing styles and attributes first
         path.style.cssText = '';
+        path.removeAttribute('fill');
+        path.removeAttribute('stroke');
+        path.removeAttribute('stroke-width');
+        path.removeAttribute('style');
         
         // Apply current styling based on ownership
         if (owner) {
@@ -238,6 +242,7 @@ const GameMap: React.FC<GameMapProps> = ({
           path.style.cursor = 'default';
           path.style.transition = 'all 0.2s ease';
           path.style.opacity = '1';
+          console.log(`GameMap: Applied owned styling to ${countryId}:`, path.getAttribute('fill'), path.getAttribute('stroke'));
         } else {
           // Country is unowned - black with white outline
           path.setAttribute('fill', '#000000');
@@ -247,6 +252,7 @@ const GameMap: React.FC<GameMapProps> = ({
           path.style.transition = 'all 0.2s ease';
           path.style.opacity = '1';
           path.style.filter = 'none';
+          console.log(`GameMap: Applied unowned styling to ${countryId}:`, path.getAttribute('fill'), path.getAttribute('stroke'));
         }
       });
     };
