@@ -245,33 +245,37 @@ const GameMap: React.FC<GameMapProps> = ({
         }
         
         // Remove any existing styles and attributes first
-        path.style.cssText = '';
         path.removeAttribute('fill');
         path.removeAttribute('stroke');
         path.removeAttribute('stroke-width');
         path.removeAttribute('style');
+        path.removeAttribute('class');
+        path.style.cssText = '';
         
-        // Apply current styling based on ownership
+        // Apply current styling based on ownership using SVG attributes
         if (owner) {
           // Country is owned - apply player color without outline
-          path.style.fill = owner.color;
-          path.style.stroke = 'none';
-          path.style.strokeWidth = '0';
-          path.style.filter = `drop-shadow(0 0 4px ${owner.color})`;
-          path.style.cursor = 'default';
-          path.style.transition = 'all 0.2s ease';
-          path.style.opacity = '1';
-          console.log(`GameMap: Applied owned styling to ${countryId}:`, path.style.fill, path.style.stroke);
+          path.setAttribute('fill', owner.color);
+          path.setAttribute('stroke', 'none');
+          path.setAttribute('stroke-width', '0');
+          path.setAttribute('style', `
+            filter: drop-shadow(0 0 4px ${owner.color});
+            cursor: default;
+            transition: all 0.2s ease;
+            opacity: 1;
+          `);
+          console.log(`GameMap: Applied owned styling to ${countryId}:`, owner.color);
         } else {
           // Country is unowned - black with white outline
-          path.style.fill = '#000000';
-          path.style.stroke = '#ffffff';
-          path.style.strokeWidth = '1';
-          path.style.cursor = 'pointer';
-          path.style.transition = 'all 0.2s ease';
-          path.style.opacity = '1';
-          path.style.filter = 'none';
-          console.log(`GameMap: Applied unowned styling to ${countryId}:`, path.style.fill, path.style.stroke);
+          path.setAttribute('fill', '#000000');
+          path.setAttribute('stroke', '#ffffff');
+          path.setAttribute('stroke-width', '2');
+          path.setAttribute('style', `
+            cursor: pointer;
+            transition: all 0.2s ease;
+            opacity: 1;
+          `);
+          console.log(`GameMap: Applied unowned styling to ${countryId}:`, '#000000 with #ffffff stroke');
         }
       });
     };
@@ -349,7 +353,7 @@ const GameMap: React.FC<GameMapProps> = ({
             onTouchEnd={handleTouchEnd}
             style={{ 
               userSelect: 'none',
-              touchAction: 'pan-x pan-y' // Allow custom pan handling but prevent zoom
+              touchAction: 'manipulation' // Allow clicks and basic gestures
             }}
           >
             <div
