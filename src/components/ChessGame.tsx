@@ -944,7 +944,25 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
         )}
       </div>
 
-      <div className="flex items-start gap-6">
+      <div className="flex flex-col items-center space-y-4">
+        {/* Top timer - Black player (positioned based on user's perspective) */}
+        <div className={`p-3 border-2 rounded-lg transition-colors ${
+          (userPlayerSide === 'black' ? currentPlayer === 'black' : currentPlayer === 'black') && gameStatus === 'playing' 
+            ? 'border-primary bg-primary/10' : 'border-border bg-card'
+        }`}>
+          <div className="text-center">
+            <div className="text-sm font-medium text-muted-foreground">
+              {userPlayerSide === 'black' ? 'You (Black)' : 'Opponent (Black)'}
+            </div>
+            <div className={`text-xl font-mono font-bold ${
+              blackTimeRemaining <= 30 ? 'text-destructive' : 'text-foreground'
+            }`}>
+              {formatTime(blackTimeRemaining)}
+            </div>
+          </div>
+        </div>
+
+        {/* Chess Board */}
         <div className="grid grid-cols-8 gap-0 border-2 border-border bg-card">
           {(userPlayerSide === 'black' ? [...board].reverse() : board).map((row, displayRowIndex) => 
             (userPlayerSide === 'black' ? [...row].reverse() : row).map((square, displayColIndex) => {
@@ -973,36 +991,19 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
           )}
         </div>
 
-        {/* Chess Clock - Right side */}
-        <div className="flex flex-col space-y-4">
-          <div className={`p-3 border-2 rounded-lg transition-colors ${
-            currentPlayer === 'black' && gameStatus === 'playing' ? 'border-primary bg-primary/10' : 'border-border bg-card'
-          }`}>
-            <div className="text-center">
-              <div className="text-sm font-medium text-muted-foreground">Black</div>
-              <div className={`text-xl font-mono font-bold ${
-                blackTimeRemaining <= 30 ? 'text-destructive' : 'text-foreground'
-              }`}>
-                {formatTime(blackTimeRemaining)}
-              </div>
-            </div>
-          </div>
-          
+        {/* Bottom timer - White player (positioned based on user's perspective) */}
+        <div className={`p-3 border-2 rounded-lg transition-colors ${
+          (userPlayerSide === 'white' ? currentPlayer === 'white' : currentPlayer === 'white') && gameStatus === 'playing' 
+            ? 'border-primary bg-primary/10' : 'border-border bg-card'
+        }`}>
           <div className="text-center">
-            <div className="text-lg font-bold">VS</div>
-            <div className="text-xs text-muted-foreground">5+0</div>
-          </div>
-          
-          <div className={`p-3 border-2 rounded-lg transition-colors ${
-            currentPlayer === 'white' && gameStatus === 'playing' ? 'border-primary bg-primary/10' : 'border-border bg-card'
-          }`}>
-            <div className="text-center">
-              <div className="text-sm font-medium text-muted-foreground">White</div>
-              <div className={`text-xl font-mono font-bold ${
-                whiteTimeRemaining <= 30 ? 'text-destructive' : 'text-foreground'
-              }`}>
-                {formatTime(whiteTimeRemaining)}
-              </div>
+            <div className="text-sm font-medium text-muted-foreground">
+              {userPlayerSide === 'white' ? 'You (White)' : 'Opponent (White)'}
+            </div>
+            <div className={`text-xl font-mono font-bold ${
+              whiteTimeRemaining <= 30 ? 'text-destructive' : 'text-foreground'
+            }`}>
+              {formatTime(whiteTimeRemaining)}
             </div>
           </div>
         </div>
