@@ -58,8 +58,8 @@ const GameMap: React.FC<GameMapProps> = ({
     if (owner) {
       return {
         fill: owner.color,
-        stroke: 'hsl(var(--accent))',
-        strokeWidth: '2',
+        stroke: 'hsl(var(--border))',
+        strokeWidth: '1',
         filter: `drop-shadow(0 0 4px ${owner.color})`,
         cursor: 'default'
       };
@@ -229,8 +229,8 @@ const GameMap: React.FC<GameMapProps> = ({
         if (owner) {
           // Country is owned - apply player color
           path.style.fill = owner.color;
-          path.style.stroke = 'hsl(var(--accent))';
-          path.style.strokeWidth = '2';
+          path.style.stroke = 'hsl(var(--border))';
+          path.style.strokeWidth = '1';
           path.style.filter = `drop-shadow(0 0 4px ${owner.color})`;
           path.style.cursor = 'default';
           path.style.transition = 'all 0.2s ease';
