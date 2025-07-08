@@ -133,9 +133,14 @@ const GameMap: React.FC<GameMapProps> = ({
   };
 
   // Touch event handlers for pinch zoom
+  const [touchStartTime, setTouchStartTime] = useState(0);
+  const [touchMoved, setTouchMoved] = useState(false);
+  
   const handleTouchStart = (e: React.TouchEvent) => {
     setIsTouch(true);
     setTouchCount(e.touches.length);
+    setTouchStartTime(Date.now());
+    setTouchMoved(false);
     
     if (e.touches.length === 2) {
       // Two fingers - start pinch zoom
@@ -144,8 +149,7 @@ const GameMap: React.FC<GameMapProps> = ({
       setInitialZoom(zoom);
       e.preventDefault();
     } else if (e.touches.length === 1) {
-      // Single finger - start drag
-      setIsDragging(true);
+      // Single finger - prepare for drag but don't start yet
       setLastMousePos({ 
         x: e.touches[0].clientX, 
         y: e.touches[0].clientY 
@@ -154,42 +158,57 @@ const GameMap: React.FC<GameMapProps> = ({
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    e.preventDefault();
-    
     if (e.touches.length === 2 && initialPinchDistance > 0) {
       // Two fingers - pinch zoom
+      e.preventDefault();
       const currentDistance = getDistance(e.touches[0], e.touches[1]);
       const scale = currentDistance / initialPinchDistance;
       const newZoom = Math.max(0.5, Math.min(5, initialZoom * scale));
       setZoom(newZoom);
-    } else if (e.touches.length === 1 && isDragging && initialPinchDistance === 0) {
-      // Single finger - drag (only if not in pinch mode)
+      setTouchMoved(true);
+    } else if (e.touches.length === 1 && initialPinchDistance === 0) {
+      // Single finger - check if it's a significant movement for dragging
       const touch = e.touches[0];
       const deltaX = touch.clientX - lastMousePos.x;
       const deltaY = touch.clientY - lastMousePos.y;
+      const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
       
-      setPan(prev => ({
-        x: prev.x + deltaX / zoom,
-        y: prev.y + deltaY / zoom
-      }));
-      
-      setLastMousePos({ x: touch.clientX, y: touch.clientY });
+      if (distance > 10) { // Only start dragging if moved more than 10px
+        setTouchMoved(true);
+        setIsDragging(true);
+        e.preventDefault();
+        
+        setPan(prev => ({
+          x: prev.x + deltaX / zoom,
+          y: prev.y + deltaY / zoom
+        }));
+        
+        setLastMousePos({ x: touch.clientX, y: touch.clientY });
+      }
     }
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
     if (e.touches.length === 0) {
       // All fingers lifted
+      const touchDuration = Date.now() - touchStartTime;
+      
+      // If it was a quick tap without movement, don't prevent default to allow click events
+      if (!touchMoved && touchDuration < 200) {
+        // This is a tap, let the click event through
+      } else {
+        e.preventDefault();
+      }
+      
       setIsDragging(false);
       setIsTouch(false);
       setInitialPinchDistance(0);
       setTouchCount(0);
+      setTouchMoved(false);
     } else if (e.touches.length === 1 && touchCount === 2) {
       // Went from 2 fingers to 1 finger
       setInitialPinchDistance(0);
       setTouchCount(1);
-      // Start single finger drag
-      setIsDragging(true);
       setLastMousePos({ 
         x: e.touches[0].clientX, 
         y: e.touches[0].clientY 
@@ -235,24 +254,24 @@ const GameMap: React.FC<GameMapProps> = ({
         // Apply current styling based on ownership
         if (owner) {
           // Country is owned - apply player color without outline
-          path.setAttribute('fill', owner.color);
-          path.setAttribute('stroke', 'none');
-          path.setAttribute('stroke-width', '0');
+          path.style.fill = owner.color;
+          path.style.stroke = 'none';
+          path.style.strokeWidth = '0';
           path.style.filter = `drop-shadow(0 0 4px ${owner.color})`;
           path.style.cursor = 'default';
           path.style.transition = 'all 0.2s ease';
           path.style.opacity = '1';
-          console.log(`GameMap: Applied owned styling to ${countryId}:`, path.getAttribute('fill'), path.getAttribute('stroke'));
+          console.log(`GameMap: Applied owned styling to ${countryId}:`, path.style.fill, path.style.stroke);
         } else {
           // Country is unowned - black with white outline
-          path.setAttribute('fill', '#000000');
-          path.setAttribute('stroke', '#ffffff');
-          path.setAttribute('stroke-width', '1');
+          path.style.fill = '#000000';
+          path.style.stroke = '#ffffff';
+          path.style.strokeWidth = '1';
           path.style.cursor = 'pointer';
           path.style.transition = 'all 0.2s ease';
           path.style.opacity = '1';
           path.style.filter = 'none';
-          console.log(`GameMap: Applied unowned styling to ${countryId}:`, path.getAttribute('fill'), path.getAttribute('stroke'));
+          console.log(`GameMap: Applied unowned styling to ${countryId}:`, path.style.fill, path.style.stroke);
         }
       });
     };
@@ -330,7 +349,7 @@ const GameMap: React.FC<GameMapProps> = ({
             onTouchEnd={handleTouchEnd}
             style={{ 
               userSelect: 'none',
-              touchAction: 'none' // Prevent default touch behaviors
+              touchAction: 'pan-x pan-y' // Allow custom pan handling but prevent zoom
             }}
           >
             <div
