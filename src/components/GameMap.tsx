@@ -162,7 +162,7 @@ const GameMap: React.FC<GameMapProps> = ({
       const scale = currentDistance / initialPinchDistance;
       const newZoom = Math.max(0.5, Math.min(5, initialZoom * scale));
       setZoom(newZoom);
-    } else if (e.touches.length === 1 && isDragging && !isTouch) {
+    } else if (e.touches.length === 1 && isDragging && initialPinchDistance === 0) {
       // Single finger - drag (only if not in pinch mode)
       const touch = e.touches[0];
       const deltaX = touch.clientX - lastMousePos.x;
