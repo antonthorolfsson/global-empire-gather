@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/AuthWrapper';
 import { Button } from '@/components/ui/button';
@@ -79,16 +79,6 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
     setIsMyTurn(currentPlayer === userPlayerSide);
   }, [currentPlayer, userPlayerSide]);
 
-  useEffect(() => {
-    console.log('ChessGame: Timer effect - gameStatus:', gameStatus, 'isMyTurn:', isMyTurn);
-    // Start/stop timer based on current player and game status
-    if (gameStatus === 'playing' && isMyTurn) {
-      startTimer();
-    } else {
-      stopTimer();
-    }
-  }, [gameStatus, isMyTurn]);
-
   // Timer effect
   useEffect(() => {
     if (gameStatus === 'playing' && (whiteTimeRemaining <= 0 || blackTimeRemaining <= 0)) {
@@ -152,7 +142,7 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
     }
   };
 
-  const startTimer = () => {
+  const startTimer = useCallback(() => {
     // Clear existing timer
     if (timerInterval) {
       clearInterval(timerInterval);
@@ -160,6 +150,7 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
 
     // Start new timer only if we're the current player and game is playing
     if (gameStatus === 'playing' && isMyTurn) {
+      console.log('ChessGame: Starting timer for', currentPlayer);
       const newInterval = setInterval(() => {
         if (currentPlayer === 'white') {
           setWhiteTimeRemaining(prev => {
@@ -184,14 +175,15 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
 
       setTimerInterval(newInterval);
     }
-  };
+  }, [gameStatus, isMyTurn, currentPlayer, timerInterval, blackTimeRemaining, whiteTimeRemaining]);
 
-  const stopTimer = () => {
+  const stopTimer = useCallback(() => {
+    console.log('ChessGame: Stopping timer');
     if (timerInterval) {
       clearInterval(timerInterval);
       setTimerInterval(null);
     }
-  };
+  }, [timerInterval]);
 
   const updateTimerInDatabase = async (whiteTime: number, blackTime: number) => {
     if (!chessGameId) return;
@@ -263,6 +255,16 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
     const remainingSeconds = seconds % 60;
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
+
+  // Timer control effect - must be after startTimer and stopTimer are defined
+  useEffect(() => {
+    console.log('ChessGame: Timer control effect - gameStatus:', gameStatus, 'isMyTurn:', isMyTurn);
+    if (gameStatus === 'playing' && isMyTurn) {
+      startTimer();
+    } else {
+      stopTimer();
+    }
+  }, [gameStatus, isMyTurn, startTimer, stopTimer]);
 
   const setupRealtimeSubscription = () => {
     console.log('ChessGame: Setting up realtime subscription for warId:', warId);
