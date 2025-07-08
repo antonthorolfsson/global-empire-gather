@@ -227,20 +227,22 @@ const GameMap: React.FC<GameMapProps> = ({
         
         // Apply current styling based on ownership
         if (owner) {
-          // Country is owned - apply player color
+          // Country is owned - apply player color with enhanced outline
           path.style.fill = owner.color;
-          path.style.stroke = 'hsl(var(--border))';
-          path.style.strokeWidth = '1';
-          path.style.filter = `drop-shadow(0 0 4px ${owner.color})`;
+          path.style.stroke = owner.color;
+          path.style.strokeWidth = '2';
+          path.style.filter = `drop-shadow(0 0 6px ${owner.color}) brightness(1.1)`;
           path.style.cursor = 'default';
           path.style.transition = 'all 0.2s ease';
+          path.style.opacity = '0.8';
         } else {
-          // Country is unowned - apply default styling
+          // Country is unowned - apply default styling with visible outline
           path.style.fill = 'hsl(var(--land))';
           path.style.stroke = 'hsl(var(--border))';
-          path.style.strokeWidth = '1';
+          path.style.strokeWidth = '1.5';
           path.style.cursor = 'pointer';
           path.style.transition = 'all 0.2s ease';
+          path.style.opacity = '0.7';
         }
       });
     };
