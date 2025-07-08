@@ -32,6 +32,13 @@ const GameMap: React.FC<GameMapProps> = ({
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [lastMousePos, setLastMousePos] = useState({ x: 0, y: 0 });
+  
+  // Touch/pinch zoom states
+  const [isTouch, setIsTouch] = useState(false);
+  const [initialPinchDistance, setInitialPinchDistance] = useState(0);
+  const [initialZoom, setInitialZoom] = useState(1);
+  const [touchCount, setTouchCount] = useState(0);
+  
   const mapContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -116,6 +123,78 @@ const GameMap: React.FC<GameMapProps> = ({
   const handleResetView = () => {
     setZoom(1);
     setPan({ x: 0, y: 0 });
+  };
+
+  // Helper function to calculate distance between two touch points
+  const getDistance = (touch1: React.Touch, touch2: React.Touch) => {
+    const dx = touch1.clientX - touch2.clientX;
+    const dy = touch1.clientY - touch2.clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  };
+
+  // Touch event handlers for pinch zoom
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setIsTouch(true);
+    setTouchCount(e.touches.length);
+    
+    if (e.touches.length === 2) {
+      // Two fingers - start pinch zoom
+      const distance = getDistance(e.touches[0], e.touches[1]);
+      setInitialPinchDistance(distance);
+      setInitialZoom(zoom);
+      e.preventDefault();
+    } else if (e.touches.length === 1) {
+      // Single finger - start drag
+      setIsDragging(true);
+      setLastMousePos({ 
+        x: e.touches[0].clientX, 
+        y: e.touches[0].clientY 
+      });
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    e.preventDefault();
+    
+    if (e.touches.length === 2 && initialPinchDistance > 0) {
+      // Two fingers - pinch zoom
+      const currentDistance = getDistance(e.touches[0], e.touches[1]);
+      const scale = currentDistance / initialPinchDistance;
+      const newZoom = Math.max(0.5, Math.min(5, initialZoom * scale));
+      setZoom(newZoom);
+    } else if (e.touches.length === 1 && isDragging && !isTouch) {
+      // Single finger - drag (only if not in pinch mode)
+      const touch = e.touches[0];
+      const deltaX = touch.clientX - lastMousePos.x;
+      const deltaY = touch.clientY - lastMousePos.y;
+      
+      setPan(prev => ({
+        x: prev.x + deltaX / zoom,
+        y: prev.y + deltaY / zoom
+      }));
+      
+      setLastMousePos({ x: touch.clientX, y: touch.clientY });
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (e.touches.length === 0) {
+      // All fingers lifted
+      setIsDragging(false);
+      setIsTouch(false);
+      setInitialPinchDistance(0);
+      setTouchCount(0);
+    } else if (e.touches.length === 1 && touchCount === 2) {
+      // Went from 2 fingers to 1 finger
+      setInitialPinchDistance(0);
+      setTouchCount(1);
+      // Start single finger drag
+      setIsDragging(true);
+      setLastMousePos({ 
+        x: e.touches[0].clientX, 
+        y: e.touches[0].clientY 
+      });
+    }
   };
 
   useEffect(() => {
@@ -234,7 +313,13 @@ const GameMap: React.FC<GameMapProps> = ({
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
-            style={{ userSelect: 'none' }}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            style={{ 
+              userSelect: 'none',
+              touchAction: 'none' // Prevent default touch behaviors
+            }}
           >
             <div
               id="world-map-container"
