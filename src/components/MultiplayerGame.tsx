@@ -660,17 +660,17 @@ const MultiplayerGame = () => {
       {/* Mobile Tabbed Layout */}
       <div className="lg:hidden h-[calc(100vh-4rem)]">
         <Tabs defaultValue="map" className="flex flex-col h-full">
-          <TabsList className={`grid w-full mx-2 my-2 ${game.game_phase === 'finished' ? 'grid-cols-3' : 'grid-cols-2'}`}>
-            <TabsTrigger value="map" className="gap-1 px-2 py-1.5">
+          <TabsList className="flex w-full mx-2 my-2">
+            <TabsTrigger value="map" className="flex-1 gap-1 px-2 py-1.5">
               <Map className="w-4 h-4" />
               <span className="text-xs">Map</span>
             </TabsTrigger>
-            <TabsTrigger value="stats" className="gap-1 px-2 py-1.5">
+            <TabsTrigger value="stats" className="flex-1 gap-1 px-2 py-1.5">
               <BarChart3 className="w-4 h-4" />
               <span className="text-xs">Stats</span>
             </TabsTrigger>
             {game.game_phase === 'finished' && (
-              <TabsTrigger value="wars" className="gap-1 px-2 py-1.5">
+              <TabsTrigger value="wars" className="flex-1 gap-1 px-2 py-1.5">
                 <Swords className="w-4 h-4" />
                 <span className="text-xs">Wars</span>
               </TabsTrigger>
