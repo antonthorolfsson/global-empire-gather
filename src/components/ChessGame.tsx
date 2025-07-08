@@ -426,12 +426,12 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
   const getPieceSymbol = (piece: ChessPiece | null): string => {
     if (!piece) return '';
     
+    // Use the same outline symbols for both colors
     const symbols = {
-      white: { king: '♔', queen: '♕', rook: '♖', bishop: '♗', knight: '♘', pawn: '♙' },
-      black: { king: '♚', queen: '♛', rook: '♜', bishop: '♝', knight: '♞', pawn: '♟' }
+      king: '♔', queen: '♕', rook: '♖', bishop: '♗', knight: '♘', pawn: '♙'
     };
     
-    return symbols[piece.color][piece.type];
+    return symbols[piece.type];
   };
 
   const getPieceClasses = (piece: ChessPiece | null): string => {
