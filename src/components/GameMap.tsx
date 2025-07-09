@@ -371,7 +371,7 @@ const GameMap: React.FC<GameMapProps> = ({
         stroke: #ffffff !important;
         stroke-width: 0.5px !important;
         cursor: pointer !important;
-        transition: all 0.2s ease !important;
+        transition: ${isDragging || isTouch ? 'none' : 'all 0.2s ease'} !important;
         opacity: 1 !important;
       }
     `;
@@ -481,8 +481,8 @@ const GameMap: React.FC<GameMapProps> = ({
                 background: 'linear-gradient(135deg, hsl(var(--ocean)), hsl(220 80% 35%))',
                 transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
                 transformOrigin: 'center',
-                transition: isDragging || isTouch ? 'none' : 'transform 0.2s ease-out',
-                willChange: isDragging || isTouch ? 'transform' : 'auto'
+                transition: 'none',
+                willChange: 'transform'
               }}
             />
           </div>
