@@ -203,6 +203,35 @@ const GameLobby = () => {
     }
   };
 
+  const startGame = async (gameId: string) => {
+    try {
+      const { error } = await supabase
+        .from('games')
+        .update({ 
+          status: 'active',
+          game_phase: 'selection',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', gameId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Game started!",
+        description: "The game has been started. Players can now select countries.",
+      });
+
+      fetchGames();
+      navigate(`/game/${gameId}`);
+    } catch (error: any) {
+      toast({
+        title: "Error starting game",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
   const deleteGame = async (gameId: string) => {
     try {
       const { error } = await supabase
@@ -371,6 +400,7 @@ const GameLobby = () => {
                 const isInGame = game.game_players.some(p => p.user_id === user?.id);
                 const canJoin = game.status === 'waiting' && !isInGame && game.game_players.length < 8;
                 const canResume = game.status === 'active' && isInGame;
+                const canStart = isCreator && game.status === 'waiting' && game.game_players.length >= 2;
                 
                 return (
                   <Card key={game.id} className="p-4 bg-card/95 backdrop-blur-sm">
@@ -431,6 +461,13 @@ const GameLobby = () => {
                           <Button onClick={() => navigate(`/game/${game.id}`)} className="gap-2 w-full sm:w-auto">
                             <GamepadIcon className="w-4 h-4" />
                             Resume Game
+                          </Button>
+                        )}
+
+                        {canStart && (
+                          <Button onClick={() => startGame(game.id)} className="gap-2 w-full sm:w-auto">
+                            <Play className="w-4 h-4" />
+                            Start Game
                           </Button>
                         )}
                         
