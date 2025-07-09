@@ -31,7 +31,7 @@ const handler = async (req: Request): Promise<Response> => {
     const invitationUrl = `${appUrl}/lobby?invitation=${invitationId}`;
 
     const emailResponse = await resend.emails.send({
-      from: "Game Invitations <onboarding@resend.dev>",
+      from: "Game Invitations <noreply@lovable.app>",
       to: [inviteeEmail],
       subject: `You're invited to join "${gameName}"!`,
       html: `
@@ -69,6 +69,12 @@ const handler = async (req: Request): Promise<Response> => {
     });
 
     console.log("Email sent successfully:", emailResponse);
+
+    // Check if there's an error in the response
+    if (emailResponse.error) {
+      console.error("Resend API error:", emailResponse.error);
+      throw new Error(`Email delivery failed: ${emailResponse.error}`);
+    }
 
     return new Response(JSON.stringify({ success: true, emailResponse }), {
       status: 200,
