@@ -189,15 +189,23 @@ const GameMap: React.FC<GameMapProps> = ({
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
+    console.log('Touch end - touchMoved:', touchMoved, 'touchCount:', touchCount, 'touches:', e.touches.length);
+    
     if (e.touches.length === 0) {
       // All fingers lifted
       const touchDuration = Date.now() - touchStartTime;
+      console.log('Touch duration:', touchDuration, 'touchMoved:', touchMoved);
       
-      // If it was a quick tap without movement, don't prevent default to allow click events
-      if (!touchMoved && touchDuration < 200) {
-        // This is a tap, let the click event through
-      } else {
-        e.preventDefault();
+      // If it was a quick tap without movement, trigger country selection
+      if (!touchMoved && touchDuration < 300 && touchCount === 1) {
+        console.log('Quick tap detected, checking for country under touch');
+        // Get the element under the original touch point
+        const target = e.target as Element;
+        if (target && target.tagName === 'path' && target.id) {
+          const countryId = target.id.toLowerCase();
+          console.log('Country tapped:', countryId);
+          handleCountryClick(countryId);
+        }
       }
       
       setIsDragging(false);
