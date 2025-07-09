@@ -473,14 +473,16 @@ const GameMap: React.FC<GameMapProps> = ({
           >
             <div
               id="world-map-container"
-              className={`w-full h-full ${isDragging || isTouch ? '' : 'transition-transform duration-200 ease-out'}`}
+              className="w-full h-full"
               dangerouslySetInnerHTML={{ 
                 __html: svgContent.replace('<svg', '<svg id="world-map-svg"')
               }}
               style={{
                 background: 'linear-gradient(135deg, hsl(var(--ocean)), hsl(220 80% 35%))',
                 transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
-                transformOrigin: 'center'
+                transformOrigin: 'center',
+                transition: isDragging || isTouch ? 'none' : 'transform 0.2s ease-out',
+                willChange: isDragging || isTouch ? 'transform' : 'auto'
               }}
             />
           </div>
