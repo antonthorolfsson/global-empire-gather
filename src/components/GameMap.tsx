@@ -274,7 +274,7 @@ const GameMap: React.FC<GameMapProps> = ({
         
         setTouchMoved(true);
       } else if (e.touches.length === 1 && initialPinchDistance === 0) {
-        // Single finger - ultra-responsive smooth panning
+        // Single finger - ultra-smooth panning with minimal processing
         const touch = e.touches[0];
         const deltaX = touch.clientX - lastMousePos.x;
         const deltaY = touch.clientY - lastMousePos.y;
@@ -285,23 +285,19 @@ const GameMap: React.FC<GameMapProps> = ({
           setIsDragging(true);
           e.preventDefault();
           
-          // Optimized pan sensitivity for smoothness
-          const baseSensitivity = 1.4;
-          const zoomFactor = Math.max(0.8, Math.min(2, zoom * 0.9)); // Balanced zoom scaling
-          const panSensitivity = baseSensitivity * zoomFactor;
-          
-          const adjustedDeltaX = deltaX * panSensitivity / zoom;
-          const adjustedDeltaY = deltaY * panSensitivity / zoom;
+          // Simplified pan calculation - no complex sensitivity adjustments
+          const panDeltaX = deltaX / zoom;
+          const panDeltaY = deltaY / zoom;
           
           setPan(prev => ({
-            x: prev.x + adjustedDeltaX,
-            y: prev.y + adjustedDeltaY
+            x: prev.x + panDeltaX,
+            y: prev.y + panDeltaY
           }));
           
-          // Simplified velocity calculation for momentum
+          // Simple velocity for momentum
           setVelocity({
-            x: adjustedDeltaX * 0.8, // Reduced for smoother momentum
-            y: adjustedDeltaY * 0.8
+            x: panDeltaX * 0.8,
+            y: panDeltaY * 0.8
           });
           
           setLastMousePos({ x: touch.clientX, y: touch.clientY });
