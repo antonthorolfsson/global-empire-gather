@@ -84,6 +84,11 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error(`Email delivery failed: ${JSON.stringify(emailResponse.error)}`);
     }
 
+    // Log the email ID for tracking
+    if (emailResponse.data) {
+      console.log("Email ID:", emailResponse.data.id);
+    }
+
     return new Response(JSON.stringify({ success: true, emailResponse }), {
       status: 200,
       headers: {
