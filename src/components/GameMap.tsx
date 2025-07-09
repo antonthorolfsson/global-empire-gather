@@ -38,6 +38,8 @@ const GameMap: React.FC<GameMapProps> = ({
   const [initialPinchDistance, setInitialPinchDistance] = useState(0);
   const [initialZoom, setInitialZoom] = useState(1);
   const [touchCount, setTouchCount] = useState(0);
+  const [initialPinchCenter, setInitialPinchCenter] = useState({ x: 0, y: 0 });
+  const [initialPan, setInitialPan] = useState({ x: 0, y: 0 });
   
   const mapContainerRef = useRef<HTMLDivElement>(null);
 
@@ -125,6 +127,14 @@ const GameMap: React.FC<GameMapProps> = ({
     setPan({ x: 0, y: 0 });
   };
 
+  // Helper function to calculate center between two touch points
+  const getTouchCenter = (touch1: React.Touch, touch2: React.Touch) => {
+    return {
+      x: (touch1.clientX + touch2.clientX) / 2,
+      y: (touch1.clientY + touch2.clientY) / 2
+    };
+  };
+
   // Helper function to calculate distance between two touch points
   const getDistance = (touch1: React.Touch, touch2: React.Touch) => {
     const dx = touch1.clientX - touch2.clientX;
@@ -145,8 +155,12 @@ const GameMap: React.FC<GameMapProps> = ({
     if (e.touches.length === 2) {
       // Two fingers - start pinch zoom
       const distance = getDistance(e.touches[0], e.touches[1]);
+      const center = getTouchCenter(e.touches[0], e.touches[1]);
+      
       setInitialPinchDistance(distance);
       setInitialZoom(zoom);
+      setInitialPinchCenter(center);
+      setInitialPan({ ...pan });
       e.preventDefault();
     } else if (e.touches.length === 1) {
       // Single finger - prepare for drag but don't start yet
@@ -159,12 +173,31 @@ const GameMap: React.FC<GameMapProps> = ({
 
   const handleTouchMove = (e: React.TouchEvent) => {
     if (e.touches.length === 2 && initialPinchDistance > 0) {
-      // Two fingers - pinch zoom
+      // Two fingers - pinch zoom with center-based scaling
       e.preventDefault();
       const currentDistance = getDistance(e.touches[0], e.touches[1]);
-      const scale = currentDistance / initialPinchDistance;
+      const currentCenter = getTouchCenter(e.touches[0], e.touches[1]);
+      
+      // Calculate zoom scale with smoother sensitivity
+      const rawScale = currentDistance / initialPinchDistance;
+      const scale = Math.pow(rawScale, 0.8); // Apply power to make zoom feel more natural
       const newZoom = Math.max(0.5, Math.min(5, initialZoom * scale));
+      
+      // Calculate how the center has moved during the pinch
+      const centerDeltaX = currentCenter.x - initialPinchCenter.x;
+      const centerDeltaY = currentCenter.y - initialPinchCenter.y;
+      
+      // Adjust pan to keep zoom centered on pinch point
+      // The offset adjustment compensates for the zoom scale change
+      const zoomRatio = newZoom / initialZoom;
+      const offsetX = centerDeltaX * (1 - zoomRatio) / newZoom;
+      const offsetY = centerDeltaY * (1 - zoomRatio) / newZoom;
+      
       setZoom(newZoom);
+      setPan({
+        x: initialPan.x + offsetX,
+        y: initialPan.y + offsetY
+      });
       setTouchMoved(true);
     } else if (e.touches.length === 1 && initialPinchDistance === 0) {
       // Single finger - check if it's a significant movement for dragging
