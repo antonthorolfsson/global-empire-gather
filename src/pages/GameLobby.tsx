@@ -222,22 +222,22 @@ const GameLobby = () => {
     <div className="min-h-screen bg-gradient-to-br from-ocean to-primary p-4">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-4xl font-bold text-white mb-2">GeoPolitical Strategy</h1>
-            <p className="text-white/80">Welcome, {user?.user_metadata?.display_name || user?.email}</p>
+            <h1 className="text-2xl sm:text-4xl font-bold text-white mb-2">GeoPolitical Strategy</h1>
+            <p className="text-white/80 text-sm sm:text-base">Welcome, {user?.user_metadata?.display_name || user?.email}</p>
           </div>
-          <Button variant="outline" onClick={signOut} className="gap-2">
+          <Button variant="outline" onClick={signOut} className="gap-2 self-start sm:self-auto">
             <LogOut className="w-4 h-4" />
             Sign Out
           </Button>
         </div>
 
         {/* Create Game */}
-        <Card className="p-6 mb-8 bg-card/95 backdrop-blur-sm">
-          <div className="flex items-end gap-4">
+        <Card className="p-4 sm:p-6 mb-8 bg-card/95 backdrop-blur-sm">
+          <div className="flex flex-col sm:flex-row sm:items-end gap-4">
             <div className="flex-1">
-              <Label htmlFor="gameName" className="text-lg font-semibold">Create New Game</Label>
+              <Label htmlFor="gameName" className="text-base sm:text-lg font-semibold">Create New Game</Label>
               <Input
                 id="gameName"
                 value={newGameName}
@@ -247,7 +247,7 @@ const GameLobby = () => {
                 onKeyPress={(e) => e.key === 'Enter' && createGame()}
               />
             </div>
-            <Button onClick={createGame} disabled={!newGameName.trim() || loading} className="gap-2">
+            <Button onClick={createGame} disabled={!newGameName.trim() || loading} className="gap-2 w-full sm:w-auto">
               <Plus className="w-4 h-4" />
               Create Game
             </Button>
@@ -271,50 +271,53 @@ const GameLobby = () => {
                 
                 return (
                   <Card key={game.id} className="p-4 bg-card/95 backdrop-blur-sm">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="text-lg font-semibold">{game.name}</h3>
-                          {game.status === 'active' && (
-                            <div className="flex items-center gap-1 text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
-                              <GamepadIcon className="w-3 h-3" />
-                              Active
-                            </div>
-                          )}
-                          {game.status === 'waiting' && (
-                            <div className="flex items-center gap-1 text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">
-                              <Users className="w-3 h-3" />
-                              Waiting
-                            </div>
-                          )}
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
+                          <h3 className="text-base sm:text-lg font-semibold truncate">{game.name}</h3>
+                          <div className="flex items-center gap-2">
+                            {game.status === 'active' && (
+                              <div className="flex items-center gap-1 text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                                <GamepadIcon className="w-3 h-3" />
+                                Active
+                              </div>
+                            )}
+                            {game.status === 'waiting' && (
+                              <div className="flex items-center gap-1 text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">
+                                <Users className="w-3 h-3" />
+                                Waiting
+                              </div>
+                            )}
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2 sm:mb-0">
                           <Users className="w-4 h-4" />
                           <span>{game.game_players.length}/8 players</span>
+                          <div className="flex items-center gap-1 ml-2">
+                            {game.game_players.slice(0, 3).map((player, idx) => (
+                              <div
+                                key={idx}
+                                className="w-4 h-4 sm:w-6 sm:h-6 rounded-full border border-white shadow-sm"
+                                style={{ backgroundColor: player.color }}
+                                title={player.player_name}
+                              />
+                            ))}
+                            {game.game_players.length > 3 && (
+                              <span className="text-xs text-muted-foreground ml-1">+{game.game_players.length - 3}</span>
+                            )}
+                          </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        {game.game_players.slice(0, 3).map((player, idx) => (
-                          <div
-                            key={idx}
-                            className="w-6 h-6 rounded-full border-2 border-white shadow-sm"
-                            style={{ backgroundColor: player.color }}
-                            title={player.player_name}
-                          />
-                        ))}
-                        {game.game_players.length > 3 && (
-                          <span className="text-sm text-muted-foreground">+{game.game_players.length - 3}</span>
-                        )}
-                        
+                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                         {canJoin && (
-                          <Button onClick={() => joinGame(game.id)} className="gap-2">
+                          <Button onClick={() => joinGame(game.id)} className="gap-2 w-full sm:w-auto">
                             <Play className="w-4 h-4" />
                             Join Game
                           </Button>
                         )}
                         
                         {canResume && (
-                          <Button onClick={() => navigate(`/game/${game.id}`)} className="gap-2">
+                          <Button onClick={() => navigate(`/game/${game.id}`)} className="gap-2 w-full sm:w-auto">
                             <GamepadIcon className="w-4 h-4" />
                             Resume Game
                           </Button>
@@ -325,7 +328,7 @@ const GameLobby = () => {
                             onClick={() => deleteGame(game.id)} 
                             variant="destructive" 
                             size="sm"
-                            className="gap-2"
+                            className="gap-2 w-full sm:w-auto"
                           >
                             <Trash2 className="w-4 h-4" />
                             Delete
