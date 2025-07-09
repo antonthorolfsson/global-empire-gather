@@ -209,7 +209,7 @@ const GameLobby = () => {
         .from('games')
         .update({ 
           status: 'active',
-          game_phase: 'selection',
+          game_phase: 'playing',
           updated_at: new Date().toISOString()
         })
         .eq('id', gameId);
