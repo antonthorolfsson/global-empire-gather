@@ -40,6 +40,10 @@ const GameMap: React.FC<GameMapProps> = ({
   const [touchCount, setTouchCount] = useState(0);
   const [initialPinchCenter, setInitialPinchCenter] = useState({ x: 0, y: 0 });
   const [initialPan, setInitialPan] = useState({ x: 0, y: 0 });
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [velocity, setVelocity] = useState({ x: 0, y: 0 });
+  const lastTouchTime = useRef(0);
+  const lastTouchPos = useRef({ x: 0, y: 0 });
   
   const mapContainerRef = useRef<HTMLDivElement>(null);
 
@@ -146,11 +150,53 @@ const GameMap: React.FC<GameMapProps> = ({
   const [touchStartTime, setTouchStartTime] = useState(0);
   const [touchMoved, setTouchMoved] = useState(false);
   
+  // Momentum and smoothness for mobile
+  useEffect(() => {
+    if (!isAnimating) return;
+    
+    let animationId: number;
+    const deceleration = 0.95;
+    const minVelocity = 0.1;
+    
+    const animate = () => {
+      setVelocity(prev => {
+        const newVelocity = {
+          x: prev.x * deceleration,
+          y: prev.y * deceleration
+        };
+        
+        if (Math.abs(newVelocity.x) < minVelocity && Math.abs(newVelocity.y) < minVelocity) {
+          setIsAnimating(false);
+          return { x: 0, y: 0 };
+        }
+        
+        setPan(prevPan => ({
+          x: prevPan.x + newVelocity.x,
+          y: prevPan.y + newVelocity.y
+        }));
+        
+        return newVelocity;
+      });
+      
+      animationId = requestAnimationFrame(animate);
+    };
+    
+    animationId = requestAnimationFrame(animate);
+    
+    return () => {
+      if (animationId) {
+        cancelAnimationFrame(animationId);
+      }
+    };
+  }, [isAnimating]);
+
   const handleTouchStart = (e: React.TouchEvent) => {
     setIsTouch(true);
     setTouchCount(e.touches.length);
     setTouchStartTime(Date.now());
     setTouchMoved(false);
+    setIsAnimating(false); // Stop any ongoing momentum
+    setVelocity({ x: 0, y: 0 });
     
     if (e.touches.length === 2) {
       // Two fingers - start pinch zoom
@@ -163,15 +209,17 @@ const GameMap: React.FC<GameMapProps> = ({
       setInitialPan({ ...pan });
       e.preventDefault();
     } else if (e.touches.length === 1) {
-      // Single finger - prepare for drag but don't start yet
-      setLastMousePos({ 
-        x: e.touches[0].clientX, 
-        y: e.touches[0].clientY 
-      });
+      // Single finger - prepare for drag
+      const touch = e.touches[0];
+      setLastMousePos({ x: touch.clientX, y: touch.clientY });
+      lastTouchTime.current = Date.now();
+      lastTouchPos.current = { x: touch.clientX, y: touch.clientY };
     }
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
+    const currentTime = Date.now();
+    
     if (e.touches.length === 2 && initialPinchDistance > 0) {
       // Two fingers - pinch zoom with proper center-based scaling
       e.preventDefault();
@@ -180,7 +228,7 @@ const GameMap: React.FC<GameMapProps> = ({
       
       // Calculate zoom scale with smoother sensitivity
       const rawScale = currentDistance / initialPinchDistance;
-      const scale = Math.pow(rawScale, 0.8); // Apply power to make zoom feel more natural
+      const scale = Math.pow(rawScale, 0.85); // Slightly more natural feel
       const newZoom = Math.max(0.5, Math.min(5, initialZoom * scale));
       
       // Get container bounds for relative positioning
@@ -212,25 +260,45 @@ const GameMap: React.FC<GameMapProps> = ({
       
       setTouchMoved(true);
     } else if (e.touches.length === 1 && initialPinchDistance === 0) {
-      // Single finger - check if it's a significant movement for dragging
+      // Single finger - smooth panning with velocity tracking
       const touch = e.touches[0];
       const deltaX = touch.clientX - lastMousePos.x;
       const deltaY = touch.clientY - lastMousePos.y;
       const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
       
-      if (distance > 5) { // Lowered threshold for more responsive touch
+      if (distance > 3) { // Lower threshold for immediate response
         setTouchMoved(true);
         setIsDragging(true);
         e.preventDefault();
         
-        // Improved mobile pan sensitivity - more responsive when zoomed in
-        const panSensitivity = Math.max(1, zoom * 0.8); // Increase sensitivity with zoom
+        // Enhanced pan sensitivity with smoother curve
+        const baseSensitivity = 1.2;
+        const zoomFactor = Math.pow(zoom, 0.7); // Smoother zoom scaling
+        const panSensitivity = baseSensitivity * zoomFactor;
+        
+        const adjustedDeltaX = (deltaX * panSensitivity) / zoom;
+        const adjustedDeltaY = (deltaY * panSensitivity) / zoom;
+        
         setPan(prev => ({
-          x: prev.x + (deltaX * panSensitivity) / zoom,
-          y: prev.y + (deltaY * panSensitivity) / zoom
+          x: prev.x + adjustedDeltaX,
+          y: prev.y + adjustedDeltaY
         }));
         
+        // Calculate velocity for momentum
+        const timeDelta = currentTime - lastTouchTime.current;
+        if (timeDelta > 0) {
+          const velocityX = adjustedDeltaX / timeDelta * 16; // Convert to per-frame velocity
+          const velocityY = adjustedDeltaY / timeDelta * 16;
+          
+          setVelocity({
+            x: velocityX,
+            y: velocityY
+          });
+        }
+        
         setLastMousePos({ x: touch.clientX, y: touch.clientY });
+        lastTouchTime.current = currentTime;
+        lastTouchPos.current = { x: touch.clientX, y: touch.clientY };
       }
     }
   };
@@ -253,6 +321,14 @@ const GameMap: React.FC<GameMapProps> = ({
           console.log('Country tapped:', countryId);
           handleCountryClick(countryId);
         }
+      } else if (touchMoved && touchCount === 1) {
+        // Enable momentum for smooth deceleration
+        const currentVelocity = velocity;
+        const velocityMagnitude = Math.sqrt(currentVelocity.x * currentVelocity.x + currentVelocity.y * currentVelocity.y);
+        
+        if (velocityMagnitude > 1) { // Only start momentum if there's significant velocity
+          setIsAnimating(true);
+        }
       }
       
       setIsDragging(false);
@@ -268,6 +344,8 @@ const GameMap: React.FC<GameMapProps> = ({
         x: e.touches[0].clientX, 
         y: e.touches[0].clientY 
       });
+      lastTouchTime.current = Date.now();
+      lastTouchPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
     }
   };
 
@@ -388,7 +466,7 @@ const GameMap: React.FC<GameMapProps> = ({
           >
             <div
               id="world-map-container"
-              className="w-full h-full transition-transform duration-200 ease-out"
+              className={`w-full h-full ${isDragging || isTouch ? '' : 'transition-transform duration-200 ease-out'}`}
               dangerouslySetInnerHTML={{ 
                 __html: svgContent.replace('<svg', '<svg id="world-map-svg"')
               }}
