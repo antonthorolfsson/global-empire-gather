@@ -231,20 +231,56 @@ const GameLobby = () => {
     if (!inviteEmail.trim() || !selectedGameId) return;
     
     try {
-      const { error } = await supabase
+      // First create the invitation record
+      const { data: invitation, error: insertError } = await supabase
         .from('game_invitations')
         .insert({
           game_id: selectedGameId,
           inviter_id: user?.id,
           invitee_email: inviteEmail.trim()
-        });
+        })
+        .select()
+        .single();
 
-      if (error) throw error;
+      if (insertError) throw insertError;
 
-      toast({
-        title: "Invitation sent!",
-        description: `Invitation sent to ${inviteEmail}`,
+      // Get the inviter's profile and game details for the email
+      const [profileResponse, gameResponse] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select('display_name')
+          .eq('user_id', user?.id)
+          .single(),
+        supabase
+          .from('games')
+          .select('name')
+          .eq('id', selectedGameId)
+          .single()
+      ]);
+
+      // Send the email using the edge function
+      const { error: emailError } = await supabase.functions.invoke('send-invitation', {
+        body: {
+          invitationId: invitation.id,
+          inviterName: profileResponse.data?.display_name || user?.user_metadata?.display_name || user?.email || 'A player',
+          gameName: gameResponse.data?.name || 'Game',
+          inviteeEmail: inviteEmail.trim(),
+        }
       });
+
+      if (emailError) {
+        console.error('Email sending error:', emailError);
+        // Still show success since the invitation was created in the database
+        toast({
+          title: "Invitation created!",
+          description: "Email delivery may be delayed, but the invitation is saved.",
+        });
+      } else {
+        toast({
+          title: "Invitation sent!",
+          description: `Email invitation sent to ${inviteEmail}`,
+        });
+      }
 
       setInviteEmail('');
       setShowInviteDialog(false);
