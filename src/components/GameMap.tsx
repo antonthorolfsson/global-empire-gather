@@ -445,7 +445,7 @@ const GameMap: React.FC<GameMapProps> = ({
         styleEl.remove();
       }
     };
-  }, [svgContent, players, selectedCountries, touchMoved]);
+  }, [svgContent, players, selectedCountries]);
 
   return (
     <Card className="w-full h-full bg-gradient-to-br from-ocean to-primary overflow-hidden">
