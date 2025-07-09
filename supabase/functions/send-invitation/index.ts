@@ -31,7 +31,7 @@ const handler = async (req: Request): Promise<Response> => {
     const invitationUrl = `${appUrl}/lobby?invitation=${invitationId}`;
 
     const emailResponse = await resend.emails.send({
-      from: "Game Invitations <noreply@lovable.app>",
+      from: "Game Invitations <onboarding@resend.dev>",
       to: [inviteeEmail],
       subject: `You're invited to join "${gameName}"!`,
       html: `
