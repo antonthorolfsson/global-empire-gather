@@ -371,7 +371,7 @@ const GameMap: React.FC<GameMapProps> = ({
         stroke: #ffffff !important;
         stroke-width: 0.5px !important;
         cursor: pointer !important;
-        transition: ${isDragging || isTouch ? 'none' : 'all 0.2s ease'} !important;
+        transition: ${isDragging || isTouch ? 'none !important' : 'all 0.2s ease !important'};
         opacity: 1 !important;
       }
     `;
@@ -396,7 +396,7 @@ const GameMap: React.FC<GameMapProps> = ({
     cssRules += `
       #world-map-svg path:not(${ownedCountries.map(id => `#${id}`).join(', ')}):hover {
         fill: hsl(var(--primary-glow)) !important;
-        transform: scale(1.01) !important;
+        transform: ${isDragging || isTouch ? 'none !important' : 'scale(1.01) !important'};
         transform-origin: center !important;
         z-index: 10 !important;
       }
