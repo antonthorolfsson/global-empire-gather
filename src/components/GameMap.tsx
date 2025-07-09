@@ -44,6 +44,7 @@ const GameMap: React.FC<GameMapProps> = ({
   const [velocity, setVelocity] = useState({ x: 0, y: 0 });
   const lastTouchTime = useRef(0);
   const lastTouchPos = useRef({ x: 0, y: 0 });
+  const animationFrameRef = useRef<number>();
   
   const mapContainerRef = useRef<HTMLDivElement>(null);
 
@@ -52,6 +53,15 @@ const GameMap: React.FC<GameMapProps> = ({
     import('/src/assets/world-map.svg?raw')
       .then(module => setSvgContent(module.default))
       .catch(error => console.error('Error loading world map:', error));
+  }, []);
+
+  useEffect(() => {
+    // Cleanup animation frame on unmount
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
   }, []);
 
   const getCountryOwner = (countryId: string) => {
@@ -218,78 +228,86 @@ const GameMap: React.FC<GameMapProps> = ({
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (e.touches.length === 2 && initialPinchDistance > 0) {
-      // Two fingers - ultra-smooth pinch zoom
-      e.preventDefault();
-      const currentDistance = getDistance(e.touches[0], e.touches[1]);
-      const currentCenter = getTouchCenter(e.touches[0], e.touches[1]);
-      
-      // Smoother zoom scaling with better curve
-      const rawScale = currentDistance / initialPinchDistance;
-      const scale = Math.pow(rawScale, 0.9); // More linear feel
-      const newZoom = Math.max(0.5, Math.min(5, initialZoom * scale));
-      
-      // Get container bounds for relative positioning
-      const container = mapContainerRef.current;
-      if (container) {
-        const rect = container.getBoundingClientRect();
-        
-        // Calculate the center point relative to the container
-        const centerX = currentCenter.x - rect.left;
-        const centerY = currentCenter.y - rect.top;
-        
-        // Calculate world position under the pinch center at initial zoom
-        const worldX = (centerX - rect.width / 2 - initialPan.x) / initialZoom;
-        const worldY = (centerY - rect.height / 2 - initialPan.y) / initialZoom;
-        
-        // Calculate new pan to keep the world position under the same screen position
-        const newPanX = centerX - rect.width / 2 - worldX * newZoom;
-        const newPanY = centerY - rect.height / 2 - worldY * newZoom;
-        
-        setZoom(newZoom);
-        setPan({
-          x: newPanX,
-          y: newPanY
-        });
-      } else {
-        setZoom(newZoom);
-      }
-      
-      setTouchMoved(true);
-    } else if (e.touches.length === 1 && initialPinchDistance === 0) {
-      // Single finger - ultra-responsive smooth panning
-      const touch = e.touches[0];
-      const deltaX = touch.clientX - lastMousePos.x;
-      const deltaY = touch.clientY - lastMousePos.y;
-      const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-      
-      if (distance > 1) { // Ultra-low threshold for immediate response
-        setTouchMoved(true);
-        setIsDragging(true);
-        e.preventDefault();
-        
-        // Optimized pan sensitivity for smoothness
-        const baseSensitivity = 1.4;
-        const zoomFactor = Math.max(0.8, Math.min(2, zoom * 0.9)); // Balanced zoom scaling
-        const panSensitivity = baseSensitivity * zoomFactor;
-        
-        const adjustedDeltaX = deltaX * panSensitivity / zoom;
-        const adjustedDeltaY = deltaY * panSensitivity / zoom;
-        
-        setPan(prev => ({
-          x: prev.x + adjustedDeltaX,
-          y: prev.y + adjustedDeltaY
-        }));
-        
-        // Simplified velocity calculation for momentum
-        setVelocity({
-          x: adjustedDeltaX * 0.8, // Reduced for smoother momentum
-          y: adjustedDeltaY * 0.8
-        });
-        
-        setLastMousePos({ x: touch.clientX, y: touch.clientY });
-      }
+    // Cancel any previous animation frame to throttle updates
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
     }
+    
+    // Throttle touch updates using requestAnimationFrame for smoothness
+    animationFrameRef.current = requestAnimationFrame(() => {
+      if (e.touches.length === 2 && initialPinchDistance > 0) {
+        // Two fingers - ultra-smooth pinch zoom
+        e.preventDefault();
+        const currentDistance = getDistance(e.touches[0], e.touches[1]);
+        const currentCenter = getTouchCenter(e.touches[0], e.touches[1]);
+        
+        // Smoother zoom scaling with better curve
+        const rawScale = currentDistance / initialPinchDistance;
+        const scale = Math.pow(rawScale, 0.9); // More linear feel
+        const newZoom = Math.max(0.5, Math.min(5, initialZoom * scale));
+        
+        // Get container bounds for relative positioning
+        const container = mapContainerRef.current;
+        if (container) {
+          const rect = container.getBoundingClientRect();
+          
+          // Calculate the center point relative to the container
+          const centerX = currentCenter.x - rect.left;
+          const centerY = currentCenter.y - rect.top;
+          
+          // Calculate world position under the pinch center at initial zoom
+          const worldX = (centerX - rect.width / 2 - initialPan.x) / initialZoom;
+          const worldY = (centerY - rect.height / 2 - initialPan.y) / initialZoom;
+          
+          // Calculate new pan to keep the world position under the same screen position
+          const newPanX = centerX - rect.width / 2 - worldX * newZoom;
+          const newPanY = centerY - rect.height / 2 - worldY * newZoom;
+          
+          setZoom(newZoom);
+          setPan({
+            x: newPanX,
+            y: newPanY
+          });
+        } else {
+          setZoom(newZoom);
+        }
+        
+        setTouchMoved(true);
+      } else if (e.touches.length === 1 && initialPinchDistance === 0) {
+        // Single finger - ultra-responsive smooth panning
+        const touch = e.touches[0];
+        const deltaX = touch.clientX - lastMousePos.x;
+        const deltaY = touch.clientY - lastMousePos.y;
+        const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+        
+        if (distance > 1) { // Ultra-low threshold for immediate response
+          setTouchMoved(true);
+          setIsDragging(true);
+          e.preventDefault();
+          
+          // Optimized pan sensitivity for smoothness
+          const baseSensitivity = 1.4;
+          const zoomFactor = Math.max(0.8, Math.min(2, zoom * 0.9)); // Balanced zoom scaling
+          const panSensitivity = baseSensitivity * zoomFactor;
+          
+          const adjustedDeltaX = deltaX * panSensitivity / zoom;
+          const adjustedDeltaY = deltaY * panSensitivity / zoom;
+          
+          setPan(prev => ({
+            x: prev.x + adjustedDeltaX,
+            y: prev.y + adjustedDeltaY
+          }));
+          
+          // Simplified velocity calculation for momentum
+          setVelocity({
+            x: adjustedDeltaX * 0.8, // Reduced for smoother momentum
+            y: adjustedDeltaY * 0.8
+          });
+          
+          setLastMousePos({ x: touch.clientX, y: touch.clientY });
+        }
+      }
+    });
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
