@@ -173,14 +173,16 @@ const GameMap: React.FC<GameMapProps> = ({
       const deltaY = touch.clientY - lastMousePos.y;
       const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
       
-      if (distance > 10) { // Only start dragging if moved more than 10px
+      if (distance > 5) { // Lowered threshold for more responsive touch
         setTouchMoved(true);
         setIsDragging(true);
         e.preventDefault();
         
+        // Improved mobile pan sensitivity - more responsive when zoomed in
+        const panSensitivity = Math.max(1, zoom * 0.8); // Increase sensitivity with zoom
         setPan(prev => ({
-          x: prev.x + deltaX / zoom,
-          y: prev.y + deltaY / zoom
+          x: prev.x + (deltaX * panSensitivity) / zoom,
+          y: prev.y + (deltaY * panSensitivity) / zoom
         }));
         
         setLastMousePos({ x: touch.clientX, y: touch.clientY });
