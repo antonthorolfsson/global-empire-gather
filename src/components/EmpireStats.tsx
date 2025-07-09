@@ -2,8 +2,9 @@ import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Users, Map, Flag } from 'lucide-react';
+import { Users, Map, Flag, PieChart } from 'lucide-react';
 import { Player, Country } from '@/hooks/useGameState';
+import { PieChart as RechartsPieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 
 interface EmpireStatsProps {
   players: Player[];
@@ -74,8 +75,171 @@ const EmpireStats: React.FC<EmpireStatsProps> = ({
     return icons[rank - 1] || '🏅';
   };
 
+  // Prepare data for pie charts
+  const getChartData = () => {
+    const data = players.map(player => {
+      const stats = getPlayerStats(player.id);
+      if (!stats) return null;
+      
+      return {
+        name: stats.playerName,
+        population: stats.totalPopulation,
+        area: stats.totalArea,
+        gdp: stats.totalGDP,
+        color: player.color,
+        countries: stats.countries.length
+      };
+    }).filter(Boolean);
+
+    return data;
+  };
+
+  const chartData = getChartData();
+
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      return (
+        <div className="bg-card border border-border rounded-lg shadow-lg p-3">
+          <div className="flex items-center gap-2 mb-1">
+            <div 
+              className="w-3 h-3 rounded-full"
+              style={{ backgroundColor: data.color }}
+            />
+            <p className="font-medium text-card-foreground">{data.name}</p>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            {payload[0].name}: {formatNumber(payload[0].value)}
+            {payload[0].dataKey === 'area' && ' km²'}
+            {payload[0].dataKey === 'gdp' && ' USD'}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {payload[0].dataKey === 'population' && `${data.countries} countries`}
+            {payload[0].dataKey === 'area' && `${data.countries} territories`}
+            {payload[0].dataKey === 'gdp' && `${data.countries} economies`}
+          </p>
+        </div>
+      );
+    }
+    return null;
+  };
+
   return (
     <div className="p-4 space-y-4">
+      {/* Empire Distribution Charts */}
+      {chartData.length > 0 && (
+        <>
+          <Card className="animate-strategic-fade-in">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <PieChart className="h-5 w-5 text-primary" />
+                Empire Distribution
+              </CardTitle>
+              <CardDescription>
+                Compare the power balance between empires
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Population Chart */}
+                <div className="space-y-2">
+                  <h4 className="text-sm font-medium text-center">Population</h4>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <RechartsPieChart>
+                        <Pie
+                          data={chartData}
+                          dataKey="population"
+                          nameKey="name"
+                          cx="50%"
+                          cy="50%"
+                          outerRadius={80}
+                          innerRadius={25}
+                          paddingAngle={2}
+                          strokeWidth={0}
+                        >
+                          {chartData.map((entry, index) => (
+                            <Cell key={`population-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip content={<CustomTooltip />} />
+                      </RechartsPieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                {/* Land Area Chart */}
+                <div className="space-y-2">
+                  <h4 className="text-sm font-medium text-center">Land Area</h4>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <RechartsPieChart>
+                        <Pie
+                          data={chartData}
+                          dataKey="area"
+                          nameKey="name"
+                          cx="50%"
+                          cy="50%"
+                          outerRadius={80}
+                          innerRadius={25}
+                          paddingAngle={2}
+                          strokeWidth={0}
+                        >
+                          {chartData.map((entry, index) => (
+                            <Cell key={`area-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip content={<CustomTooltip />} />
+                      </RechartsPieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                {/* GDP Chart */}
+                <div className="space-y-2">
+                  <h4 className="text-sm font-medium text-center">GDP</h4>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <RechartsPieChart>
+                        <Pie
+                          data={chartData}
+                          dataKey="gdp"
+                          nameKey="name"
+                          cx="50%"
+                          cy="50%"
+                          outerRadius={80}
+                          innerRadius={25}
+                          paddingAngle={2}
+                          strokeWidth={0}
+                        >
+                          {chartData.map((entry, index) => (
+                            <Cell key={`gdp-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip content={<CustomTooltip />} />
+                      </RechartsPieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </div>
+
+              {/* Legend */}
+              <div className="flex flex-wrap justify-center gap-4 mt-6 pt-4 border-t border-border">
+                {chartData.map((entry, index) => (
+                  <div key={`legend-${index}`} className="flex items-center gap-2">
+                    <div 
+                      className="w-3 h-3 rounded-full"
+                      style={{ backgroundColor: entry.color }}
+                    />
+                    <span className="text-sm font-medium">{entry.name}</span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </>
+      )}
+
       {/* Current Player Turn */}
       {gamePhase === 'selection' && currentPlayer && (
         <Card className="bg-primary/10 border-primary">
