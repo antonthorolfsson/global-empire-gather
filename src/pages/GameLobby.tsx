@@ -59,7 +59,7 @@ const GameLobby = () => {
             user_id
           )
         `)
-        .or(`is_public.eq.true,created_by.eq.${user?.id},game_players.user_id.eq.${user?.id}`)
+        .or(`is_public.eq.true,created_by.eq.${user?.id}`)
         .in('status', ['waiting', 'active'])
         .is('deleted_at', null)
         .order('created_at', { ascending: false });
