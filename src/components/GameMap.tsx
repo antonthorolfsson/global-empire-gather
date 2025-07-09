@@ -201,6 +201,7 @@ const GameMap: React.FC<GameMapProps> = ({
   }, [isAnimating]);
 
   const handleTouchStart = (e: React.TouchEvent) => {
+    console.log('Touch start - fingers:', e.touches.length);
     setIsTouch(true);
     setTouchCount(e.touches.length);
     setTouchStartTime(Date.now());
@@ -265,20 +266,22 @@ const GameMap: React.FC<GameMapProps> = ({
         setZoom(newZoom);
       }
       
-      setTouchMoved(true);
+      if (!touchMoved) setTouchMoved(true);
     } else if (e.touches.length === 1 && initialPinchDistance === 0) {
-      // Single finger - direct smooth panning without throttling
+      // Single finger - direct smooth panning
       const touch = e.touches[0];
       const deltaX = touch.clientX - lastMousePos.x;
       const deltaY = touch.clientY - lastMousePos.y;
       const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
       
       if (distance > 1) {
-        setTouchMoved(true);
-        setIsDragging(true);
+        if (!touchMoved) {
+          setTouchMoved(true);
+          setIsDragging(true);
+        }
         e.preventDefault();
         
-        // Direct pan calculation - no throttling, no complex calculations
+        // Direct pan calculation
         const panDeltaX = deltaX / zoom;
         const panDeltaY = deltaY / zoom;
         
@@ -326,6 +329,7 @@ const GameMap: React.FC<GameMapProps> = ({
         }
       }
       
+      // Reset all touch states
       setIsDragging(false);
       setIsTouch(false);
       setInitialPinchDistance(0);
