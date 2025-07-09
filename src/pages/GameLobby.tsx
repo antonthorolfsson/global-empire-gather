@@ -231,7 +231,32 @@ const GameLobby = () => {
     if (!inviteEmail.trim() || !selectedGameId) return;
     
     try {
-      // First create the invitation record
+      // Check if invitation already exists
+      const { data: existingInvitation } = await supabase
+        .from('game_invitations')
+        .select('id, status')
+        .eq('game_id', selectedGameId)
+        .eq('invitee_email', inviteEmail.trim())
+        .single();
+
+      if (existingInvitation) {
+        if (existingInvitation.status === 'pending') {
+          toast({
+            title: "Invitation already sent",
+            description: `${inviteEmail} has already been invited to this game.`,
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Player already responded",
+            description: `${inviteEmail} has already ${existingInvitation.status} the invitation.`,
+            variant: "destructive",
+          });
+        }
+        return;
+      }
+
+      // Create new invitation record
       const { data: invitation, error: insertError } = await supabase
         .from('game_invitations')
         .insert({
@@ -263,7 +288,6 @@ const GameLobby = () => {
 
       if (emailError) {
         console.error('Email sending error:', emailError);
-        // Still show success since the invitation was created in the database
         toast({
           title: "Invitation created!",
           description: "Email delivery may be delayed, but the invitation is saved.",
