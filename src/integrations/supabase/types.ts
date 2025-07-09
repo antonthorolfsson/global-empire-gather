@@ -126,10 +126,62 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "game_countries_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "public_games"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "game_countries_player_id_fkey"
             columns: ["player_id"]
             isOneToOne: false
             referencedRelation: "game_players"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      game_invitations: {
+        Row: {
+          created_at: string
+          expires_at: string
+          game_id: string
+          id: string
+          invitee_email: string
+          inviter_id: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string
+          game_id: string
+          id?: string
+          invitee_email: string
+          inviter_id: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          game_id?: string
+          id?: string
+          invitee_email?: string
+          inviter_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_invitations_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_invitations_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "public_games"
             referencedColumns: ["id"]
           },
         ]
@@ -173,6 +225,13 @@ export type Database = {
             referencedRelation: "games"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "game_players_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "public_games"
+            referencedColumns: ["id"]
+          },
         ]
       }
       games: {
@@ -183,6 +242,7 @@ export type Database = {
           deleted_at: string | null
           game_phase: string
           id: string
+          is_public: boolean
           max_players: number
           name: string
           status: string
@@ -195,6 +255,7 @@ export type Database = {
           deleted_at?: string | null
           game_phase?: string
           id?: string
+          is_public?: boolean
           max_players?: number
           name: string
           status?: string
@@ -207,6 +268,7 @@ export type Database = {
           deleted_at?: string | null
           game_phase?: string
           id?: string
+          is_public?: boolean
           max_players?: number
           name?: string
           status?: string
@@ -282,7 +344,23 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      public_games: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          current_player_turn: number | null
+          deleted_at: string | null
+          game_phase: string | null
+          game_players: Json[] | null
+          id: string | null
+          is_public: boolean | null
+          max_players: number | null
+          name: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       [_ in never]: never
