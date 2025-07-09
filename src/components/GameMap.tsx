@@ -218,17 +218,15 @@ const GameMap: React.FC<GameMapProps> = ({
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    const currentTime = Date.now();
-    
     if (e.touches.length === 2 && initialPinchDistance > 0) {
-      // Two fingers - pinch zoom with proper center-based scaling
+      // Two fingers - ultra-smooth pinch zoom
       e.preventDefault();
       const currentDistance = getDistance(e.touches[0], e.touches[1]);
       const currentCenter = getTouchCenter(e.touches[0], e.touches[1]);
       
-      // Calculate zoom scale with smoother sensitivity
+      // Smoother zoom scaling with better curve
       const rawScale = currentDistance / initialPinchDistance;
-      const scale = Math.pow(rawScale, 0.85); // Slightly more natural feel
+      const scale = Math.pow(rawScale, 0.9); // More linear feel
       const newZoom = Math.max(0.5, Math.min(5, initialZoom * scale));
       
       // Get container bounds for relative positioning
@@ -254,51 +252,42 @@ const GameMap: React.FC<GameMapProps> = ({
           y: newPanY
         });
       } else {
-        // Fallback if container ref is not available
         setZoom(newZoom);
       }
       
       setTouchMoved(true);
     } else if (e.touches.length === 1 && initialPinchDistance === 0) {
-      // Single finger - smooth panning with velocity tracking
+      // Single finger - ultra-responsive smooth panning
       const touch = e.touches[0];
       const deltaX = touch.clientX - lastMousePos.x;
       const deltaY = touch.clientY - lastMousePos.y;
       const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
       
-      if (distance > 3) { // Lower threshold for immediate response
+      if (distance > 1) { // Ultra-low threshold for immediate response
         setTouchMoved(true);
         setIsDragging(true);
         e.preventDefault();
         
-        // Enhanced pan sensitivity with smoother curve
-        const baseSensitivity = 1.2;
-        const zoomFactor = Math.pow(zoom, 0.7); // Smoother zoom scaling
+        // Optimized pan sensitivity for smoothness
+        const baseSensitivity = 1.4;
+        const zoomFactor = Math.max(0.8, Math.min(2, zoom * 0.9)); // Balanced zoom scaling
         const panSensitivity = baseSensitivity * zoomFactor;
         
-        const adjustedDeltaX = (deltaX * panSensitivity) / zoom;
-        const adjustedDeltaY = (deltaY * panSensitivity) / zoom;
+        const adjustedDeltaX = deltaX * panSensitivity / zoom;
+        const adjustedDeltaY = deltaY * panSensitivity / zoom;
         
         setPan(prev => ({
           x: prev.x + adjustedDeltaX,
           y: prev.y + adjustedDeltaY
         }));
         
-        // Calculate velocity for momentum
-        const timeDelta = currentTime - lastTouchTime.current;
-        if (timeDelta > 0) {
-          const velocityX = adjustedDeltaX / timeDelta * 16; // Convert to per-frame velocity
-          const velocityY = adjustedDeltaY / timeDelta * 16;
-          
-          setVelocity({
-            x: velocityX,
-            y: velocityY
-          });
-        }
+        // Simplified velocity calculation for momentum
+        setVelocity({
+          x: adjustedDeltaX * 0.8, // Reduced for smoother momentum
+          y: adjustedDeltaY * 0.8
+        });
         
         setLastMousePos({ x: touch.clientX, y: touch.clientY });
-        lastTouchTime.current = currentTime;
-        lastTouchPos.current = { x: touch.clientX, y: touch.clientY };
       }
     }
   };
