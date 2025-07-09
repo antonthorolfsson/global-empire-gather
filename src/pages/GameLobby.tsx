@@ -244,26 +244,19 @@ const GameLobby = () => {
 
       if (insertError) throw insertError;
 
-      // Get the inviter's profile and game details for the email
-      const [profileResponse, gameResponse] = await Promise.all([
-        supabase
-          .from('profiles')
-          .select('display_name')
-          .eq('user_id', user?.id)
-          .single(),
-        supabase
-          .from('games')
-          .select('name')
-          .eq('id', selectedGameId)
-          .single()
-      ]);
+      // Get game details for the email
+      const { data: game } = await supabase
+        .from('games')
+        .select('name')
+        .eq('id', selectedGameId)
+        .single();
 
       // Send the email using the edge function
       const { error: emailError } = await supabase.functions.invoke('send-invitation', {
         body: {
           invitationId: invitation.id,
-          inviterName: profileResponse.data?.display_name || user?.user_metadata?.display_name || user?.email || 'A player',
-          gameName: gameResponse.data?.name || 'Game',
+          inviterName: user?.user_metadata?.display_name || user?.email || 'A player',
+          gameName: game?.name || 'Game',
           inviteeEmail: inviteEmail.trim(),
         }
       });
