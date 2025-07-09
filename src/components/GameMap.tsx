@@ -237,7 +237,7 @@ const GameMap: React.FC<GameMapProps> = ({
       #world-map-svg path {
         fill: #000000 !important;
         stroke: #ffffff !important;
-        stroke-width: 2px !important;
+        stroke-width: 0.5px !important;
         cursor: pointer !important;
         transition: all 0.2s ease !important;
         opacity: 1 !important;
