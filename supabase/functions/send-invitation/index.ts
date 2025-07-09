@@ -1,8 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "npm:resend@2.0.0";
 
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -23,6 +21,12 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
+    const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
+    
+    if (!Deno.env.get("RESEND_API_KEY")) {
+      throw new Error("RESEND_API_KEY is not configured");
+    }
+
     const { invitationId, inviterName, gameName, inviteeEmail }: InvitationRequest = await req.json();
 
     console.log('Sending invitation email:', { invitationId, inviterName, gameName, inviteeEmail });
@@ -73,7 +77,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Check if there's an error in the response
     if (emailResponse.error) {
       console.error("Resend API error:", emailResponse.error);
-      throw new Error(`Email delivery failed: ${emailResponse.error}`);
+      throw new Error(`Email delivery failed: ${JSON.stringify(emailResponse.error)}`);
     }
 
     return new Response(JSON.stringify({ success: true, emailResponse }), {
