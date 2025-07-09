@@ -21,15 +21,19 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
+    const apiKey = Deno.env.get("RESEND_API_KEY");
+    console.log('API Key exists:', !!apiKey);
+    console.log('API Key length:', apiKey?.length || 0);
     
-    if (!Deno.env.get("RESEND_API_KEY")) {
+    if (!apiKey) {
       throw new Error("RESEND_API_KEY is not configured");
     }
 
+    const resend = new Resend(apiKey);
+    
     const { invitationId, inviterName, gameName, inviteeEmail }: InvitationRequest = await req.json();
 
-    console.log('Sending invitation email:', { invitationId, inviterName, gameName, inviteeEmail });
+    console.log('Request data:', { invitationId, inviterName, gameName, inviteeEmail });
 
     const appUrl = "https://id-preview--94aaa074-5630-4a6d-ba95-b58d291933e0.lovable.app";
     const invitationUrl = `${appUrl}/lobby?invitation=${invitationId}`;
