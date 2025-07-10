@@ -11,6 +11,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Plus, Users, LogOut, Play, Trash2, GamepadIcon, Mail, Lock, Globe } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ColorPickerDialog from '@/components/ColorPickerDialog';
+import { useRateLimit } from '@/hooks/useRateLimit';
+import { validateGameName, validateEmail, sanitizeText } from '@/utils/security';
 
 interface Game {
   id: string;
@@ -40,6 +42,7 @@ const GameLobby = () => {
   const [inviteEmail, setInviteEmail] = useState('');
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { checkRateLimit, isChecking } = useRateLimit();
 
   useEffect(() => {
     fetchGames();
@@ -78,12 +81,39 @@ const GameLobby = () => {
   const createGame = async () => {
     if (!newGameName.trim()) return;
     
+    // Validate game name
+    const validation = validateGameName(newGameName);
+    if (!validation.isValid) {
+      toast({
+        title: "Invalid game name",
+        description: validation.error,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check rate limit
+    const canProceed = await checkRateLimit('game_creation');
+    if (!canProceed) return;
+    
     setLoading(true);
     try {
+      // Call the validation function from database
+      const { error: validationError } = await supabase.rpc('validate_game_input', {
+        _name: newGameName.trim(),
+        _max_players: 8
+      });
+
+      if (validationError) {
+        throw new Error(validationError.message);
+      }
+
+      const sanitizedName = sanitizeText(newGameName, 50);
+      
       const { data: game, error: gameError } = await supabase
         .from('games')
         .insert({
-          name: newGameName,
+          name: sanitizedName,
           created_by: user?.id,
           is_public: isPublicGame
         })
@@ -91,6 +121,15 @@ const GameLobby = () => {
         .single();
 
       if (gameError) throw gameError;
+
+      // Log audit event
+      await supabase.rpc('log_audit_event', {
+        _user_id: user?.id,
+        _action_type: 'game_created',
+        _resource_type: 'game',
+        _resource_id: game.id,
+        _details: { name: sanitizedName, is_public: isPublicGame }
+      });
 
       setSelectedGameId(game.id);
       setIsCreatingGame(true);
@@ -258,6 +297,20 @@ const GameLobby = () => {
 
   const invitePlayer = async () => {
     if (!inviteEmail.trim() || !selectedGameId) return;
+    
+    // Validate email format
+    if (!validateEmail(inviteEmail.trim())) {
+      toast({
+        title: "Invalid email",
+        description: "Please enter a valid email address.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check rate limit
+    const canProceed = await checkRateLimit('email_invitation');
+    if (!canProceed) return;
     
     try {
       // Check if invitation already exists

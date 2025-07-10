@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
+import { useRateLimit } from '@/hooks/useRateLimit';
 import { GAME_COUNTRIES } from '@/data/gameCountries';
 import { Sword, Shield, Crown, Target } from 'lucide-react';
 
@@ -48,6 +49,7 @@ const WarDeclaration: React.FC<WarDeclarationProps> = ({
 }) => {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { checkRateLimit } = useRateLimit();
   const [warDeclarations, setWarDeclarations] = useState<WarDeclaration[]>([]);
   const [selectedOwnCountry, setSelectedOwnCountry] = useState<string>('');
   const [selectedEnemyCountry, setSelectedEnemyCountry] = useState<string>('');
@@ -101,6 +103,10 @@ const WarDeclaration: React.FC<WarDeclarationProps> = ({
       return;
     }
 
+    // Check rate limit
+    const canProceed = await checkRateLimit('war_declaration');
+    if (!canProceed) return;
+
     setDeclaringWar(true);
 
     try {
@@ -118,6 +124,19 @@ const WarDeclaration: React.FC<WarDeclarationProps> = ({
         });
 
       if (error) throw error;
+
+      // Log audit event
+      await supabase.rpc('log_audit_event', {
+        _user_id: currentPlayer.user_id,
+        _action_type: 'war_declared',
+        _resource_type: 'war_declaration',
+        _resource_id: null,
+        _details: {
+          attacking_country: selectedOwnCountry,
+          defending_country: selectedEnemyCountry,
+          defending_player: enemyCountry.player_id
+        }
+      });
 
       setSelectedOwnCountry('');
       setSelectedEnemyCountry('');

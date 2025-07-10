@@ -4,6 +4,7 @@ import { useAuth } from '@/components/AuthWrapper';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useRateLimit } from '@/hooks/useRateLimit';
 import { Crown, Sword } from 'lucide-react';
 
 interface ChessGameProps {
@@ -46,6 +47,7 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
   const { toast } = useToast();
   const { user } = useAuth();
   const isMobile = useIsMobile();
+  const { checkRateLimit } = useRateLimit();
   const [board, setBoard] = useState<ChessSquare[][]>([]);
   const [currentPlayer, setCurrentPlayer] = useState<'white' | 'black'>('white');
   const [selectedSquare, setSelectedSquare] = useState<{row: number, col: number} | null>(null);
@@ -726,6 +728,10 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
       });
       return false;
     }
+
+    // Check rate limit for chess moves
+    const canProceed = await checkRateLimit('chess_move');
+    if (!canProceed) return false;
 
     const newBoard = board.map(row => row.map(square => ({ ...square, isSelected: false, isPossibleMove: false })));
     const movingPiece = newBoard[fromRow][fromCol].piece;
