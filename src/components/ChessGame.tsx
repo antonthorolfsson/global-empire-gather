@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/AuthWrapper';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { Crown, Sword } from 'lucide-react';
 
 interface ChessGameProps {
@@ -43,6 +44,7 @@ interface Position {
 const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd }) => {
   const { toast } = useToast();
   const { user } = useAuth();
+  const isMobile = useIsMobile();
   const [board, setBoard] = useState<ChessSquare[][]>([]);
   const [currentPlayer, setCurrentPlayer] = useState<'white' | 'black'>('white');
   const [selectedSquare, setSelectedSquare] = useState<{row: number, col: number} | null>(null);
@@ -911,10 +913,10 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
   };
 
   return (
-    <div className="flex flex-col items-center space-y-6 p-6">
+    <div className={`flex flex-col items-center space-y-6 ${isMobile ? 'p-2 sm:p-4' : 'p-6'}`}>
       <div className="text-center">
-        <h2 className="text-2xl font-bold mb-2 flex items-center justify-center gap-2">
-          <Sword className="w-6 h-6" />
+        <h2 className={`font-bold mb-2 flex items-center justify-center gap-2 ${isMobile ? 'text-lg' : 'text-2xl'}`}>
+          <Sword className={isMobile ? 'w-4 h-4' : 'w-6 h-6'} />
           Chess Battle
         </h2>
         {gameStatus === 'playing' ? (
@@ -961,15 +963,15 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
 
       <div className="flex flex-col items-center space-y-4">
         {/* Top timer - Black player (positioned based on user's perspective) */}
-        <div className={`p-3 border-2 rounded-lg transition-colors ${
+        <div className={`border-2 rounded-lg transition-colors ${isMobile ? 'p-2' : 'p-3'} ${
           (userPlayerSide === 'black' ? currentPlayer === 'black' : currentPlayer === 'black') && gameStatus === 'playing' 
             ? 'border-primary bg-primary/10' : 'border-border bg-card'
         }`}>
           <div className="text-center">
-            <div className="text-sm font-medium text-muted-foreground">
+            <div className={`font-medium text-muted-foreground ${isMobile ? 'text-xs' : 'text-sm'}`}>
               {userPlayerSide === 'black' ? 'You (Black)' : 'Opponent (Black)'}
             </div>
-            <div className={`text-xl font-mono font-bold ${
+            <div className={`font-mono font-bold ${isMobile ? 'text-lg' : 'text-xl'} ${
               blackTimeRemaining <= 30 ? 'text-destructive' : 'text-foreground'
             }`}>
               {formatTime(blackTimeRemaining)}
@@ -978,7 +980,9 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
         </div>
 
         {/* Chess Board */}
-        <div className="grid grid-cols-8 gap-0 border-4 border-primary/20 shadow-lg rounded-lg overflow-hidden bg-card">
+        <div className={`grid grid-cols-8 gap-0 border-4 border-primary/20 shadow-lg rounded-lg overflow-hidden bg-card ${
+          isMobile ? 'max-w-[320px] w-full' : 'w-[512px]'
+        }`}>
           {(userPlayerSide === 'black' ? [...board].reverse() : board).map((row, displayRowIndex) => 
             (userPlayerSide === 'black' ? [...row].reverse() : row).map((square, displayColIndex) => {
               // Calculate actual indices for highlighting
@@ -992,7 +996,8 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
                 <div
                   key={`${actualRowIndex}-${actualColIndex}`}
                   className={`
-                    w-16 h-16 flex items-center justify-center text-4xl cursor-pointer relative
+                    aspect-square flex items-center justify-center cursor-pointer relative
+                    ${isMobile ? 'text-2xl sm:text-3xl' : 'text-4xl'}
                     ${isLightSquare 
                       ? 'bg-amber-50 dark:bg-amber-100/20' 
                       : 'bg-amber-800/40 dark:bg-amber-900/40'
@@ -1005,7 +1010,7 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
                   onClick={() => handleSquareClick(displayRowIndex, displayColIndex)}
                 >
                   {actualSquare.isPossibleMove && !actualSquare.piece && (
-                    <div className="w-4 h-4 bg-green-500/70 rounded-full" />
+                    <div className={`bg-green-500/70 rounded-full ${isMobile ? 'w-2 h-2' : 'w-4 h-4'}`} />
                   )}
                   {actualSquare.isPossibleMove && actualSquare.piece && (
                     <div className="absolute inset-0 ring-4 ring-green-500/70 rounded-sm" />
@@ -1020,15 +1025,15 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
         </div>
 
         {/* Bottom timer - White player (positioned based on user's perspective) */}
-        <div className={`p-3 border-2 rounded-lg transition-colors ${
+        <div className={`border-2 rounded-lg transition-colors ${isMobile ? 'p-2' : 'p-3'} ${
           (userPlayerSide === 'white' ? currentPlayer === 'white' : currentPlayer === 'white') && gameStatus === 'playing' 
             ? 'border-primary bg-primary/10' : 'border-border bg-card'
         }`}>
           <div className="text-center">
-            <div className="text-sm font-medium text-muted-foreground">
+            <div className={`font-medium text-muted-foreground ${isMobile ? 'text-xs' : 'text-sm'}`}>
               {userPlayerSide === 'white' ? 'You (White)' : 'Opponent (White)'}
             </div>
-            <div className={`text-xl font-mono font-bold ${
+            <div className={`font-mono font-bold ${isMobile ? 'text-lg' : 'text-xl'} ${
               whiteTimeRemaining <= 30 ? 'text-destructive' : 'text-foreground'
             }`}>
               {formatTime(whiteTimeRemaining)}
