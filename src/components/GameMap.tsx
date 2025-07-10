@@ -267,36 +267,42 @@ const GameMap: React.FC<GameMapProps> = ({
       }
       
       if (!touchMoved) setTouchMoved(true);
-    } else if (e.touches.length === 1 && initialPinchDistance === 0) {
-      // Single finger - direct smooth panning
+    } else if (e.touches.length === 1 && initialPinchDistance === 0 && !isAnimating) {
+      // Single finger - only pan if not in momentum animation
       const touch = e.touches[0];
       const deltaX = touch.clientX - lastMousePos.x;
       const deltaY = touch.clientY - lastMousePos.y;
       const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
       
-      if (distance > 1) {
+      // Require minimum movement to start panning (reduces jitter)
+      if (distance > 3) {
         if (!touchMoved) {
           setTouchMoved(true);
           setIsDragging(true);
         }
         e.preventDefault();
         
-        // Direct pan calculation
-        const panDeltaX = deltaX / zoom;
-        const panDeltaY = deltaY / zoom;
-        
-        setPan(prev => ({
-          x: prev.x + panDeltaX,
-          y: prev.y + panDeltaY
-        }));
-        
-        // Simple velocity for momentum
-        setVelocity({
-          x: panDeltaX * 0.8,
-          y: panDeltaY * 0.8
-        });
-        
-        setLastMousePos({ x: touch.clientX, y: touch.clientY });
+        // Throttle updates for smoother performance
+        const now = Date.now();
+        if (now - lastTouchTime.current > 16) { // ~60fps
+          // Direct pan calculation
+          const panDeltaX = deltaX / zoom;
+          const panDeltaY = deltaY / zoom;
+          
+          setPan(prev => ({
+            x: prev.x + panDeltaX,
+            y: prev.y + panDeltaY
+          }));
+          
+          // Simple velocity for momentum
+          setVelocity({
+            x: panDeltaX * 0.8,
+            y: panDeltaY * 0.8
+          });
+          
+          setLastMousePos({ x: touch.clientX, y: touch.clientY });
+          lastTouchTime.current = now;
+        }
       }
     }
   };
@@ -410,17 +416,10 @@ const GameMap: React.FC<GameMapProps> = ({
     
     paths.forEach(path => {
       const countryId = path.id.toLowerCase();
-      const owner = getCountryOwner(countryId);
       
-      // Add click handler
+      // Only add click handler - touch handling is done at container level
       const clickHandler = () => handleCountryClick(countryId);
       path.addEventListener('click', clickHandler);
-      path.addEventListener('touchend', (e) => {
-        if (!touchMoved) {
-          e.preventDefault();
-          handleCountryClick(countryId);
-        }
-      });
       
       eventHandlers.set(path, { click: clickHandler });
     });
@@ -460,7 +459,7 @@ const GameMap: React.FC<GameMapProps> = ({
             onTouchEnd={handleTouchEnd}
             style={{ 
               userSelect: 'none',
-              touchAction: 'manipulation' // Allow clicks and basic gestures
+              touchAction: 'none' // Prevent browser's default touch behaviors
             }}
           >
             <div
