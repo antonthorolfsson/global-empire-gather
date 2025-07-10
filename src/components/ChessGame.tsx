@@ -34,7 +34,7 @@ interface ChessMove {
   piece_type: string;
   captured_piece: string | null;
   board_state: ChessSquare[][];
-  special_move?: 'castling' | 'en_passant' | null;
+  special_move?: 'castle_kingside' | 'castle_queenside' | 'en_passant' | null;
 }
 
 interface Position {
@@ -734,19 +734,20 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
     if (!movingPiece) return false;
 
     // Handle special moves
-    let specialMove: 'castling' | 'en_passant' | null = null;
+    let specialMove: 'castle_kingside' | 'castle_queenside' | 'en_passant' | null = null;
     let actualCapturedPiece = capturedPiece;
 
     // Check for castling
     if (movingPiece.type === 'king' && Math.abs(toCol - fromCol) === 2) {
-      specialMove = 'castling';
       // Move the rook as well
       if (toCol > fromCol) {
         // Kingside castling
+        specialMove = 'castle_kingside';
         newBoard[fromRow][5].piece = newBoard[fromRow][7].piece; // Move rook to f-file
         newBoard[fromRow][7].piece = null;
       } else {
         // Queenside castling
+        specialMove = 'castle_queenside';
         newBoard[fromRow][3].piece = newBoard[fromRow][0].piece; // Move rook to d-file
         newBoard[fromRow][0].piece = null;
       }
