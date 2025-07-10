@@ -34,6 +34,7 @@ interface ChessMove {
   piece_type: string;
   captured_piece: string | null;
   board_state: ChessSquare[][];
+  special_move?: 'castling' | 'en_passant' | null;
 }
 
 interface Position {
@@ -54,6 +55,13 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
   const [isMyTurn, setIsMyTurn] = useState(false);
   const [gameHistory, setGameHistory] = useState<string[]>([]);
   const [isInCheck, setIsInCheck] = useState<{ white: boolean; black: boolean }>({ white: false, black: false });
+  
+  // Special move tracking state
+  const [lastMove, setLastMove] = useState<ChessMove | null>(null);
+  const [castlingRights, setCastlingRights] = useState({
+    white: { kingside: true, queenside: true },
+    black: { kingside: true, queenside: true }
+  });
   
   // Chess clock state
   const [whiteTimeRemaining, setWhiteTimeRemaining] = useState(300); // 5 minutes in seconds
@@ -360,6 +368,14 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
       console.log('ChessGame: Setting current player from', currentPlayer, 'to', nextPlayer);
       setCurrentPlayer(nextPlayer);
       
+      // Update last move for en passant tracking
+      setLastMove(move);
+      
+      // Update castling rights based on the move
+      if (move.piece_type === 'king' || move.piece_type === 'rook') {
+        updateCastlingRightsFromMove(move);
+      }
+      
       // Update game history for repetition detection
       const boardHash = getBoardHash(newBoard);
       setGameHistory(prev => [...prev, boardHash]);
@@ -644,6 +660,12 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
         if (Math.abs(fromCol - toCol) === 1 && toRow === fromRow + direction && targetPiece) {
           return true;
         }
+        
+        // En passant
+        if (Math.abs(fromCol - toCol) === 1 && toRow === fromRow + direction && !targetPiece) {
+          return canEnPassant(fromRow, fromCol, toRow, toCol, piece.color);
+        }
+        
         return false;
         
       case 'rook':
@@ -657,7 +679,14 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
                isPathClearForBoard(fromRow, fromCol, toRow, toCol, gameBoard);
         
       case 'king':
-        return rowDiff <= 1 && colDiff <= 1;
+        // Normal king move
+        if (rowDiff <= 1 && colDiff <= 1) return true;
+        
+        // Castling - king moves 2 squares horizontally
+        if (rowDiff === 0 && colDiff === 2) {
+          return canCastle(fromRow, fromCol, toRow, toCol, piece.color, gameBoard);
+        }
+        return false;
         
       case 'knight':
         return (rowDiff === 2 && colDiff === 1) || (rowDiff === 1 && colDiff === 2);
@@ -704,8 +733,42 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
     
     if (!movingPiece) return false;
 
+    // Handle special moves
+    let specialMove: 'castling' | 'en_passant' | null = null;
+    let actualCapturedPiece = capturedPiece;
+
+    // Check for castling
+    if (movingPiece.type === 'king' && Math.abs(toCol - fromCol) === 2) {
+      specialMove = 'castling';
+      // Move the rook as well
+      if (toCol > fromCol) {
+        // Kingside castling
+        newBoard[fromRow][5].piece = newBoard[fromRow][7].piece; // Move rook to f-file
+        newBoard[fromRow][7].piece = null;
+      } else {
+        // Queenside castling
+        newBoard[fromRow][3].piece = newBoard[fromRow][0].piece; // Move rook to d-file
+        newBoard[fromRow][0].piece = null;
+      }
+    }
+    
+    // Check for en passant
+    if (movingPiece.type === 'pawn' && Math.abs(toCol - fromCol) === 1 && !capturedPiece) {
+      if (canEnPassant(fromRow, fromCol, toRow, toCol, movingPiece.color)) {
+        specialMove = 'en_passant';
+        // Remove the captured pawn
+        const capturedPawnRow = movingPiece.color === 'white' ? toRow + 1 : toRow - 1;
+        actualCapturedPiece = newBoard[capturedPawnRow][toCol].piece;
+        newBoard[capturedPawnRow][toCol].piece = null;
+      }
+    }
+
+    // Make the main move
     newBoard[toRow][toCol].piece = movingPiece;
     newBoard[fromRow][fromCol].piece = null;
+
+    // Update castling rights
+    updateCastlingRights(fromRow, fromCol, toRow, toCol, movingPiece);
     
     // Check for game ending conditions
     const nextPlayer = currentPlayer === 'white' ? 'black' : 'white';
@@ -717,7 +780,7 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
     
     // Save move to database
     try {
-      console.log('ChessGame: Saving move to database:', {
+      const moveData = {
         war_id: warId,
         move_number: moveNumber + 1,
         player_color: currentPlayer,
@@ -726,27 +789,23 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
         to_row: toRow,
         to_col: toCol,
         piece_type: movingPiece.type,
-        captured_piece: capturedPiece?.type || null
-      });
+        captured_piece: actualCapturedPiece?.type || null,
+        board_state: JSON.parse(JSON.stringify(newBoard)),
+        special_move: specialMove
+      };
+      
+      console.log('ChessGame: Saving move to database:', moveData);
       
       const { error } = await supabase
         .from('chess_moves')
-        .insert({
-          war_id: warId,
-          move_number: moveNumber + 1,
-          player_color: currentPlayer,
-          from_row: fromRow,
-          from_col: fromCol,
-          to_row: toRow,
-          to_col: toCol,
-          piece_type: movingPiece.type,
-          captured_piece: capturedPiece?.type || null,
-          board_state: JSON.parse(JSON.stringify(newBoard))
-        });
+        .insert(moveData);
 
       if (error) throw error;
 
       console.log('ChessGame: Move saved successfully to database');
+      
+      // Update last move for en passant tracking
+      setLastMove({ ...moveData, id: 'temp-' + Date.now() } as ChessMove);
       
       // Update chess game state with new player turn
       if (chessGameId) {
@@ -913,6 +972,119 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
         variant: "destructive",
       });
     }
+  };
+
+  // Special move functions
+  const canEnPassant = (fromRow: number, fromCol: number, toRow: number, toCol: number, color: 'white' | 'black'): boolean => {
+    if (!lastMove) return false;
+    
+    // Check if last move was a pawn moving two squares
+    if (lastMove.piece_type !== 'pawn') return false;
+    if (Math.abs(lastMove.to_row - lastMove.from_row) !== 2) return false;
+    
+    // Check if the pawn is adjacent and on the same rank
+    const expectedRow = color === 'white' ? 3 : 4; // 5th rank for white, 4th rank for black
+    if (fromRow !== expectedRow) return false;
+    if (lastMove.to_col !== toCol) return false;
+    if (Math.abs(fromCol - toCol) !== 1) return false;
+    
+    // Check if target square is empty and one rank forward
+    const direction = color === 'white' ? -1 : 1;
+    return toRow === fromRow + direction;
+  };
+
+  const canCastle = (fromRow: number, fromCol: number, toRow: number, toCol: number, color: 'white' | 'black', gameBoard: ChessSquare[][]): boolean => {
+    // Check if king is in starting position
+    const startRow = color === 'white' ? 7 : 0;
+    if (fromRow !== startRow || fromCol !== 4) return false;
+    
+    // Check castling rights
+    const isKingside = toCol > fromCol;
+    const rights = castlingRights[color];
+    if (isKingside && !rights.kingside) return false;
+    if (!isKingside && !rights.queenside) return false;
+    
+    // Check if king is in check
+    const oppositeColor = color === 'white' ? 'black' : 'white';
+    if (isSquareAttacked(fromRow, fromCol, oppositeColor, gameBoard)) return false;
+    
+    // Check if path is clear and squares aren't attacked
+    const rookCol = isKingside ? 7 : 0;
+    const direction = isKingside ? 1 : -1;
+    const squares = isKingside ? [5, 6] : [1, 2, 3];
+    
+    // Check if rook is in position
+    const rook = gameBoard[startRow][rookCol].piece;
+    if (!rook || rook.type !== 'rook' || rook.color !== color) return false;
+    
+    // Check if squares are empty and not attacked
+    for (const col of squares) {
+      if (gameBoard[startRow][col].piece) return false;
+      if (col >= 2 && col <= 6) { // Only check attack on squares the king passes through
+        if (isSquareAttacked(startRow, col, oppositeColor, gameBoard)) return false;
+      }
+    }
+    
+    return true;
+  };
+
+  const updateCastlingRights = (fromRow: number, fromCol: number, toRow: number, toCol: number, piece: ChessPiece) => {
+    setCastlingRights(prev => {
+      const newRights = { ...prev };
+      
+      // King moved
+      if (piece.type === 'king') {
+        newRights[piece.color] = { kingside: false, queenside: false };
+      }
+      
+      // Rook moved
+      if (piece.type === 'rook') {
+        const startRow = piece.color === 'white' ? 7 : 0;
+        if (fromRow === startRow) {
+          if (fromCol === 0) { // Queenside rook
+            newRights[piece.color].queenside = false;
+          } else if (fromCol === 7) { // Kingside rook
+            newRights[piece.color].kingside = false;
+          }
+        }
+      }
+      
+      // Rook captured
+      const captureRow = piece.color === 'white' ? 0 : 7; // Opponent's back rank
+      if (toRow === captureRow) {
+        const oppositeColor = piece.color === 'white' ? 'black' : 'white';
+        if (toCol === 0) {
+          newRights[oppositeColor].queenside = false;
+        } else if (toCol === 7) {
+          newRights[oppositeColor].kingside = false;
+        }
+      }
+      
+      return newRights;
+    });
+  };
+
+  const updateCastlingRightsFromMove = (move: any) => {
+    setCastlingRights(prev => {
+      const newRights = { ...prev };
+      
+      if (move.piece_type === 'king') {
+        newRights[move.player_color] = { kingside: false, queenside: false };
+      }
+      
+      if (move.piece_type === 'rook') {
+        const startRow = move.player_color === 'white' ? 7 : 0;
+        if (move.from_row === startRow) {
+          if (move.from_col === 0) {
+            newRights[move.player_color].queenside = false;
+          } else if (move.from_col === 7) {
+            newRights[move.player_color].kingside = false;
+          }
+        }
+      }
+      
+      return newRights;
+    });
   };
 
   return (
