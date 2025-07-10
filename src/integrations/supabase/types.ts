@@ -412,10 +412,7 @@ export type Database = {
       }
     }
     Functions: {
-      get_current_user_email: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      [_ in never]: never
     }
     Enums: {
       [_ in never]: never
