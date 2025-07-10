@@ -148,8 +148,8 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
     // Don't start timer until first move is made
     if (moveNumber === 0) return;
     
-    // Only start timer if it's my turn and game is playing
-    if (gameStatus === 'playing' && isMyTurn) {
+    // Start timer if game is playing (for any player)
+    if (gameStatus === 'playing') {
       console.log('ChessGame: Starting timer for', currentPlayer);
       
       const newInterval = setInterval(() => {
@@ -162,7 +162,7 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
 
       setTimerInterval(newInterval);
     }
-  }, [gameStatus, isMyTurn, currentPlayer, moveNumber]);
+  }, [gameStatus, currentPlayer, moveNumber]);
 
   const stopTimer = useCallback(() => {
     console.log('ChessGame: Stopping timer');
@@ -260,13 +260,21 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
 
   // Timer control effect - must be after startTimer and stopTimer are defined
   useEffect(() => {
-    console.log('ChessGame: Timer control effect - gameStatus:', gameStatus, 'isMyTurn:', isMyTurn);
-    if (gameStatus === 'playing' && isMyTurn) {
+    console.log('ChessGame: Timer control effect - gameStatus:', gameStatus, 'currentPlayer:', currentPlayer);
+    if (gameStatus === 'playing') {
       startTimer();
     } else {
       stopTimer();
     }
-  }, [gameStatus, isMyTurn, startTimer, stopTimer]);
+  }, [gameStatus, startTimer, stopTimer]);
+
+  // Restart timer when current player changes
+  useEffect(() => {
+    if (gameStatus === 'playing' && moveNumber > 0) {
+      stopTimer();
+      startTimer();
+    }
+  }, [currentPlayer, gameStatus, moveNumber, startTimer, stopTimer]);
 
   const setupRealtimeSubscription = () => {
     console.log('ChessGame: Setting up realtime subscription for warId:', warId);
