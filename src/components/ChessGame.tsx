@@ -1162,30 +1162,31 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
         )}
       </div>
 
-      <div className="flex items-center justify-center gap-6">
-        {/* Left timer - Black player */}
-        <div className={`border-2 rounded-lg transition-colors ${isMobile ? 'p-2' : 'p-3'} ${
-          currentPlayer === 'black' && gameStatus === 'playing' 
+      {/* Chess game layout with clocks above and below */}
+      <div className="flex flex-col items-center space-y-4">
+        {/* Top timer - opponent's clock */}
+        <div className={`border-2 rounded-lg transition-colors ${isMobile ? 'p-3 min-w-[200px]' : 'p-4 min-w-[240px]'} ${
+          (userPlayerSide === 'white' ? currentPlayer === 'black' : currentPlayer === 'white') && gameStatus === 'playing' 
             ? 'border-primary bg-primary/10' : 'border-border bg-card'
         }`}>
           <div className="text-center">
-            <div className={`font-medium text-muted-foreground ${isMobile ? 'text-xs' : 'text-sm'}`}>
-              {userPlayerSide === 'black' ? 'You' : 'Opponent'}
+            <div className={`font-medium text-muted-foreground ${isMobile ? 'text-sm' : 'text-base'}`}>
+              Opponent
             </div>
-            <div className={`font-medium text-muted-foreground ${isMobile ? 'text-xs' : 'text-sm'}`}>
-              (Black)
+            <div className={`font-medium text-muted-foreground ${isMobile ? 'text-sm' : 'text-base'}`}>
+              ({userPlayerSide === 'white' ? 'Black' : 'White'})
             </div>
-            <div className={`font-mono font-bold ${isMobile ? 'text-lg' : 'text-xl'} ${
-              blackTimeRemaining <= 30 ? 'text-destructive' : 'text-foreground'
+            <div className={`font-mono font-bold ${isMobile ? 'text-2xl' : 'text-3xl'} ${
+              (userPlayerSide === 'white' ? blackTimeRemaining : whiteTimeRemaining) <= 30 ? 'text-destructive' : 'text-foreground'
             }`}>
-              {formatTime(blackTimeRemaining)}
+              {formatTime(userPlayerSide === 'white' ? blackTimeRemaining : whiteTimeRemaining)}
             </div>
           </div>
         </div>
 
         {/* Chess Board */}
         <div className={`grid grid-cols-8 gap-0 border-4 border-primary/20 shadow-lg rounded-lg overflow-hidden bg-card ${
-          isMobile ? 'max-w-[320px] w-full' : 'w-[512px]'
+          isMobile ? 'w-[90vw] max-w-[360px]' : 'w-[480px] max-w-[480px]'
         }`}>
           {(userPlayerSide === 'black' ? [...board].reverse() : board).map((row, displayRowIndex) => 
             (userPlayerSide === 'black' ? [...row].reverse() : row).map((square, displayColIndex) => {
@@ -1201,7 +1202,7 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
                   key={`${actualRowIndex}-${actualColIndex}`}
                   className={`
                     aspect-square flex items-center justify-center cursor-pointer relative
-                    ${isMobile ? 'text-2xl sm:text-3xl' : 'text-4xl'}
+                    ${isMobile ? 'text-xl sm:text-2xl' : 'text-3xl'}
                     ${isLightSquare 
                       ? 'bg-amber-50 dark:bg-amber-100/20' 
                       : 'bg-amber-800/40 dark:bg-amber-900/40'
@@ -1214,7 +1215,7 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
                   onClick={() => handleSquareClick(displayRowIndex, displayColIndex)}
                 >
                   {actualSquare.isPossibleMove && !actualSquare.piece && (
-                    <div className={`bg-green-500/70 rounded-full ${isMobile ? 'w-2 h-2' : 'w-4 h-4'}`} />
+                    <div className={`bg-green-500/70 rounded-full ${isMobile ? 'w-2 h-2' : 'w-3 h-3'}`} />
                   )}
                   {actualSquare.isPossibleMove && actualSquare.piece && (
                     <div className="absolute inset-0 ring-4 ring-green-500/70 rounded-sm" />
@@ -1228,22 +1229,22 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
           )}
         </div>
 
-        {/* Right timer - White player */}
-        <div className={`border-2 rounded-lg transition-colors ${isMobile ? 'p-2' : 'p-3'} ${
-          currentPlayer === 'white' && gameStatus === 'playing' 
+        {/* Bottom timer - user's clock */}
+        <div className={`border-2 rounded-lg transition-colors ${isMobile ? 'p-3 min-w-[200px]' : 'p-4 min-w-[240px]'} ${
+          (userPlayerSide === 'white' ? currentPlayer === 'white' : currentPlayer === 'black') && gameStatus === 'playing' 
             ? 'border-primary bg-primary/10' : 'border-border bg-card'
         }`}>
           <div className="text-center">
-            <div className={`font-medium text-muted-foreground ${isMobile ? 'text-xs' : 'text-sm'}`}>
-              {userPlayerSide === 'white' ? 'You' : 'Opponent'}
+            <div className={`font-medium text-muted-foreground ${isMobile ? 'text-sm' : 'text-base'}`}>
+              You
             </div>
-            <div className={`font-medium text-muted-foreground ${isMobile ? 'text-xs' : 'text-sm'}`}>
-              (White)
+            <div className={`font-medium text-muted-foreground ${isMobile ? 'text-sm' : 'text-base'}`}>
+              ({userPlayerSide === 'white' ? 'White' : 'Black'})
             </div>
-            <div className={`font-mono font-bold ${isMobile ? 'text-lg' : 'text-xl'} ${
-              whiteTimeRemaining <= 30 ? 'text-destructive' : 'text-foreground'
+            <div className={`font-mono font-bold ${isMobile ? 'text-2xl' : 'text-3xl'} ${
+              (userPlayerSide === 'white' ? whiteTimeRemaining : blackTimeRemaining) <= 30 ? 'text-destructive' : 'text-foreground'
             }`}>
-              {formatTime(whiteTimeRemaining)}
+              {formatTime(userPlayerSide === 'white' ? whiteTimeRemaining : blackTimeRemaining)}
             </div>
           </div>
         </div>
