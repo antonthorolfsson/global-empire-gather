@@ -107,6 +107,7 @@ export type Database = {
           move_number: number
           piece_type: string
           player_color: string
+          special_move: string | null
           to_col: number
           to_row: number
           war_id: string
@@ -121,6 +122,7 @@ export type Database = {
           move_number: number
           piece_type: string
           player_color: string
+          special_move?: string | null
           to_col: number
           to_row: number
           war_id: string
@@ -135,6 +137,7 @@ export type Database = {
           move_number?: number
           piece_type?: string
           player_color?: string
+          special_move?: string | null
           to_col?: number
           to_row?: number
           war_id?: string
