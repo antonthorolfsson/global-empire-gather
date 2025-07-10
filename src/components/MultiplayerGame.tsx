@@ -6,6 +6,7 @@ import GameMap from './GameMap';
 import EmpireStats from './EmpireStats';
 import ColorPickerDialog from './ColorPickerDialog';
 import WarDeclaration from './WarDeclaration';
+import { GameChat } from './GameChat';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -54,6 +55,7 @@ const MultiplayerGame = () => {
   const [loading, setLoading] = useState(true);
   const [isPlayerInGame, setIsPlayerInGame] = useState(false);
   const [showColorPicker, setShowColorPicker] = useState(false);
+  const [showChat, setShowChat] = useState(false);
 
   useEffect(() => {
     if (!gameId) return;
@@ -733,6 +735,18 @@ const MultiplayerGame = () => {
           )}
         </Tabs>
       </div>
+
+      {/* Chat Component */}
+      {userPlayer && (
+        <div className="fixed bottom-4 right-4 z-50">
+          <GameChat
+            gameId={gameId!}
+            currentPlayerId={userPlayer.id}
+            isCollapsed={!showChat}
+            onToggle={() => setShowChat(!showChat)}
+          />
+        </div>
+      )}
     </div>
   );
 };
