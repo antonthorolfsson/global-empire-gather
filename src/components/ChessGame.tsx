@@ -258,23 +258,18 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
-  // Timer control effect - must be after startTimer and stopTimer are defined
+  // Single timer control effect - manages timer based on game state and current player
   useEffect(() => {
-    console.log('ChessGame: Timer control effect - gameStatus:', gameStatus, 'currentPlayer:', currentPlayer);
-    if (gameStatus === 'playing') {
-      startTimer();
-    } else {
-      stopTimer();
-    }
-  }, [gameStatus, startTimer, stopTimer]);
-
-  // Restart timer when current player changes
-  useEffect(() => {
+    console.log('ChessGame: Timer control effect - gameStatus:', gameStatus, 'currentPlayer:', currentPlayer, 'moveNumber:', moveNumber);
+    
+    // Always stop any existing timer first
+    stopTimer();
+    
+    // Only start timer if game is playing and after first move
     if (gameStatus === 'playing' && moveNumber > 0) {
-      stopTimer();
       startTimer();
     }
-  }, [currentPlayer, gameStatus, moveNumber, startTimer, stopTimer]);
+  }, [gameStatus, currentPlayer, moveNumber, startTimer, stopTimer]);
 
   const setupRealtimeSubscription = () => {
     console.log('ChessGame: Setting up realtime subscription for warId:', warId);
