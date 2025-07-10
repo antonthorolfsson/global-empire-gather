@@ -995,19 +995,34 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
   };
 
   const canCastle = (fromRow: number, fromCol: number, toRow: number, toCol: number, color: 'white' | 'black', gameBoard: ChessSquare[][]): boolean => {
+    console.log(`ChessGame: Checking castling - from: ${fromRow},${fromCol} to: ${toRow},${toCol} color: ${color}`);
+    
     // Check if king is in starting position
     const startRow = color === 'white' ? 7 : 0;
-    if (fromRow !== startRow || fromCol !== 4) return false;
+    if (fromRow !== startRow || fromCol !== 4) {
+      console.log(`ChessGame: Castling failed - king not in starting position. Expected: ${startRow},4 Got: ${fromRow},${fromCol}`);
+      return false;
+    }
     
     // Check castling rights
     const isKingside = toCol > fromCol;
     const rights = castlingRights[color];
-    if (isKingside && !rights.kingside) return false;
-    if (!isKingside && !rights.queenside) return false;
+    console.log(`ChessGame: Castling rights for ${color}:`, rights);
+    if (isKingside && !rights.kingside) {
+      console.log(`ChessGame: Castling failed - no kingside rights`);
+      return false;
+    }
+    if (!isKingside && !rights.queenside) {
+      console.log(`ChessGame: Castling failed - no queenside rights`);
+      return false;
+    }
     
     // Check if king is in check
     const oppositeColor = color === 'white' ? 'black' : 'white';
-    if (isSquareAttacked(fromRow, fromCol, oppositeColor, gameBoard)) return false;
+    if (isSquareAttacked(fromRow, fromCol, oppositeColor, gameBoard)) {
+      console.log(`ChessGame: Castling failed - king is in check`);
+      return false;
+    }
     
     // Check if path is clear and squares aren't attacked
     const rookCol = isKingside ? 7 : 0;
@@ -1016,16 +1031,26 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
     
     // Check if rook is in position
     const rook = gameBoard[startRow][rookCol].piece;
-    if (!rook || rook.type !== 'rook' || rook.color !== color) return false;
+    if (!rook || rook.type !== 'rook' || rook.color !== color) {
+      console.log(`ChessGame: Castling failed - rook not in position. Rook:`, rook);
+      return false;
+    }
     
     // Check if squares are empty and not attacked
     for (const col of squares) {
-      if (gameBoard[startRow][col].piece) return false;
+      if (gameBoard[startRow][col].piece) {
+        console.log(`ChessGame: Castling failed - square ${startRow},${col} is occupied`);
+        return false;
+      }
       if (col >= 2 && col <= 6) { // Only check attack on squares the king passes through
-        if (isSquareAttacked(startRow, col, oppositeColor, gameBoard)) return false;
+        if (isSquareAttacked(startRow, col, oppositeColor, gameBoard)) {
+          console.log(`ChessGame: Castling failed - square ${startRow},${col} is under attack`);
+          return false;
+        }
       }
     }
     
+    console.log(`ChessGame: Castling is valid!`);
     return true;
   };
 
