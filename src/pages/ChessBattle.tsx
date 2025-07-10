@@ -119,16 +119,29 @@ const ChessBattle = () => {
 
       // Transfer the defending country to the winner
       console.log('ChessBattle: Transferring country', war.defending_country_id, 'to winner', winningPlayerId);
-      const { error: countryError } = await supabase
+      console.log('ChessBattle: War details:', { gameId: war.game_id, defendingCountryId: war.defending_country_id });
+      
+      const { data: beforeUpdate, error: beforeError } = await supabase
+        .from('game_countries')
+        .select('*')
+        .eq('game_id', war.game_id)
+        .eq('country_id', war.defending_country_id);
+      
+      console.log('ChessBattle: Country before update:', beforeUpdate);
+      
+      const { data: updatedCountry, error: countryError } = await supabase
         .from('game_countries')
         .update({ player_id: winningPlayerId })
         .eq('game_id', war.game_id)
-        .eq('country_id', war.defending_country_id);
+        .eq('country_id', war.defending_country_id)
+        .select();
 
       if (countryError) {
         console.error('ChessBattle: Error transferring country:', countryError);
         throw countryError;
       }
+      
+      console.log('ChessBattle: Country after update:', updatedCountry);
       
       console.log('ChessBattle: Country transferred successfully');
 
