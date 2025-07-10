@@ -964,15 +964,18 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
         )}
       </div>
 
-      <div className="flex flex-col items-center space-y-4">
-        {/* Top timer - Black player (positioned based on user's perspective) */}
+      <div className="flex items-center justify-center gap-6">
+        {/* Left timer - Black player */}
         <div className={`border-2 rounded-lg transition-colors ${isMobile ? 'p-2' : 'p-3'} ${
-          (userPlayerSide === 'black' ? currentPlayer === 'black' : currentPlayer === 'black') && gameStatus === 'playing' 
+          currentPlayer === 'black' && gameStatus === 'playing' 
             ? 'border-primary bg-primary/10' : 'border-border bg-card'
         }`}>
           <div className="text-center">
             <div className={`font-medium text-muted-foreground ${isMobile ? 'text-xs' : 'text-sm'}`}>
-              {userPlayerSide === 'black' ? 'You (Black)' : 'Opponent (Black)'}
+              {userPlayerSide === 'black' ? 'You' : 'Opponent'}
+            </div>
+            <div className={`font-medium text-muted-foreground ${isMobile ? 'text-xs' : 'text-sm'}`}>
+              (Black)
             </div>
             <div className={`font-mono font-bold ${isMobile ? 'text-lg' : 'text-xl'} ${
               blackTimeRemaining <= 30 ? 'text-destructive' : 'text-foreground'
@@ -1027,14 +1030,17 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
           )}
         </div>
 
-        {/* Bottom timer - White player (positioned based on user's perspective) */}
+        {/* Right timer - White player */}
         <div className={`border-2 rounded-lg transition-colors ${isMobile ? 'p-2' : 'p-3'} ${
-          (userPlayerSide === 'white' ? currentPlayer === 'white' : currentPlayer === 'white') && gameStatus === 'playing' 
+          currentPlayer === 'white' && gameStatus === 'playing' 
             ? 'border-primary bg-primary/10' : 'border-border bg-card'
         }`}>
           <div className="text-center">
             <div className={`font-medium text-muted-foreground ${isMobile ? 'text-xs' : 'text-sm'}`}>
-              {userPlayerSide === 'white' ? 'You (White)' : 'Opponent (White)'}
+              {userPlayerSide === 'white' ? 'You' : 'Opponent'}
+            </div>
+            <div className={`font-medium text-muted-foreground ${isMobile ? 'text-xs' : 'text-sm'}`}>
+              (White)
             </div>
             <div className={`font-mono font-bold ${isMobile ? 'text-lg' : 'text-xl'} ${
               whiteTimeRemaining <= 30 ? 'text-destructive' : 'text-foreground'
