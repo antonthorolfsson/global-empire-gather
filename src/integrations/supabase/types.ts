@@ -400,7 +400,7 @@ export type Database = {
           current_player_turn: number | null
           deleted_at: string | null
           game_phase: string | null
-          game_players: Json[] | null
+          game_players: Json | null
           id: string | null
           is_public: boolean | null
           max_players: number | null
