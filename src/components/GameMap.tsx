@@ -65,7 +65,11 @@ const GameMap: React.FC<GameMapProps> = ({
   }, []);
 
   const getCountryOwner = (countryId: string) => {
-    return players.find(player => player.countries.includes(countryId));
+    return players.find(player => 
+      player.countries && 
+      Array.isArray(player.countries) && 
+      player.countries.includes(countryId)
+    );
   };
 
   const getCountryStyle = (countryId: string) => {
