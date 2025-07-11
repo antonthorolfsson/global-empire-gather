@@ -443,7 +443,7 @@ const GameMap: React.FC<GameMapProps> = ({
   }, [svgContent, players, selectedCountries]);
 
   return (
-    <Card className="w-full h-full bg-gradient-to-br from-ocean to-primary overflow-hidden">
+    <Card className="w-full h-full overflow-hidden" style={{ background: 'hsl(200 70% 85%)' }}>
       <div className="relative w-full h-full animate-map-zoom">
         {svgContent ? (
           <div 
@@ -469,7 +469,6 @@ const GameMap: React.FC<GameMapProps> = ({
                 __html: svgContent.replace('<svg', '<svg id="world-map-svg"')
               }}
               style={{
-                background: 'hsl(200 70% 85%)',
                 transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
                 transformOrigin: 'center',
                 transition: 'none',
