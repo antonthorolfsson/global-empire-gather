@@ -17,6 +17,14 @@ export interface Country {
   energyProduction?: number; // TWh (terawatt hours)
   oilProduction?: number; // million barrels per day
   gasProduction?: number; // billion cubic meters per year
+  // Cultural and demographic data
+  religions?: { name: string; percentage: number }[];
+  languages?: { name: string; percentage: number }[];
+  demographics?: {
+    ageGroups: { range: string; percentage: number }[];
+    urbanPopulation: number; // percentage
+    literacyRate: number; // percentage
+  };
 }
 
 export interface Player {

@@ -258,6 +258,57 @@ const EmpireDetailDialog: React.FC<EmpireDetailDialogProps> = ({
             </CardContent>
           </Card>
 
+          {/* Cultural Information */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                🕌 Cultural & Demographics
+              </CardTitle>
+              <CardDescription>
+                Religious, linguistic and demographic composition
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Religions */}
+              <div>
+                <h4 className="font-medium text-sm text-muted-foreground mb-2">Major Religions</h4>
+                <div className="space-y-2">
+                  {playerCountries[0]?.religions?.slice(0, 3).map((religion, index) => (
+                    <div key={index} className="flex justify-between items-center">
+                      <span className="text-sm">{religion.name}</span>
+                      <span className="text-sm font-medium">{religion.percentage}%</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
+              {/* Languages */}
+              <div>
+                <h4 className="font-medium text-sm text-muted-foreground mb-2">Main Languages</h4>
+                <div className="space-y-2">
+                  {playerCountries[0]?.languages?.slice(0, 3).map((language, index) => (
+                    <div key={index} className="flex justify-between items-center">
+                      <span className="text-sm">{language.name}</span>
+                      <span className="text-sm font-medium">{language.percentage}%</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
+              {/* Demographics */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="text-center">
+                  <div className="text-lg font-bold text-primary">{playerCountries[0]?.demographics?.urbanPopulation || 0}%</div>
+                  <div className="text-xs text-muted-foreground">Urban Population</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-lg font-bold text-primary">{playerCountries[0]?.demographics?.literacyRate || 0}%</div>
+                  <div className="text-xs text-muted-foreground">Literacy Rate</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Empire Score Breakdown */}
           <Card>
             <CardHeader>
