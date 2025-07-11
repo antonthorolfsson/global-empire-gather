@@ -310,10 +310,20 @@ const MultiplayerGame = () => {
   };
 
   const selectCountry = async (countryId: string) => {
-    console.log('Selecting country:', countryId, 'User player:', userPlayer, 'Game status:', game?.status);
+    console.log('Selecting country:', countryId, 'User player:', userPlayer, 'Game status:', game?.status, 'Game phase:', game?.game_phase);
     
     if (!isPlayerInGame || !userPlayer || game?.status !== 'active') {
       console.log('Cannot select country:', { isPlayerInGame, hasUserPlayer: !!userPlayer, gameStatus: game?.status });
+      return;
+    }
+
+    // Prevent country selection during finished phase (chess-only phase)
+    if (game?.game_phase === 'finished') {
+      toast({
+        title: "Country selection disabled",
+        description: "Countries can only be gained through chess battles now!",
+        variant: "destructive",
+      });
       return;
     }
 
