@@ -285,9 +285,10 @@ const GameMap: React.FC<GameMapProps> = ({
         // Throttle updates for smoother performance
         const now = Date.now();
         if (now - lastTouchTime.current > 16) { // ~60fps
-          // Direct pan calculation
-          const panDeltaX = deltaX / zoom;
-          const panDeltaY = deltaY / zoom;
+          // Improved pan calculation for better mobile experience at high zoom
+          const zoomFactor = Math.max(0.3, 1 / Math.sqrt(zoom)); // Less aggressive scaling
+          const panDeltaX = deltaX * zoomFactor;
+          const panDeltaY = deltaY * zoomFactor;
           
           setPan(prev => ({
             x: prev.x + panDeltaX,
