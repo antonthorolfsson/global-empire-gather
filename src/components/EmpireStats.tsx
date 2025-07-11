@@ -62,6 +62,12 @@ const EmpireStats: React.FC<EmpireStatsProps> = ({
     return num.toString();
   };
 
+  const formatGDP = (gdpInBillions: number) => {
+    // GDP values in data are already in billions, so convert to actual value first
+    const actualGDP = gdpInBillions * 1000000000; // Convert billions to actual dollars
+    return formatNumber(actualGDP);
+  };
+
   const getRankColor = (rank: number) => {
     switch (rank) {
       case 1: return 'bg-empire-gold text-empire-gold-foreground';
@@ -110,7 +116,7 @@ const EmpireStats: React.FC<EmpireStatsProps> = ({
             <p className="font-medium text-card-foreground">{data.name}</p>
           </div>
           <p className="text-sm text-muted-foreground">
-            {payload[0].name}: {formatNumber(payload[0].value)}
+            {payload[0].name}: {payload[0].dataKey === 'gdp' ? formatGDP(payload[0].value) : formatNumber(payload[0].value)}
             {payload[0].dataKey === 'area' && ' km²'}
             {payload[0].dataKey === 'gdp' && ' USD'}
           </p>
@@ -212,7 +218,7 @@ const EmpireStats: React.FC<EmpireStatsProps> = ({
                   <span className="font-semibold">GDP</span>
                 </div>
                 <span className="text-sm font-bold text-accent">
-                  ${formatNumber(stats.totalGDP)}
+                  ${formatGDP(stats.totalGDP)}
                 </span>
               </div>
 
