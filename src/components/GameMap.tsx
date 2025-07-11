@@ -377,21 +377,27 @@ const GameMap: React.FC<GameMapProps> = ({
     
     // Add specific rules for owned countries
     players.forEach(player => {
-      player.countries.forEach(countryId => {
-        cssRules += `
-          #world-map-svg path#${countryId.toUpperCase()} {
-            fill: ${player.color} !important;
-            stroke: none !important;
-            stroke-width: 0 !important;
-            cursor: default !important;
-            filter: drop-shadow(0 0 4px ${player.color}) !important;
+      if (player.countries && Array.isArray(player.countries)) {
+        player.countries.forEach(countryId => {
+          if (countryId && typeof countryId === 'string') {
+            cssRules += `
+              #world-map-svg path#${countryId.toUpperCase()} {
+                fill: ${player.color} !important;
+                stroke: none !important;
+                stroke-width: 0 !important;
+                cursor: default !important;
+                filter: drop-shadow(0 0 4px ${player.color}) !important;
+              }
+            `;
           }
-        `;
-      });
+        });
+      }
     });
     
     // Add hover effects for unowned countries
-    const ownedCountries = players.flatMap(player => player.countries.map(id => id.toUpperCase()));
+    const ownedCountries = players.flatMap(player => 
+      (player.countries || []).filter(id => id && typeof id === 'string').map(id => id.toUpperCase())
+    );
     cssRules += `
       #world-map-svg path:not(${ownedCountries.map(id => `#${id}`).join(', ')}):hover {
         fill: hsl(var(--primary-glow)) !important;
