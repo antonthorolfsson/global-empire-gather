@@ -117,6 +117,9 @@ const EmpireDetailDialog: React.FC<EmpireDetailDialogProps> = ({
   };
 
   const culturalData = getAggregatedCulturalData();
+  
+  // Debug logging
+  console.log('Cultural data for empire:', culturalData.religions);
 
   const getRankColor = (rank: number) => {
     switch (rank) {
@@ -331,7 +334,7 @@ const EmpireDetailDialog: React.FC<EmpireDetailDialogProps> = ({
               <div>
                 <h4 className="font-medium text-sm text-muted-foreground mb-2">Major Religions</h4>
                 <div className="space-y-2">
-                  {culturalData.religions.slice(0, 3).map((religion, index) => (
+                  {culturalData.religions.slice(0, 4).map((religion, index) => (
                     <div key={index} className="flex justify-between items-center">
                       <span className="text-sm">{religion.name}</span>
                       <span className="text-sm font-medium">{religion.percentage}%</span>
