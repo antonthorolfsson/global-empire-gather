@@ -469,7 +469,7 @@ const GameMap: React.FC<GameMapProps> = ({
                 __html: svgContent.replace('<svg', '<svg id="world-map-svg"')
               }}
               style={{
-                background: 'linear-gradient(135deg, hsl(var(--ocean)), hsl(220 80% 35%))',
+                background: 'hsl(200 70% 85%)',
                 transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
                 transformOrigin: 'center',
                 transition: 'none',
