@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Users, Map, Flag, PieChart } from 'lucide-react';
+import { Users, Map, Flag, PieChart, MousePointerClick } from 'lucide-react';
 import { Player, Country } from '@/hooks/useGameState';
 import { PieChart as RechartsPieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+import EmpireDetailDialog from './EmpireDetailDialog';
 
 interface EmpireStatsProps {
   players: Player[];
@@ -19,6 +20,13 @@ const EmpireStats: React.FC<EmpireStatsProps> = ({
   currentPlayer,
   gamePhase
 }) => {
+  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+
+  const handleEmpireClick = (player: Player) => {
+    setSelectedPlayer(player);
+    setDialogOpen(true);
+  };
   const getPlayerStats = (playerId: string) => {
     const player = players.find(p => p.id === playerId);
     if (!player) return null;
@@ -153,7 +161,11 @@ const EmpireStats: React.FC<EmpireStatsProps> = ({
         if (!stats) return null;
 
         return (
-          <Card key={player.id} className="animate-strategic-fade-in">
+          <Card 
+            key={player.id} 
+            className="animate-strategic-fade-in cursor-pointer hover:bg-accent/5 transition-colors group" 
+            onClick={() => handleEmpireClick(player)}
+          >
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -162,10 +174,11 @@ const EmpireStats: React.FC<EmpireStatsProps> = ({
                     style={{ backgroundColor: player.color }}
                   />
                   <div>
-                    <CardTitle className="text-lg font-bold text-primary">
+                    <CardTitle className="text-lg font-bold text-primary flex items-center gap-2">
                       {stats.playerName}
+                      <MousePointerClick className="h-4 w-4 opacity-0 group-hover:opacity-50 transition-opacity" />
                     </CardTitle>
-                    <CardDescription>Empire Stats</CardDescription>
+                    <CardDescription>Empire Stats • Click for details</CardDescription>
                   </div>
                 </div>
                 <Badge 
@@ -348,6 +361,15 @@ const EmpireStats: React.FC<EmpireStatsProps> = ({
           </Card>
         </>
       )}
+
+      {/* Empire Detail Dialog */}
+      <EmpireDetailDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        player={selectedPlayer}
+        countries={countries}
+        players={players}
+      />
     </div>
   );
 };
