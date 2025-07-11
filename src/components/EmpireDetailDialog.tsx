@@ -60,6 +60,64 @@ const EmpireDetailDialog: React.FC<EmpireDetailDialogProps> = ({
     return icons[rank - 1] || '🏅';
   };
 
+  // Calculate aggregated cultural data across all countries
+  const getAggregatedCulturalData = () => {
+    const religionMap: { [key: string]: number } = {};
+    const languageMap: { [key: string]: number } = {};
+    let totalUrbanPop = 0;
+    let totalLiteracy = 0;
+    let weightedUrbanPop = 0;
+    let weightedLiteracy = 0;
+
+    playerCountries.forEach(country => {
+      const population = country.population || 0;
+      
+      // Aggregate religions (weighted by population)
+      country.religions?.forEach(religion => {
+        const weightedPercentage = (religion.percentage / 100) * population;
+        religionMap[religion.name] = (religionMap[religion.name] || 0) + weightedPercentage;
+      });
+
+      // Aggregate languages (weighted by population)
+      country.languages?.forEach(language => {
+        const weightedPercentage = (language.percentage / 100) * population;
+        languageMap[language.name] = (languageMap[language.name] || 0) + weightedPercentage;
+      });
+
+      // Aggregate demographics (weighted by population)
+      if (country.demographics) {
+        weightedUrbanPop += (country.demographics.urbanPopulation / 100) * population;
+        weightedLiteracy += (country.demographics.literacyRate / 100) * population;
+        totalUrbanPop += population;
+        totalLiteracy += population;
+      }
+    });
+
+    // Convert back to percentages and sort
+    const religions = Object.entries(religionMap)
+      .map(([name, total]) => ({
+        name,
+        percentage: Math.round((total / totalPopulation) * 100)
+      }))
+      .sort((a, b) => b.percentage - a.percentage);
+
+    const languages = Object.entries(languageMap)
+      .map(([name, total]) => ({
+        name,
+        percentage: Math.round((total / totalPopulation) * 100)
+      }))
+      .sort((a, b) => b.percentage - a.percentage);
+
+    return {
+      religions,
+      languages,
+      avgUrbanPopulation: totalUrbanPop > 0 ? Math.round((weightedUrbanPop / totalUrbanPop) * 100) : 0,
+      avgLiteracyRate: totalLiteracy > 0 ? Math.round((weightedLiteracy / totalLiteracy) * 100) : 0
+    };
+  };
+
+  const culturalData = getAggregatedCulturalData();
+
   const getRankColor = (rank: number) => {
     switch (rank) {
       case 1: return 'bg-empire-gold text-empire-gold-foreground';
@@ -273,7 +331,7 @@ const EmpireDetailDialog: React.FC<EmpireDetailDialogProps> = ({
               <div>
                 <h4 className="font-medium text-sm text-muted-foreground mb-2">Major Religions</h4>
                 <div className="space-y-2">
-                  {playerCountries[0]?.religions?.slice(0, 3).map((religion, index) => (
+                  {culturalData.religions.slice(0, 3).map((religion, index) => (
                     <div key={index} className="flex justify-between items-center">
                       <span className="text-sm">{religion.name}</span>
                       <span className="text-sm font-medium">{religion.percentage}%</span>
@@ -286,7 +344,7 @@ const EmpireDetailDialog: React.FC<EmpireDetailDialogProps> = ({
               <div>
                 <h4 className="font-medium text-sm text-muted-foreground mb-2">Main Languages</h4>
                 <div className="space-y-2">
-                  {playerCountries[0]?.languages?.slice(0, 3).map((language, index) => (
+                  {culturalData.languages.slice(0, 3).map((language, index) => (
                     <div key={index} className="flex justify-between items-center">
                       <span className="text-sm">{language.name}</span>
                       <span className="text-sm font-medium">{language.percentage}%</span>
@@ -298,11 +356,11 @@ const EmpireDetailDialog: React.FC<EmpireDetailDialogProps> = ({
               {/* Demographics */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="text-center">
-                  <div className="text-lg font-bold text-primary">{playerCountries[0]?.demographics?.urbanPopulation || 0}%</div>
+                  <div className="text-lg font-bold text-primary">{culturalData.avgUrbanPopulation}%</div>
                   <div className="text-xs text-muted-foreground">Urban Population</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-lg font-bold text-primary">{playerCountries[0]?.demographics?.literacyRate || 0}%</div>
+                  <div className="text-lg font-bold text-primary">{culturalData.avgLiteracyRate}%</div>
                   <div className="text-xs text-muted-foreground">Literacy Rate</div>
                 </div>
               </div>
