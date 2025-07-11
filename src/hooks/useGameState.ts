@@ -8,6 +8,15 @@ export interface Country {
   area: number;
   gdp: number;
   owner?: string;
+  // Military data
+  militarySize?: number; // active personnel
+  tanks?: number;
+  aircraft?: number;
+  navySize?: number; // naval vessels
+  // Resource production (annual)
+  energyProduction?: number; // TWh (terawatt hours)
+  oilProduction?: number; // million barrels per day
+  gasProduction?: number; // billion cubic meters per year
 }
 
 export interface Player {

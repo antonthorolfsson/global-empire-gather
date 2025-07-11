@@ -145,6 +145,76 @@ const EmpireDetailDialog: React.FC<EmpireDetailDialogProps> = ({
             </CardContent>
           </Card>
 
+          {/* Military Strength */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                🛡️ Military Strength
+              </CardTitle>
+              <CardDescription>
+                Combined military capabilities across all territories
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-destructive">
+                  {formatNumber(playerCountries.reduce((sum, c) => sum + (c.militarySize || 0), 0))}
+                </div>
+                <div className="text-sm text-muted-foreground">Active Personnel</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-destructive">
+                  {formatNumber(playerCountries.reduce((sum, c) => sum + (c.tanks || 0), 0))}
+                </div>
+                <div className="text-sm text-muted-foreground">Tanks</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-destructive">
+                  {formatNumber(playerCountries.reduce((sum, c) => sum + (c.aircraft || 0), 0))}
+                </div>
+                <div className="text-sm text-muted-foreground">Aircraft</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-destructive">
+                  {formatNumber(playerCountries.reduce((sum, c) => sum + (c.navySize || 0), 0))}
+                </div>
+                <div className="text-sm text-muted-foreground">Naval Vessels</div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Resource Production */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                ⚡ Resource Production
+              </CardTitle>
+              <CardDescription>
+                Annual production capacity across all territories
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-orange-500">
+                  {formatNumber(playerCountries.reduce((sum, c) => sum + (c.energyProduction || 0), 0))}
+                </div>
+                <div className="text-sm text-muted-foreground">TWh Energy</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-orange-500">
+                  {playerCountries.reduce((sum, c) => sum + (c.oilProduction || 0), 0).toFixed(1)}
+                </div>
+                <div className="text-sm text-muted-foreground">Million barrels/day Oil</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-orange-500">
+                  {formatNumber(playerCountries.reduce((sum, c) => sum + (c.gasProduction || 0), 0))}
+                </div>
+                <div className="text-sm text-muted-foreground">BCM Natural Gas</div>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Territories */}
           <Card>
             <CardHeader>
