@@ -101,7 +101,7 @@ const GameMap: React.FC<GameMapProps> = ({
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
     const zoomSpeed = 0.1;
-    const newZoom = Math.max(0.5, Math.min(5, zoom + (e.deltaY > 0 ? -zoomSpeed : zoomSpeed)));
+    const newZoom = Math.max(0.5, Math.min(10, zoom + (e.deltaY > 0 ? -zoomSpeed : zoomSpeed)));
     setZoom(newZoom);
   };
 
@@ -129,7 +129,7 @@ const GameMap: React.FC<GameMapProps> = ({
   };
 
   const handleZoomIn = () => {
-    setZoom(prev => Math.min(5, prev + 0.5));
+    setZoom(prev => Math.min(10, prev + 0.5));
   };
 
   const handleZoomOut = () => {
@@ -238,7 +238,7 @@ const GameMap: React.FC<GameMapProps> = ({
       // Smoother zoom scaling with better curve
       const rawScale = currentDistance / initialPinchDistance;
       const scale = Math.pow(rawScale, 0.9); // More linear feel
-      const newZoom = Math.max(0.5, Math.min(5, initialZoom * scale));
+      const newZoom = Math.max(0.5, Math.min(10, initialZoom * scale));
       
       // Get container bounds for relative positioning
       const container = mapContainerRef.current;
