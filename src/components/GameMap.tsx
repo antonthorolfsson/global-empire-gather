@@ -363,6 +363,14 @@ const GameMap: React.FC<GameMapProps> = ({
     if (!svgContent) return;
 
     console.log('GameMap: Updating country styles, players:', players);
+    
+    // Debug player countries data
+    players.forEach((player, index) => {
+      console.log(`Player ${index + 1} (${player.name}):`, {
+        countries: player.countries,
+        color: player.color
+      });
+    });
 
     // Add CSS styles for countries directly to the document
     const styleElement = document.getElementById('map-country-styles') || document.createElement('style');
