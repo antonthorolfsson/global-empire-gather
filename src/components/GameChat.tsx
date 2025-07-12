@@ -45,44 +45,7 @@ export const GameChat: React.FC<GameChatProps> = ({
 
   useEffect(() => {
     loadMessages();
-    setupRealtimeSubscription();
-  }, [gameId]);
-
-  const loadMessages = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('chat_messages')
-        .select(`
-          id,
-          message,
-          created_at,
-          player_id,
-          game_players!inner(
-            player_name,
-            color
-          )
-        `)
-        .eq('game_id', gameId)
-        .order('created_at', { ascending: true });
-
-      if (error) throw error;
-
-      const formattedMessages = data.map(msg => ({
-        id: msg.id,
-        message: msg.message,
-        created_at: msg.created_at,
-        player_id: msg.player_id,
-        player_name: (msg.game_players as any).player_name,
-        player_color: (msg.game_players as any).color,
-      }));
-
-      setMessages(formattedMessages);
-    } catch (error) {
-      console.error('Error loading messages:', error);
-    }
-  };
-
-  const setupRealtimeSubscription = () => {
+    
     const channel = supabase
       .channel('chat-messages')
       .on(
@@ -128,6 +91,40 @@ export const GameChat: React.FC<GameChatProps> = ({
     return () => {
       supabase.removeChannel(channel);
     };
+  }, [gameId]);
+
+  const loadMessages = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('chat_messages')
+        .select(`
+          id,
+          message,
+          created_at,
+          player_id,
+          game_players!inner(
+            player_name,
+            color
+          )
+        `)
+        .eq('game_id', gameId)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+
+      const formattedMessages = data.map(msg => ({
+        id: msg.id,
+        message: msg.message,
+        created_at: msg.created_at,
+        player_id: msg.player_id,
+        player_name: (msg.game_players as any).player_name,
+        player_color: (msg.game_players as any).color,
+      }));
+
+      setMessages(formattedMessages);
+    } catch (error) {
+      console.error('Error loading messages:', error);
+    }
   };
 
   const sendMessage = async (e: React.FormEvent) => {
