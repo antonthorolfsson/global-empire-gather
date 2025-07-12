@@ -575,9 +575,9 @@ const GameMap: React.FC<GameMapProps> = ({
         </div>
 
         {/* Remaining Countries Dropdown */}
-        <div className="absolute bottom-4 left-4 pointer-events-auto">
+        <div className="absolute bottom-4 left-4 pointer-events-auto z-50">
           <Select onValueChange={(countryId) => handleCountryClick(countryId)}>
-            <SelectTrigger className="w-48 h-10 bg-card/90 backdrop-blur-sm border-border/50">
+            <SelectTrigger className="w-48 h-10 bg-background border-border shadow-lg">
               <div className="flex items-center gap-2">
                 <MapPin className="w-4 h-4" />
                 <SelectValue placeholder={`${countries.filter(country => 
@@ -589,7 +589,7 @@ const GameMap: React.FC<GameMapProps> = ({
                 ).length} unselected`} />
               </div>
             </SelectTrigger>
-            <SelectContent className="max-h-60">
+            <SelectContent className="max-h-60 z-[100] bg-background border-border shadow-xl">
               {countries
                 .filter(country => 
                   !players.some(player => 
