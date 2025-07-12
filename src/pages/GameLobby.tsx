@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Users, LogOut, Play, Trash2, GamepadIcon, Mail, Lock, Globe } from 'lucide-react';
+import { Plus, Users, LogOut, Play, Trash2, GamepadIcon, Mail, Lock, Globe, Bell } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ColorPickerDialog from '@/components/ColorPickerDialog';
 import { useRateLimit } from '@/hooks/useRateLimit';
@@ -21,11 +21,14 @@ interface Game {
   created_by: string;
   created_at: string;
   is_public: boolean;
+  current_player_turn: number | null;
+  game_phase: string;
   game_players: Array<{
     player_name: string;
     color: string;
     is_host: boolean;
     user_id: string;
+    player_order: number;
   }>;
 }
 
@@ -59,7 +62,8 @@ const GameLobby = () => {
             player_name,
             color,
             is_host,
-            user_id
+            user_id,
+            player_order
           )
         `)
         .or(`is_public.eq.true,created_by.eq.${user?.id}`)
@@ -455,6 +459,13 @@ const GameLobby = () => {
                 const canResume = game.status === 'active' && isInGame;
                 const canStart = isCreator && game.status === 'waiting' && game.game_players.length >= 2;
                 
+                // Check if it's the user's turn
+                const userPlayer = game.game_players.find(p => p.user_id === user?.id);
+                const isUserTurn = game.status === 'active' && 
+                  game.game_phase === 'playing' && 
+                  userPlayer && 
+                  game.current_player_turn === userPlayer.player_order;
+                
                 return (
                   <Card key={game.id} className="p-4 bg-card/95 backdrop-blur-sm">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -474,14 +485,20 @@ const GameLobby = () => {
                                  Waiting
                                </div>
                              )}
-                             <div className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full ${
-                               game.is_public 
-                                 ? 'bg-blue-100 text-blue-800' 
-                                 : 'bg-purple-100 text-purple-800'
-                             }`}>
-                               {game.is_public ? <Globe className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
-                               {game.is_public ? 'Public' : 'Private'}
-                             </div>
+                              {isUserTurn && (
+                                <div className="flex items-center gap-1 text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded-full animate-pulse">
+                                  <Bell className="w-3 h-3" />
+                                  Your Turn!
+                                </div>
+                              )}
+                              <div className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full ${
+                                game.is_public 
+                                  ? 'bg-blue-100 text-blue-800' 
+                                  : 'bg-purple-100 text-purple-800'
+                              }`}>
+                                {game.is_public ? <Globe className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
+                                {game.is_public ? 'Public' : 'Private'}
+                              </div>
                            </div>
                         </div>
                         <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2 sm:mb-0">
