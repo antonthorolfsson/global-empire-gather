@@ -347,12 +347,20 @@ const EmpireDetailDialog: React.FC<EmpireDetailDialogProps> = ({
               <div>
                 <h4 className="font-medium text-sm text-muted-foreground mb-2">Main Languages</h4>
                 <div className="space-y-2">
-                  {culturalData.languages.slice(0, 3).map((language, index) => (
+                  {culturalData.languages.slice(0, 8).map((language, index) => (
                     <div key={index} className="flex justify-between items-center">
                       <span className="text-sm">{language.name}</span>
                       <span className="text-sm font-medium">{language.percentage}%</span>
                     </div>
                   ))}
+                  {culturalData.languages.length > 8 && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">Others</span>
+                      <span className="text-sm font-medium text-muted-foreground">
+                        {culturalData.languages.slice(8).reduce((sum, lang) => sum + lang.percentage, 0)}%
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
               
