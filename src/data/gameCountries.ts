@@ -565,6 +565,12 @@ export const GAME_COUNTRIES: CountryData[] = [
     energyProduction: 29, oilProduction: 0.0, gasProduction: 0,
     ...createDefaultCulturalData("Buddhism", "Lao", 36, 85)
   },
+  { 
+    id: "kz", name: "Kazakhstan", population: 19400000, area: 2724900, gdp: 197,
+    militarySize: 39000, tanks: 300, aircraft: 120, navySize: 0,
+    energyProduction: 107, oilProduction: 1.8, gasProduction: 24,
+    ...createDefaultCulturalData("Islam", "Kazakh", 58, 100)
+  },
   
   // Americas
   { 
