@@ -334,12 +334,20 @@ const EmpireDetailDialog: React.FC<EmpireDetailDialogProps> = ({
               <div>
                 <h4 className="font-medium text-sm text-muted-foreground mb-2">Major Religions</h4>
                 <div className="space-y-2">
-                  {culturalData.religions.slice(0, 4).map((religion, index) => (
+                  {culturalData.religions.slice(0, 6).map((religion, index) => (
                     <div key={index} className="flex justify-between items-center">
                       <span className="text-sm">{religion.name}</span>
                       <span className="text-sm font-medium">{religion.percentage}%</span>
                     </div>
                   ))}
+                  {culturalData.religions.length > 6 && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">Others</span>
+                      <span className="text-sm font-medium text-muted-foreground">
+                        {culturalData.religions.slice(6).reduce((sum, religion) => sum + religion.percentage, 0)}%
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
               
