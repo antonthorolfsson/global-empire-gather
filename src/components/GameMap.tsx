@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ZoomIn, ZoomOut, RotateCcw, MapPin } from 'lucide-react';
 
 interface Country {
   id: string;
@@ -573,8 +574,43 @@ const GameMap: React.FC<GameMapProps> = ({
           </div>
         </div>
 
+        {/* Remaining Countries Dropdown */}
+        <div className="absolute bottom-4 left-4 pointer-events-auto">
+          <Select onValueChange={(countryId) => handleCountryClick(countryId)}>
+            <SelectTrigger className="w-48 h-10 bg-card/90 backdrop-blur-sm border-border/50">
+              <div className="flex items-center gap-2">
+                <MapPin className="w-4 h-4" />
+                <SelectValue placeholder={`${countries.filter(country => 
+                  !players.some(player => 
+                    player.countries && 
+                    Array.isArray(player.countries) && 
+                    player.countries.includes(country.id)
+                  )
+                ).length} unselected`} />
+              </div>
+            </SelectTrigger>
+            <SelectContent className="max-h-60">
+              {countries
+                .filter(country => 
+                  !players.some(player => 
+                    player.countries && 
+                    Array.isArray(player.countries) && 
+                    player.countries.includes(country.id)
+                  )
+                )
+                .sort((a, b) => a.name.localeCompare(b.name))
+                .map(country => (
+                  <SelectItem key={country.id} value={country.id}>
+                    {country.name}
+                  </SelectItem>
+                ))
+              }
+            </SelectContent>
+          </Select>
+        </div>
+
         {/* Zoom indicator */}
-        <div className="absolute bottom-4 left-4 bg-card/90 backdrop-blur-sm rounded-lg p-2 pointer-events-none">
+        <div className="absolute bottom-16 left-4 bg-card/90 backdrop-blur-sm rounded-lg p-2 pointer-events-none">
           <p className="text-xs text-card-foreground">
             Zoom: {Math.round(zoom * 100)}%
           </p>
