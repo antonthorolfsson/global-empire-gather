@@ -370,6 +370,13 @@ const GameMap: React.FC<GameMapProps> = ({
         countries: player.countries,
         color: player.color
       });
+      
+      // Debug specific countries
+      if (player.countries && Array.isArray(player.countries)) {
+        player.countries.forEach(countryId => {
+          console.log(`  Country ${countryId} -> CSS selector: #world-map-svg path#${countryId.toUpperCase()}, Color: ${player.color}`);
+        });
+      }
     });
 
     // Add CSS styles for countries directly to the document
