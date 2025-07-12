@@ -7,12 +7,13 @@ import EmpireStats from './EmpireStats';
 import ColorPickerDialog from './ColorPickerDialog';
 import WarDeclaration from './WarDeclaration';
 import { GameChat } from './GameChat';
+import CountryPreselection from './CountryPreselection';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { GAME_COUNTRIES } from '@/data/gameCountries';
-import { ArrowLeft, Play, Users, Crown, Map, BarChart3, Swords } from 'lucide-react';
+import { ArrowLeft, Play, Users, Crown, Map, BarChart3, Swords, List } from 'lucide-react';
 import { Loader2 } from 'lucide-react';
 
 interface GamePlayer {
@@ -634,6 +635,17 @@ const MultiplayerGame = () => {
         {/* Desktop Sidebar */}
         <div className="w-80 bg-card/95 backdrop-blur-sm border-l overflow-y-auto">
           <div className="p-4 space-y-4">
+            {game.game_phase === 'playing' && (
+              <div className="space-y-3">
+                <h3 className="font-semibold">Country Selection</h3>
+                <CountryPreselection
+                  onCountrySelect={selectCountry}
+                  selectedCountries={selectedCountriesArray}
+                  isPlayerTurn={game.current_player_turn === userPlayer?.player_order}
+                />
+              </div>
+            )}
+            
             {game.game_phase === 'finished' && (
               <div className="space-y-3">
                 <h3 className="font-semibold">War Declaration</h3>
@@ -677,6 +689,12 @@ const MultiplayerGame = () => {
               <Map className="w-4 h-4" />
               <span className="text-xs">Map</span>
             </TabsTrigger>
+            {game.game_phase === 'playing' && (
+              <TabsTrigger value="preselection" className="flex-1 gap-1 px-2 py-1.5">
+                <List className="w-4 h-4" />
+                <span className="text-xs">Countries</span>
+              </TabsTrigger>
+            )}
             <TabsTrigger value="stats" className="flex-1 gap-1 px-2 py-1.5">
               <BarChart3 className="w-4 h-4" />
               <span className="text-xs">Stats</span>
@@ -707,6 +725,16 @@ const MultiplayerGame = () => {
               }))}
             />
           </TabsContent>
+          
+          {game.game_phase === 'playing' && (
+            <TabsContent value="preselection" className="flex-1 m-0 p-0">
+              <CountryPreselection
+                onCountrySelect={selectCountry}
+                selectedCountries={selectedCountriesArray}
+                isPlayerTurn={game.current_player_turn === userPlayer?.player_order}
+              />
+            </TabsContent>
+          )}
           
           <TabsContent value="stats" className="flex-1 m-0 p-0 overflow-y-auto">
             <EmpireStats
