@@ -420,6 +420,12 @@ export const GAME_COUNTRIES: CountryData[] = [
     ...createDefaultCulturalData("Islam", "Arabic", 87, 93)
   },
   { 
+    id: "ir", name: "Iran", population: 84000000, area: 1648195, gdp: 231,
+    militarySize: 610000, tanks: 1996, aircraft: 550, navySize: 398,
+    energyProduction: 278, oilProduction: 3.2, gasProduction: 250,
+    ...createDefaultCulturalData("Islam", "Persian", 76, 87)
+  },
+  { 
     id: "eg", name: "Egypt", population: 102300000, area: 1001450, gdp: 469,
     militarySize: 438500, tanks: 4946, aircraft: 1053, navySize: 319,
     energyProduction: 199, oilProduction: 0.6, gasProduction: 61,
