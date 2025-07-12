@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ZoomIn, ZoomOut, RotateCcw, MapPin, ChevronDown } from 'lucide-react';
+import { ZoomIn, ZoomOut, RotateCcw, MapPin } from 'lucide-react';
 
 interface Country {
   id: string;
@@ -573,19 +573,6 @@ const GameMap: React.FC<GameMapProps> = ({
           </div>
         </div>
 
-        {/* Remaining Countries Dropdown */}
-        <div className="absolute bottom-4 left-4 pointer-events-auto z-[60]">
-          <CountriesDropdown 
-            countries={countries.filter(country => 
-              !players.some(player => 
-                player.countries && 
-                Array.isArray(player.countries) && 
-                player.countries.includes(country.id)
-              )
-            )}
-            onSelect={handleCountryClick}
-          />
-        </div>
 
         {/* Zoom indicator */}
         <div className="absolute bottom-16 left-4 bg-card/90 backdrop-blur-sm rounded-lg p-2 pointer-events-none">
@@ -598,61 +585,5 @@ const GameMap: React.FC<GameMapProps> = ({
   );
 };
 
-// Custom dropdown component that works reliably on mobile
-const CountriesDropdown = ({ countries, onSelect }: { 
-  countries: Country[]; 
-  onSelect: (countryId: string) => void; 
-}) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const handleSelect = (countryId: string) => {
-    onSelect(countryId);
-    setIsOpen(false);
-  };
-
-  const sortedCountries = countries.sort((a, b) => a.name.localeCompare(b.name));
-
-  return (
-    <div ref={dropdownRef} className="relative">
-      <Button
-        variant="outline"
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-48 h-12 bg-background border-border shadow-lg justify-between text-sm"
-      >
-        <div className="flex items-center gap-2">
-          <MapPin className="w-4 h-4 flex-shrink-0" />
-          <span>{countries.length} unselected</span>
-        </div>
-        <ChevronDown className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-      </Button>
-      
-      {isOpen && (
-        <div className="absolute bottom-full mb-2 w-48 max-h-60 bg-background border border-border rounded-md shadow-xl z-[999] overflow-y-auto">
-          {sortedCountries.map(country => (
-            <button
-              key={country.id}
-              onClick={() => handleSelect(country.id)}
-              className="w-full px-3 py-2 text-left text-sm hover:bg-muted transition-colors"
-            >
-              {country.name}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
 
 export default GameMap;
