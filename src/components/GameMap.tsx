@@ -417,6 +417,18 @@ const GameMap: React.FC<GameMapProps> = ({
       }
     });
     
+    // Add white outlines for selected countries
+    selectedCountries.forEach(countryId => {
+      if (countryId && typeof countryId === 'string') {
+        cssRules += `
+          #world-map-svg path#${countryId.toUpperCase()} {
+            stroke: white !important;
+            stroke-width: 3px !important;
+          }
+        `;
+      }
+    });
+    
     // Add hover effects for unowned countries
     const ownedCountries = players.flatMap(player => 
       (player.countries || []).filter(id => id && typeof id === 'string').map(id => id.toUpperCase())
