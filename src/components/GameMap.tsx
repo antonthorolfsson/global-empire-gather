@@ -575,11 +575,11 @@ const GameMap: React.FC<GameMapProps> = ({
         </div>
 
         {/* Remaining Countries Dropdown */}
-        <div className="absolute bottom-4 left-4 pointer-events-auto z-50">
+        <div className="absolute bottom-4 left-4 pointer-events-auto z-[60]">
           <Select onValueChange={(countryId) => handleCountryClick(countryId)}>
-            <SelectTrigger className="w-48 h-10 bg-background border-border shadow-lg">
+            <SelectTrigger className="w-48 h-12 bg-background border-border shadow-lg text-sm">
               <div className="flex items-center gap-2">
-                <MapPin className="w-4 h-4" />
+                <MapPin className="w-4 h-4 flex-shrink-0" />
                 <SelectValue placeholder={`${countries.filter(country => 
                   !players.some(player => 
                     player.countries && 
@@ -589,7 +589,12 @@ const GameMap: React.FC<GameMapProps> = ({
                 ).length} unselected`} />
               </div>
             </SelectTrigger>
-            <SelectContent className="max-h-60 z-[100] bg-background border-border shadow-xl">
+            <SelectContent 
+              className="max-h-60 z-[999] bg-background border-border shadow-xl w-48"
+              position="popper"
+              side="top"
+              align="start"
+            >
               {countries
                 .filter(country => 
                   !players.some(player => 
@@ -600,7 +605,7 @@ const GameMap: React.FC<GameMapProps> = ({
                 )
                 .sort((a, b) => a.name.localeCompare(b.name))
                 .map(country => (
-                  <SelectItem key={country.id} value={country.id}>
+                  <SelectItem key={country.id} value={country.id} className="text-sm">
                     {country.name}
                   </SelectItem>
                 ))
