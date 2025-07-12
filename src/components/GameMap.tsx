@@ -374,7 +374,11 @@ const GameMap: React.FC<GameMapProps> = ({
       // Debug specific countries
       if (player.countries && Array.isArray(player.countries)) {
         player.countries.forEach(countryId => {
-          console.log(`  Country ${countryId} -> CSS selector: #world-map-svg path#${countryId.toUpperCase()}, Color: ${player.color}`);
+          if (countryId && typeof countryId === 'string') {
+            console.log(`  Country ${countryId} -> CSS selector: #world-map-svg path#${countryId.toUpperCase()}, Color: ${player.color}`);
+          } else {
+            console.log(`  Invalid country ID:`, countryId);
+          }
         });
       }
     });
