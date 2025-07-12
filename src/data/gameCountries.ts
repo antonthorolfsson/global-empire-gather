@@ -236,6 +236,12 @@ export const GAME_COUNTRIES: CountryData[] = [
     ...createDefaultCulturalData("Buddhism", "Korean", 82, 98)
   },
   { 
+    id: "tw", name: "Taiwan", population: 23570000, area: 36193, gdp: 669,
+    militarySize: 165000, tanks: 1110, aircraft: 400, navySize: 117,
+    energyProduction: 270, oilProduction: 0.0, gasProduction: 1,
+    ...createDefaultCulturalData("Buddhism", "Mandarin", 79, 99)
+  },
+  { 
     id: "au", name: "Australia", population: 25700000, area: 7692024, gdp: 1552,
     militarySize: 58206, tanks: 59, aircraft: 467, navySize: 50,
     energyProduction: 270, oilProduction: 0.4, gasProduction: 142,
