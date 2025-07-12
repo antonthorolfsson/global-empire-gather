@@ -363,7 +363,7 @@ const EmpireDetailDialog: React.FC<EmpireDetailDialogProps> = ({
                   ))}
                   {culturalData.languages.length > 8 && (
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground">Others</span>
+                       <span className="text-sm text-muted-foreground">Other</span>
                       <span className="text-sm font-medium text-muted-foreground">
                         {culturalData.languages.slice(8).reduce((sum, lang) => sum + lang.percentage, 0)}%
                       </span>
