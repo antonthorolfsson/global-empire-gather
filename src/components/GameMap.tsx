@@ -423,7 +423,7 @@ const GameMap: React.FC<GameMapProps> = ({
         cssRules += `
           #world-map-svg path#${countryId.toUpperCase()} {
             stroke: white !important;
-            stroke-width: 3px !important;
+            stroke-width: 0.5px !important;
           }
         `;
       }
