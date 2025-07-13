@@ -22,6 +22,7 @@ const CountryPreselection = ({ onCountrySelect, selectedCountries, isPlayerTurn,
   const [isPreselectionMode, setIsPreselectionMode] = useState<boolean>(false);
   const [preselectionList, setPreselectionList] = useState<string[]>([]);
   const [autoSelectTimer, setAutoSelectTimer] = useState<NodeJS.Timeout | null>(null);
+  const [isSaving, setIsSaving] = useState<boolean>(false);
   const { toast } = useToast();
 
   // Load preselections from database on component mount
@@ -49,9 +50,10 @@ const CountryPreselection = ({ onCountrySelect, selectedCountries, isPlayerTurn,
 
   // Save preselections to database whenever the list changes
   useEffect(() => {
-    if (!playerId || !gameId) return;
+    if (!playerId || !gameId || isSaving) return;
     
     const savePreselections = async () => {
+      setIsSaving(true);
       try {
         // Delete existing preselections first
         const { error: deleteError } = await supabase
@@ -94,13 +96,15 @@ const CountryPreselection = ({ onCountrySelect, selectedCountries, isPlayerTurn,
           description: "Failed to save preselection list",
           variant: "destructive",
         });
+      } finally {
+        setIsSaving(false);
       }
     };
 
     // Add a small delay to prevent rapid-fire updates
-    const timeoutId = setTimeout(savePreselections, 100);
+    const timeoutId = setTimeout(savePreselections, 300);
     return () => clearTimeout(timeoutId);
-  }, [preselectionList, playerId, gameId, toast]);
+  }, [preselectionList, playerId, gameId, isSaving, toast]);
 
   // Auto-select logic when it's player's turn and preselection list has items
   useEffect(() => {
