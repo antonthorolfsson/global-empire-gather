@@ -49,9 +49,9 @@ const CountryPreselection = ({ onCountrySelect, selectedCountries, isPlayerTurn,
 
   // Save preselections to database whenever the list changes
   useEffect(() => {
+    if (!playerId || !gameId) return;
+    
     const savePreselections = async () => {
-      if (!playerId || !gameId) return;
-
       try {
         // Delete existing preselections first
         const { error: deleteError } = await supabase
