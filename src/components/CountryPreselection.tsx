@@ -55,38 +55,35 @@ const CountryPreselection = ({ onCountrySelect, selectedCountries, isPlayerTurn,
     const savePreselections = async () => {
       setIsSaving(true);
       try {
-        // Delete existing preselections first
-        const { error: deleteError } = await supabase
+        // First, delete all existing preselections for this player and game
+        await supabase
           .from('player_preselections')
           .delete()
           .eq('player_id', playerId)
           .eq('game_id', gameId);
 
-        if (deleteError) {
-          console.error('Error deleting preselections:', deleteError);
-          return;
-        }
-
-        // Insert new preselections only if list is not empty
+        // Then insert new preselections if list is not empty
         if (preselectionList.length > 0) {
-          const { error: insertError } = await supabase
-            .from('player_preselections')
-            .insert(
-              preselectionList.map((countryId, index) => ({
+          // Insert each preselection individually to avoid constraint violations
+          for (let i = 0; i < preselectionList.length; i++) {
+            const { error } = await supabase
+              .from('player_preselections')
+              .insert({
                 player_id: playerId,
                 game_id: gameId,
-                country_id: countryId,
-                position: index + 1
-              }))
-            );
+                country_id: preselectionList[i],
+                position: i + 1
+              });
 
-          if (insertError) {
-            console.error('Error saving preselections:', insertError);
-            toast({
-              title: "Error",
-              description: "Failed to save preselection list",
-              variant: "destructive",
-            });
+            if (error) {
+              console.error('Error saving preselection:', error);
+              toast({
+                title: "Error",
+                description: "Failed to save preselection list",
+                variant: "destructive",
+              });
+              break;
+            }
           }
         }
       } catch (error) {
