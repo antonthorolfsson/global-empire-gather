@@ -5,3 +5,6 @@ verify_jwt = true
 
 [functions.send-invitation]
 verify_jwt = false
+
+[functions.auto-vote-scheduler]
+verify_jwt = false

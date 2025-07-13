@@ -6,18 +6,85 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { MapPin, Users, Zap, Factory, DollarSign, ChevronUp, ChevronDown, X, Clock } from 'lucide-react';
 import { GAME_COUNTRIES, CountryData } from '@/data/gameCountries';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface CountryPreselectionProps {
   onCountrySelect: (countryId: string) => void;
   selectedCountries: string[];
   isPlayerTurn: boolean;
+  gameId: string;
+  playerId: string;
 }
 
-const CountryPreselection = ({ onCountrySelect, selectedCountries, isPlayerTurn }: CountryPreselectionProps) => {
+const CountryPreselection = ({ onCountrySelect, selectedCountries, isPlayerTurn, gameId, playerId }: CountryPreselectionProps) => {
   const [selectedCountryId, setSelectedCountryId] = useState<string>('');
   const [isPreselectionMode, setIsPreselectionMode] = useState<boolean>(false);
   const [preselectionList, setPreselectionList] = useState<string[]>([]);
   const [autoSelectTimer, setAutoSelectTimer] = useState<NodeJS.Timeout | null>(null);
+  const { toast } = useToast();
+
+  // Load preselections from database on component mount
+  useEffect(() => {
+    const loadPreselections = async () => {
+      const { data, error } = await supabase
+        .from('player_preselections')
+        .select('country_id, position')
+        .eq('player_id', playerId)
+        .eq('game_id', gameId)
+        .order('position', { ascending: true });
+
+      if (error) {
+        console.error('Error loading preselections:', error);
+        return;
+      }
+
+      setPreselectionList(data.map(p => p.country_id));
+    };
+
+    if (playerId && gameId) {
+      loadPreselections();
+    }
+  }, [playerId, gameId]);
+
+  // Save preselections to database whenever the list changes
+  useEffect(() => {
+    const savePreselections = async () => {
+      if (!playerId || !gameId) return;
+
+      // Delete existing preselections
+      await supabase
+        .from('player_preselections')
+        .delete()
+        .eq('player_id', playerId)
+        .eq('game_id', gameId);
+
+      // Insert new preselections
+      if (preselectionList.length > 0) {
+        const { error } = await supabase
+          .from('player_preselections')
+          .insert(
+            preselectionList.map((countryId, index) => ({
+              player_id: playerId,
+              game_id: gameId,
+              country_id: countryId,
+              position: index + 1
+            }))
+          );
+
+        if (error) {
+          console.error('Error saving preselections:', error);
+          toast({
+            title: "Error",
+            description: "Failed to save preselections",
+            variant: "destructive",
+          });
+        }
+      }
+    };
+
+    savePreselections();
+  }, [preselectionList, playerId, gameId, toast]);
 
   // Auto-select logic when it's player's turn and preselection list has items
   useEffect(() => {

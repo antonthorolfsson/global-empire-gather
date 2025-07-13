@@ -642,6 +642,8 @@ const MultiplayerGame = () => {
                   onCountrySelect={selectCountry}
                   selectedCountries={selectedCountriesArray}
                   isPlayerTurn={game.current_player_turn === userPlayer?.player_order}
+                  gameId={game.id}
+                  playerId={userPlayer?.id || ''}
                 />
               </div>
             )}
@@ -732,6 +734,8 @@ const MultiplayerGame = () => {
                 onCountrySelect={selectCountry}
                 selectedCountries={selectedCountriesArray}
                 isPlayerTurn={game.current_player_turn === userPlayer?.player_order}
+                gameId={game.id}
+                playerId={userPlayer?.id || ''}
               />
             </TabsContent>
           )}

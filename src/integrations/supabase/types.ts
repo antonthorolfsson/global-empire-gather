@@ -361,6 +361,36 @@ export type Database = {
         }
         Relationships: []
       }
+      player_preselections: {
+        Row: {
+          country_id: string
+          created_at: string
+          game_id: string
+          id: string
+          player_id: string
+          position: number
+          updated_at: string
+        }
+        Insert: {
+          country_id: string
+          created_at?: string
+          game_id: string
+          id?: string
+          player_id: string
+          position: number
+          updated_at?: string
+        }
+        Update: {
+          country_id?: string
+          created_at?: string
+          game_id?: string
+          id?: string
+          player_id?: string
+          position?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -475,6 +505,10 @@ export type Database = {
       }
     }
     Functions: {
+      auto_vote_from_preselection: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       check_rate_limit: {
         Args: {
           _user_id: string
