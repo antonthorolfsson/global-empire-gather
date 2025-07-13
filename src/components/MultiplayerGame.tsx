@@ -729,7 +729,7 @@ const MultiplayerGame = () => {
           </TabsContent>
           
           {game.game_phase === 'playing' && (
-            <TabsContent value="preselection" className="flex-1 m-0 p-0">
+            <TabsContent value="preselection" className="flex-1 m-0 p-0 bg-background">
               <CountryPreselection
                 onCountrySelect={selectCountry}
                 selectedCountries={selectedCountriesArray}
