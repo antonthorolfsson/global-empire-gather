@@ -57,6 +57,7 @@ const MultiplayerGame = () => {
   const [isPlayerInGame, setIsPlayerInGame] = useState(false);
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [showChat, setShowChat] = useState(false);
+  const [lastAutoVoteTime, setLastAutoVoteTime] = useState<number>(0);
 
   useEffect(() => {
     if (!gameId) return;
@@ -141,6 +142,29 @@ const MultiplayerGame = () => {
         filter: `game_id=eq.${gameId}`
       }, (payload) => {
         console.log('Game countries updated:', payload);
+        
+        // Check if this was an auto-vote (rapid country selection)
+        if (payload.eventType === 'INSERT' && payload.new) {
+          const now = Date.now();
+          const timeSinceLastVote = now - lastAutoVoteTime;
+          
+          // If this selection happened very quickly after the last one (likely auto-vote)
+          if (timeSinceLastVote < 5000) { // Within 5 seconds
+            const selectedCountry = GAME_COUNTRIES.find(c => c.id === payload.new.country_id);
+            const player = players.find(p => p.id === payload.new.player_id);
+            
+            if (selectedCountry && player) {
+              toast({
+                title: "Auto-selection",
+                description: `${player.player_name} auto-selected ${selectedCountry.name} from their preselection list`,
+                duration: 3000,
+              });
+            }
+          }
+          
+          setLastAutoVoteTime(now);
+        }
+        
         loadGameData();
       })
       .on('postgres_changes', {
