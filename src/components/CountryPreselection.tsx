@@ -162,8 +162,12 @@ const CountryPreselection = ({ onCountrySelect, selectedCountries, isPlayerTurn,
 
   // Remove countries from preselection list when they get selected by others
   useEffect(() => {
-    setPreselectionList(prev => prev.filter(countryId => !selectedCountries.includes(countryId)));
-  }, [selectedCountries]);
+    const filteredList = preselectionList.filter(countryId => !selectedCountries.includes(countryId));
+    // Only update if the list actually changed to avoid triggering unnecessary saves
+    if (filteredList.length !== preselectionList.length) {
+      setPreselectionList(filteredList);
+    }
+  }, [selectedCountries]); // Removed preselectionList from dependencies to prevent infinite loop
 
   // Filter out already selected countries
   const unselectedCountries = GAME_COUNTRIES.filter(
