@@ -33,6 +33,10 @@ const CountryPreselection = ({ onCountrySelect, selectedCountries, isPlayerTurn,
   // Load preselections from database on component mount
   useEffect(() => {
     const loadPreselections = async () => {
+      if (!playerId || !gameId) return;
+      
+      console.log('Loading preselections for player:', playerId, 'game:', gameId);
+      
       const { data, error } = await supabase
         .from('player_preselections')
         .select('country_id, position')
@@ -45,12 +49,12 @@ const CountryPreselection = ({ onCountrySelect, selectedCountries, isPlayerTurn,
         return;
       }
 
-      setPreselectionList(data.map(p => p.country_id));
+      const loadedList = data.map(p => p.country_id);
+      console.log('Loaded preselections:', loadedList);
+      setPreselectionList(loadedList);
     };
 
-    if (playerId && gameId) {
-      loadPreselections();
-    }
+    loadPreselections();
   }, [playerId, gameId]);
 
   // Save preselection mode to localStorage when it changes
