@@ -19,7 +19,11 @@ interface CountryPreselectionProps {
 
 const CountryPreselection = ({ onCountrySelect, selectedCountries, isPlayerTurn, gameId, playerId }: CountryPreselectionProps) => {
   const [selectedCountryId, setSelectedCountryId] = useState<string>('');
-  const [isPreselectionMode, setIsPreselectionMode] = useState<boolean>(false);
+  const [isPreselectionMode, setIsPreselectionMode] = useState<boolean>(() => {
+    // Load from localStorage, default to false
+    const saved = localStorage.getItem('preselectionMode');
+    return saved ? JSON.parse(saved) : false;
+  });
   const [preselectionList, setPreselectionList] = useState<string[]>([]);
   const [autoSelectTimer, setAutoSelectTimer] = useState<NodeJS.Timeout | null>(null);
   const [isSaving, setIsSaving] = useState<boolean>(false);
@@ -47,6 +51,11 @@ const CountryPreselection = ({ onCountrySelect, selectedCountries, isPlayerTurn,
       loadPreselections();
     }
   }, [playerId, gameId]);
+
+  // Save preselection mode to localStorage when it changes
+  useEffect(() => {
+    localStorage.setItem('preselectionMode', JSON.stringify(isPreselectionMode));
+  }, [isPreselectionMode]);
 
   // Save preselections to database whenever the list changes
   useEffect(() => {
