@@ -52,38 +52,54 @@ const CountryPreselection = ({ onCountrySelect, selectedCountries, isPlayerTurn,
     const savePreselections = async () => {
       if (!playerId || !gameId) return;
 
-      // Delete existing preselections
-      await supabase
-        .from('player_preselections')
-        .delete()
-        .eq('player_id', playerId)
-        .eq('game_id', gameId);
-
-      // Insert new preselections
-      if (preselectionList.length > 0) {
-        const { error } = await supabase
+      try {
+        // Delete existing preselections first
+        const { error: deleteError } = await supabase
           .from('player_preselections')
-          .insert(
-            preselectionList.map((countryId, index) => ({
-              player_id: playerId,
-              game_id: gameId,
-              country_id: countryId,
-              position: index + 1
-            }))
-          );
+          .delete()
+          .eq('player_id', playerId)
+          .eq('game_id', gameId);
 
-        if (error) {
-          console.error('Error saving preselections:', error);
-          toast({
-            title: "Error",
-            description: "Failed to save preselections",
-            variant: "destructive",
-          });
+        if (deleteError) {
+          console.error('Error deleting preselections:', deleteError);
+          return;
         }
+
+        // Insert new preselections only if list is not empty
+        if (preselectionList.length > 0) {
+          const { error: insertError } = await supabase
+            .from('player_preselections')
+            .insert(
+              preselectionList.map((countryId, index) => ({
+                player_id: playerId,
+                game_id: gameId,
+                country_id: countryId,
+                position: index + 1
+              }))
+            );
+
+          if (insertError) {
+            console.error('Error saving preselections:', insertError);
+            toast({
+              title: "Error",
+              description: "Failed to save preselection list",
+              variant: "destructive",
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Unexpected error saving preselections:', error);
+        toast({
+          title: "Error",
+          description: "Failed to save preselection list",
+          variant: "destructive",
+        });
       }
     };
 
-    savePreselections();
+    // Add a small delay to prevent rapid-fire updates
+    const timeoutId = setTimeout(savePreselections, 100);
+    return () => clearTimeout(timeoutId);
   }, [preselectionList, playerId, gameId, toast]);
 
   // Auto-select logic when it's player's turn and preselection list has items
