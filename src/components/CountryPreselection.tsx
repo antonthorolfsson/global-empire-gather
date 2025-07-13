@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -27,6 +27,7 @@ const CountryPreselection = ({ onCountrySelect, selectedCountries, isPlayerTurn,
   const [preselectionList, setPreselectionList] = useState<string[]>([]);
   const [autoSelectTimer, setAutoSelectTimer] = useState<NodeJS.Timeout | null>(null);
   const [isSaving, setIsSaving] = useState<boolean>(false);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
 
   // Load preselections from database on component mount
@@ -59,65 +60,65 @@ const CountryPreselection = ({ onCountrySelect, selectedCountries, isPlayerTurn,
 
   // Save preselections to database whenever the list changes
   useEffect(() => {
-    if (!playerId || !gameId || isSaving) return;
+    if (!playerId || !gameId) return;
+    
+    // Clear existing timeout
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
     
     const savePreselections = async () => {
+      if (isSaving) return; // Skip if already saving
+      
       setIsSaving(true);
       try {
-        // First, delete all existing preselections for this specific player
-        const { error: deleteError } = await supabase
+        // Clear all existing preselections for this player first
+        await supabase
           .from('player_preselections')
           .delete()
           .eq('player_id', playerId)
           .eq('game_id', gameId);
 
-        if (deleteError) {
-          console.error('Error deleting preselections:', deleteError);
-          return;
-        }
-
-        // Only insert if we have preselections
+        // Insert new preselections if any exist
         if (preselectionList.length > 0) {
-          // Use upsert with ignore_duplicates to handle race conditions
-          const { error: insertError } = await supabase
-            .from('player_preselections')
-            .upsert(
-              preselectionList.map((countryId, index) => ({
-                player_id: playerId,
-                game_id: gameId,
-                country_id: countryId,
-                position: index + 1
-              })),
-              { 
-                onConflict: 'player_id,game_id,position',
-                ignoreDuplicates: false 
-              }
-            );
+          const insertData = preselectionList.map((countryId, index) => ({
+            player_id: playerId,
+            game_id: gameId,
+            country_id: countryId,
+            position: index + 1
+          }));
 
-          if (insertError) {
-            console.error('Error saving preselections:', insertError);
-            toast({
-              title: "Error",
-              description: "Failed to save preselection list",
-              variant: "destructive",
-            });
+          const { error } = await supabase
+            .from('player_preselections')
+            .insert(insertData);
+
+          if (error) {
+            console.error('Error saving preselections:', error);
+            // Don't show toast for constraint violations, just log them
+            if (error.code !== '23505') {
+              toast({
+                title: "Error",
+                description: "Failed to save preselection list",
+                variant: "destructive",
+              });
+            }
           }
         }
       } catch (error) {
         console.error('Unexpected error saving preselections:', error);
-        toast({
-          title: "Error",
-          description: "Failed to save preselection list",
-          variant: "destructive",
-        });
       } finally {
         setIsSaving(false);
       }
     };
 
-    // Debounce the save operation to prevent rapid-fire updates
-    const timeoutId = setTimeout(savePreselections, 300);
-    return () => clearTimeout(timeoutId);
+    // Debounce saves with longer delay
+    saveTimeoutRef.current = setTimeout(savePreselections, 500);
+
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
   }, [preselectionList, playerId, gameId, isSaving, toast]);
 
   // Auto-select logic when it's player's turn and preselection list has items
