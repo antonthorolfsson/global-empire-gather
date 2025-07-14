@@ -432,6 +432,18 @@ export const GAME_COUNTRIES: CountryData[] = [
     ...createDefaultCulturalData("Islam", "Persian", 76, 87)
   },
   { 
+    id: "iq", name: "Iraq", population: 40220000, area: 438317, gdp: 234,
+    militarySize: 193000, tanks: 415, aircraft: 371, navySize: 5,
+    energyProduction: 100, oilProduction: 4.4, gasProduction: 11,
+    ...createDefaultCulturalData("Islam", "Arabic", 70, 86)
+  },
+  { 
+    id: "ua", name: "Ukraine", population: 44130000, area: 603550, gdp: 200,
+    militarySize: 250000, tanks: 858, aircraft: 318, navySize: 38,
+    energyProduction: 159, oilProduction: 0.1, gasProduction: 20,
+    ...createDefaultCulturalData("Christianity", "Ukrainian", 70, 99)
+  },
+  { 
     id: "eg", name: "Egypt", population: 102300000, area: 1001450, gdp: 469,
     militarySize: 438500, tanks: 4946, aircraft: 1053, navySize: 319,
     energyProduction: 199, oilProduction: 0.6, gasProduction: 61,
