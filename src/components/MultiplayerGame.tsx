@@ -344,15 +344,17 @@ const MultiplayerGame = () => {
       }
     };
 
-    // Schedule save with debouncing
-    saveTimeoutRef.current = setTimeout(savePreselections, 500);
+    // Only schedule save if not currently saving
+    if (!isSavingPreselections) {
+      saveTimeoutRef.current = setTimeout(savePreselections, 500);
+    }
 
     return () => {
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
       }
     };
-  }, [preselectionList, userPlayer?.id, gameId, toast]);
+  }, [preselectionList, userPlayer?.id, gameId, isSavingPreselections, toast]);
 
   const joinGame = async () => {
     if (players.length >= 8) {
