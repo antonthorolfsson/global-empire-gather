@@ -47,7 +47,10 @@ const CountryPreselection = ({ onCountrySelect, selectedCountries, isPlayerTurn,
     }
     
     const savePreselections = async () => {
-      if (isSaving) return; // Skip if already saving
+      if (isSaving) {
+        console.log('Save already in progress, skipping...');
+        return;
+      }
       
       setIsSaving(true);
       console.log('Saving preselections:', preselectionList);
@@ -101,8 +104,8 @@ const CountryPreselection = ({ onCountrySelect, selectedCountries, isPlayerTurn,
       }
     };
 
-    // Only save if we have the required IDs and the list is different from what was loaded
-    if (playerId && gameId) {
+    // Only schedule save if not currently saving and we have required IDs
+    if (playerId && gameId && !isSaving) {
       saveTimeoutRef.current = setTimeout(savePreselections, 500);
     }
 
@@ -111,7 +114,7 @@ const CountryPreselection = ({ onCountrySelect, selectedCountries, isPlayerTurn,
         clearTimeout(saveTimeoutRef.current);
       }
     };
-  }, [preselectionList, playerId, gameId, toast]);
+  }, [preselectionList, playerId, gameId, toast, isSaving]);
 
 
   // Filter out already selected countries
