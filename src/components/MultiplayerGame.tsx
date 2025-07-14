@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/AuthWrapper';
@@ -60,6 +60,8 @@ const MultiplayerGame = () => {
   const [lastAutoVoteTime, setLastAutoVoteTime] = useState<number>(0);
   const [preselectionList, setPreselectionList] = useState<string[]>([]);
   const [autoSelectTimer, setAutoSelectTimer] = useState<NodeJS.Timeout | null>(null);
+  const [isSavingPreselections, setIsSavingPreselections] = useState<boolean>(false);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (!gameId) return;
@@ -274,6 +276,85 @@ const MultiplayerGame = () => {
       setPreselectionList(filteredList);
     }
   }, [gameCountries]);
+
+  // Save preselections to database whenever the list changes
+  useEffect(() => {
+    if (!userPlayer?.id || !gameId) return;
+    
+    // Clear existing timeout
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    
+    const savePreselections = async () => {
+      if (isSavingPreselections) {
+        console.log('Save already in progress, skipping...');
+        return;
+      }
+      
+      setIsSavingPreselections(true);
+      console.log('Saving preselections:', preselectionList);
+      
+      try {
+        // First, clear all existing preselections for this player
+        const { error: deleteError } = await supabase
+          .from('player_preselections')
+          .delete()
+          .eq('player_id', userPlayer.id)
+          .eq('game_id', gameId);
+
+        if (deleteError) {
+          console.error('Error deleting old preselections:', deleteError);
+          throw deleteError;
+        }
+
+        // Then insert new preselections if any exist
+        if (preselectionList.length > 0) {
+          const insertData = preselectionList.map((countryId, index) => ({
+            player_id: userPlayer.id,
+            game_id: gameId,
+            country_id: countryId,
+            position: index + 1
+          }));
+
+          console.log('Inserting preselections:', insertData);
+
+          const { error: insertError } = await supabase
+            .from('player_preselections')
+            .insert(insertData);
+
+          if (insertError) {
+            console.error('Error inserting preselections:', insertError);
+            throw insertError;
+          }
+
+          console.log('Successfully saved preselections');
+        } else {
+          console.log('No preselections to save (empty list)');
+        }
+      } catch (error) {
+        console.error('Failed to save preselections:', error);
+        toast({
+          title: "Error",
+          description: "Failed to save preselection list",
+          variant: "destructive",
+        });
+      } finally {
+        setIsSavingPreselections(false);
+      }
+    };
+
+    // Only schedule save if not currently saving and we have required IDs
+    if (userPlayer?.id && gameId && !isSavingPreselections) {
+      saveTimeoutRef.current = setTimeout(savePreselections, 500);
+    }
+
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [preselectionList, userPlayer?.id, gameId, toast, isSavingPreselections]);
 
   const joinGame = async () => {
     if (players.length >= 8) {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -6,8 +6,6 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { MapPin, Users, Zap, Factory, DollarSign, ChevronUp, ChevronDown, X, Clock } from 'lucide-react';
 import { GAME_COUNTRIES, CountryData } from '@/data/gameCountries';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
 
 interface CountryPreselectionProps {
   onCountrySelect: (countryId: string) => void;
@@ -27,94 +25,11 @@ const CountryPreselection = ({ onCountrySelect, selectedCountries, isPlayerTurn,
     const saved = localStorage.getItem('preselectionMode');
     return saved ? JSON.parse(saved) : false;
   });
-  const [isSaving, setIsSaving] = useState<boolean>(false);
-  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const { toast } = useToast();
-
 
   // Save preselection mode to localStorage when it changes
   useEffect(() => {
     localStorage.setItem('preselectionMode', JSON.stringify(isPreselectionMode));
   }, [isPreselectionMode]);
-
-  // Save preselections to database whenever the list changes
-  useEffect(() => {
-    if (!playerId || !gameId) return;
-    
-    // Clear existing timeout
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
-    
-    const savePreselections = async () => {
-      if (isSaving) {
-        console.log('Save already in progress, skipping...');
-        return;
-      }
-      
-      setIsSaving(true);
-      console.log('Saving preselections:', preselectionList);
-      
-      try {
-        // First, clear all existing preselections for this player
-        const { error: deleteError } = await supabase
-          .from('player_preselections')
-          .delete()
-          .eq('player_id', playerId)
-          .eq('game_id', gameId);
-
-        if (deleteError) {
-          console.error('Error deleting old preselections:', deleteError);
-          throw deleteError;
-        }
-
-        // Then insert new preselections if any exist
-        if (preselectionList.length > 0) {
-          const insertData = preselectionList.map((countryId, index) => ({
-            player_id: playerId,
-            game_id: gameId,
-            country_id: countryId,
-            position: index + 1
-          }));
-
-          console.log('Inserting preselections:', insertData);
-
-          const { error: insertError } = await supabase
-            .from('player_preselections')
-            .insert(insertData);
-
-          if (insertError) {
-            console.error('Error inserting preselections:', insertError);
-            throw insertError;
-          }
-
-          console.log('Successfully saved preselections');
-        } else {
-          console.log('No preselections to save (empty list)');
-        }
-      } catch (error) {
-        console.error('Failed to save preselections:', error);
-        toast({
-          title: "Error",
-          description: "Failed to save preselection list",
-          variant: "destructive",
-        });
-      } finally {
-        setIsSaving(false);
-      }
-    };
-
-    // Only schedule save if not currently saving and we have required IDs
-    if (playerId && gameId && !isSaving) {
-      saveTimeoutRef.current = setTimeout(savePreselections, 500);
-    }
-
-    return () => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
-    };
-  }, [preselectionList, playerId, gameId, toast, isSaving]);
 
 
   // Filter out already selected countries
