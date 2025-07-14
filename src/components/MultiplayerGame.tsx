@@ -354,7 +354,7 @@ const MultiplayerGame = () => {
         clearTimeout(saveTimeoutRef.current);
       }
     };
-  }, [preselectionList, userPlayer?.id, gameId, toast, isSavingPreselections]);
+  }, [preselectionList, userPlayer?.id, gameId, toast]);
 
   const joinGame = async () => {
     if (players.length >= 8) {
