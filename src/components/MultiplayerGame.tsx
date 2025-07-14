@@ -287,6 +287,7 @@ const MultiplayerGame = () => {
     }
     
     const savePreselections = async () => {
+      // Double-check saving state when function actually executes
       if (isSavingPreselections) {
         console.log('Save already in progress, skipping...');
         return;
@@ -344,10 +345,8 @@ const MultiplayerGame = () => {
       }
     };
 
-    // Only schedule save if not currently saving
-    if (!isSavingPreselections) {
-      saveTimeoutRef.current = setTimeout(savePreselections, 500);
-    }
+    // Schedule save with timeout, don't check isSavingPreselections here since it can change
+    saveTimeoutRef.current = setTimeout(savePreselections, 500);
 
     return () => {
       if (saveTimeoutRef.current) {
