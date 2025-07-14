@@ -15,47 +15,22 @@ interface CountryPreselectionProps {
   isPlayerTurn: boolean;
   gameId: string;
   playerId: string;
+  preselectionList: string[];
+  setPreselectionList: React.Dispatch<React.SetStateAction<string[]>>;
+  autoSelectTimer: NodeJS.Timeout | null;
 }
 
-const CountryPreselection = ({ onCountrySelect, selectedCountries, isPlayerTurn, gameId, playerId }: CountryPreselectionProps) => {
+const CountryPreselection = ({ onCountrySelect, selectedCountries, isPlayerTurn, gameId, playerId, preselectionList, setPreselectionList, autoSelectTimer }: CountryPreselectionProps) => {
   const [selectedCountryId, setSelectedCountryId] = useState<string>('');
   const [isPreselectionMode, setIsPreselectionMode] = useState<boolean>(() => {
     // Load from localStorage, default to false
     const saved = localStorage.getItem('preselectionMode');
     return saved ? JSON.parse(saved) : false;
   });
-  const [preselectionList, setPreselectionList] = useState<string[]>([]);
-  const [autoSelectTimer, setAutoSelectTimer] = useState<NodeJS.Timeout | null>(null);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
 
-  // Load preselections from database on component mount
-  useEffect(() => {
-    const loadPreselections = async () => {
-      if (!playerId || !gameId) return;
-      
-      console.log('Loading preselections for player:', playerId, 'game:', gameId);
-      
-      const { data, error } = await supabase
-        .from('player_preselections')
-        .select('country_id, position')
-        .eq('player_id', playerId)
-        .eq('game_id', gameId)
-        .order('position', { ascending: true });
-
-      if (error) {
-        console.error('Error loading preselections:', error);
-        return;
-      }
-
-      const loadedList = data.map(p => p.country_id);
-      console.log('Loaded preselections:', loadedList);
-      setPreselectionList(loadedList);
-    };
-
-    loadPreselections();
-  }, [playerId, gameId]);
 
   // Save preselection mode to localStorage when it changes
   useEffect(() => {
@@ -138,36 +113,6 @@ const CountryPreselection = ({ onCountrySelect, selectedCountries, isPlayerTurn,
     };
   }, [preselectionList, playerId, gameId, toast]);
 
-  // Auto-select logic when it's player's turn and preselection list has items
-  useEffect(() => {
-    if (isPlayerTurn && preselectionList.length > 0 && !autoSelectTimer) {
-      const timer = setTimeout(() => {
-        const firstCountry = preselectionList[0];
-        if (firstCountry && !selectedCountries.includes(firstCountry)) {
-          onCountrySelect(firstCountry);
-          setPreselectionList(prev => prev.slice(1)); // Remove the selected country
-        }
-      }, 2000); // 2 second delay to give user time to react
-      
-      setAutoSelectTimer(timer);
-    }
-
-    return () => {
-      if (autoSelectTimer) {
-        clearTimeout(autoSelectTimer);
-        setAutoSelectTimer(null);
-      }
-    };
-  }, [isPlayerTurn, preselectionList, autoSelectTimer, selectedCountries, onCountrySelect]);
-
-  // Remove countries from preselection list when they get selected by others
-  useEffect(() => {
-    const filteredList = preselectionList.filter(countryId => !selectedCountries.includes(countryId));
-    // Only update if the list actually changed to avoid triggering unnecessary saves
-    if (filteredList.length !== preselectionList.length) {
-      setPreselectionList(filteredList);
-    }
-  }, [selectedCountries]); // Removed preselectionList from dependencies to prevent infinite loop
 
   // Filter out already selected countries
   const unselectedCountries = GAME_COUNTRIES.filter(

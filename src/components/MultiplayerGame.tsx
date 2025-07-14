@@ -58,6 +58,8 @@ const MultiplayerGame = () => {
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [showChat, setShowChat] = useState(false);
   const [lastAutoVoteTime, setLastAutoVoteTime] = useState<number>(0);
+  const [preselectionList, setPreselectionList] = useState<string[]>([]);
+  const [autoSelectTimer, setAutoSelectTimer] = useState<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (!gameId) return;
@@ -203,8 +205,75 @@ const MultiplayerGame = () => {
 
     return () => {
       supabase.removeChannel(gameChannel);
+      if (autoSelectTimer) {
+        clearTimeout(autoSelectTimer);
+      }
     };
   };
+
+  // Load preselections for current player
+  useEffect(() => {
+    const loadPreselections = async () => {
+      if (!userPlayer?.id || !gameId) return;
+      
+      const { data, error } = await supabase
+        .from('player_preselections')
+        .select('country_id, position')
+        .eq('player_id', userPlayer.id)
+        .eq('game_id', gameId)
+        .order('position', { ascending: true });
+
+      if (error) {
+        console.error('Error loading preselections:', error);
+        return;
+      }
+
+      const loadedList = data.map(p => p.country_id);
+      setPreselectionList(loadedList);
+    };
+
+    loadPreselections();
+  }, [userPlayer?.id, gameId]);
+
+  // Auto-select logic when it's player's turn and preselection list has items
+  useEffect(() => {
+    const isCurrentPlayerTurn = game?.current_player_turn === userPlayer?.player_order;
+    
+    if (isCurrentPlayerTurn && preselectionList.length > 0 && !autoSelectTimer) {
+      const timer = setTimeout(() => {
+        const firstCountry = preselectionList[0];
+        const selectedCountryIds = gameCountries
+          .filter(gc => gc.player_id !== null)
+          .map(gc => gc.country_id);
+          
+        if (firstCountry && !selectedCountryIds.includes(firstCountry)) {
+          selectCountry(firstCountry);
+          setPreselectionList(prev => prev.slice(1)); // Remove the selected country
+        }
+      }, 2000); // 2 second delay to give user time to react
+      
+      setAutoSelectTimer(timer);
+    }
+
+    return () => {
+      if (autoSelectTimer) {
+        clearTimeout(autoSelectTimer);
+        setAutoSelectTimer(null);
+      }
+    };
+  }, [game?.current_player_turn, userPlayer?.player_order, preselectionList, autoSelectTimer, gameCountries]);
+
+  // Remove countries from preselection list when they get selected by others
+  useEffect(() => {
+    const selectedCountryIds = gameCountries
+      .filter(gc => gc.player_id !== null)
+      .map(gc => gc.country_id);
+    const filteredList = preselectionList.filter(countryId => !selectedCountryIds.includes(countryId));
+    // Only update if the list actually changed to avoid triggering unnecessary saves
+    if (filteredList.length !== preselectionList.length) {
+      setPreselectionList(filteredList);
+    }
+  }, [gameCountries]);
 
   const joinGame = async () => {
     if (players.length >= 8) {
@@ -662,13 +731,16 @@ const MultiplayerGame = () => {
             {game.game_phase === 'playing' && (
               <div className="space-y-3">
                 <h3 className="font-semibold">Country Selection</h3>
-                <CountryPreselection
-                  onCountrySelect={selectCountry}
-                  selectedCountries={selectedCountriesArray}
-                  isPlayerTurn={game.current_player_turn === userPlayer?.player_order}
-                  gameId={game.id}
-                  playerId={userPlayer?.id || ''}
-                />
+              <CountryPreselection
+                onCountrySelect={selectCountry}
+                selectedCountries={selectedCountriesArray}
+                isPlayerTurn={game.current_player_turn === userPlayer?.player_order}
+                gameId={game.id}
+                playerId={userPlayer?.id || ''}
+                preselectionList={preselectionList}
+                setPreselectionList={setPreselectionList}
+                autoSelectTimer={autoSelectTimer}
+              />
               </div>
             )}
             
@@ -754,13 +826,16 @@ const MultiplayerGame = () => {
           
           {game.game_phase === 'playing' && (
             <TabsContent value="preselection" className="flex-1 m-0 p-0 bg-background">
-              <CountryPreselection
-                onCountrySelect={selectCountry}
-                selectedCountries={selectedCountriesArray}
-                isPlayerTurn={game.current_player_turn === userPlayer?.player_order}
-                gameId={game.id}
-                playerId={userPlayer?.id || ''}
-              />
+                <CountryPreselection
+                  onCountrySelect={selectCountry}
+                  selectedCountries={selectedCountriesArray}
+                  isPlayerTurn={game.current_player_turn === userPlayer?.player_order}
+                  gameId={game.id}
+                  playerId={userPlayer?.id || ''}
+                  preselectionList={preselectionList}
+                  setPreselectionList={setPreselectionList}
+                  autoSelectTimer={autoSelectTimer}
+                />
             </TabsContent>
           )}
           
