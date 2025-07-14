@@ -344,10 +344,8 @@ const MultiplayerGame = () => {
       }
     };
 
-    // Only schedule save if not currently saving and we have required IDs
-    if (userPlayer?.id && gameId && !isSavingPreselections) {
-      saveTimeoutRef.current = setTimeout(savePreselections, 500);
-    }
+    // Schedule save with debouncing
+    saveTimeoutRef.current = setTimeout(savePreselections, 500);
 
     return () => {
       if (saveTimeoutRef.current) {
