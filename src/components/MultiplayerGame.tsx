@@ -749,11 +749,23 @@ const MultiplayerGame = () => {
   const gameStatsCountries = gameCountries.map(gc => {
     const country = GAME_COUNTRIES.find(c => c.id === gc.country_id);
     const player = players.find(p => p.id === gc.player_id);
+    
+    console.log('Mapping country:', gc.country_id, 'to player:', player?.player_name, 'player ID:', gc.player_id);
+    
     return {
       ...country!,
       selectedBy: player?.player_name || '',
     };
   }).filter(Boolean);
+
+  console.log('Players data:', players.map(p => ({ id: p.id, name: p.player_name, color: p.color })));
+  console.log('Game stats countries:', gameStatsCountries.map(c => ({ id: c.id, name: c.name, selectedBy: c.selectedBy })));
+
+  // Debug the filtering for GameMap
+  players.forEach(p => {
+    const playerCountries = gameStatsCountries.filter(c => c.selectedBy === p.player_name);
+    console.log(`Player ${p.player_name} countries:`, playerCountries.map(c => c.id));
+  });
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-ocean to-primary">
