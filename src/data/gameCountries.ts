@@ -700,5 +700,21 @@ export const GAME_COUNTRIES: CountryData[] = [
     militarySize: 0, tanks: 0, aircraft: 0, navySize: 0,
     energyProduction: 0, oilProduction: 0.0, gasProduction: 0,
     ...createDefaultCulturalData("Christianity", "German", 14, 100)
+  },
+
+  // Liberia
+  {
+    id: "lr", name: "Liberia", population: 5180000, area: 111369, gdp: 3900,
+    militarySize: 2000, tanks: 0, aircraft: 0, navySize: 0,
+    energyProduction: 126, oilProduction: 0.0, gasProduction: 0,
+    ...createDefaultCulturalData("Christianity", "English", 51, 48)
+  },
+
+  // Togo
+  {
+    id: "tg", name: "Togo", population: 8450000, area: 56785, gdp: 8500,
+    militarySize: 8500, tanks: 2, aircraft: 0, navySize: 200,
+    energyProduction: 232, oilProduction: 0.0, gasProduction: 0,
+    ...createDefaultCulturalData("Christianity", "French", 43, 66)
   }
 ];
