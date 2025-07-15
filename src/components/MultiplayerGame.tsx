@@ -535,7 +535,27 @@ const MultiplayerGame = () => {
 
       console.log('Inserting country selection:', { gameId, countryId, playerId: userPlayer.id });
 
-      // Insert the country selection and advance the turn
+      // Use secure transaction approach to prevent race conditions
+      console.log('Using secure transaction approach...');
+      
+      // Double-check the game hasn't been updated since we started
+      const { data: currentGame, error: gameCheckError } = await supabase
+        .from('games')
+        .select('current_player_turn')
+        .eq('id', gameId)
+        .single();
+
+      if (gameCheckError) {
+        console.error('Error checking game state:', gameCheckError);
+        throw gameCheckError;
+      }
+
+      if (currentGame.current_player_turn !== game.current_player_turn) {
+        console.error('Game turn changed during selection!');
+        throw new Error('Game turn changed during selection. Please try again.');
+      }
+
+      // Insert the country selection
       const { error: countryError } = await supabase
         .from('game_countries')
         .insert({
@@ -554,19 +574,16 @@ const MultiplayerGame = () => {
       console.log('=== TURN ADVANCEMENT DEBUG ===');
       console.log('Current turn:', game.current_player_turn);
       console.log('Total players:', players.length);
-      console.log('Players array:', players.map(p => ({ order: p.player_order, name: p.player_name })));
       console.log('Next turn calculated:', nextPlayerTurn);
       console.log('===============================');
       
-      console.log('Attempting to update turn to:', nextPlayerTurn, 'for game:', gameId);
-      
+      // Update turn with race condition protection - only update if turn hasn't changed
       const { data: updateData, error: gameError } = await supabase
         .from('games')
         .update({ current_player_turn: nextPlayerTurn })
         .eq('id', gameId)
+        .eq('current_player_turn', game.current_player_turn) // Critical: only update if turn hasn't changed
         .select();
-
-      console.log('Turn update response:', { data: updateData, error: gameError });
 
       if (gameError) {
         console.error('Error updating turn:', gameError);
@@ -574,8 +591,8 @@ const MultiplayerGame = () => {
       }
 
       if (!updateData || updateData.length === 0) {
-        console.error('No rows updated! Game might not exist or update failed');
-        throw new Error('Failed to update game turn');
+        console.error('No rows updated! Game turn may have changed');
+        throw new Error('Failed to update game turn - another player may have acted first');
       }
 
       console.log('Turn update successful! Database should now show turn:', nextPlayerTurn);
