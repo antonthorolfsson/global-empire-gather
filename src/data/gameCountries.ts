@@ -724,5 +724,103 @@ export const GAME_COUNTRIES: CountryData[] = [
     militarySize: 1280000, tanks: 3500, aircraft: 572, navySize: 60000,
     energyProduction: 23000, oilProduction: 0.0, gasProduction: 0,
     ...createDefaultCulturalData("Buddhism", "Korean", 62, 99)
+  },
+
+  // Additional African Countries
+  {
+    id: "ao", name: "Angola", population: 33900000, area: 1246700, gdp: 94,
+    militarySize: 107000, tanks: 140, aircraft: 270, navySize: 57,
+    energyProduction: 9, oilProduction: 1.4, gasProduction: 3,
+    ...createDefaultCulturalData("Christianity", "Portuguese", 67, 71)
+  },
+  {
+    id: "tz", name: "Tanzania", population: 61500000, area: 947303, gdp: 67,
+    militarySize: 27000, tanks: 45, aircraft: 22, navySize: 8,
+    energyProduction: 6, oilProduction: 0.0, gasProduction: 2,
+    ...createDefaultCulturalData("Christianity", "Swahili", 36, 78)
+  },
+  {
+    id: "ug", name: "Uganda", population: 47100000, area: 241038, gdp: 48,
+    militarySize: 45000, tanks: 160, aircraft: 18, navySize: 0,
+    energyProduction: 4, oilProduction: 0.0, gasProduction: 0,
+    ...createDefaultCulturalData("Christianity", "English", 26, 73)
+  },
+  {
+    id: "cm", name: "Cameroon", population: 27200000, area: 475442, gdp: 40,
+    militarySize: 40000, tanks: 53, aircraft: 35, navySize: 40,
+    energyProduction: 8, oilProduction: 0.1, gasProduction: 1,
+    ...createDefaultCulturalData("Christianity", "French", 58, 75)
+  },
+  {
+    id: "sd", name: "Sudan", population: 45700000, area: 1861484, gdp: 35,
+    militarySize: 104300, tanks: 250, aircraft: 175, navySize: 18,
+    energyProduction: 14, oilProduction: 0.1, gasProduction: 0,
+    ...createDefaultCulturalData("Islam", "Arabic", 35, 60)
+  },
+  {
+    id: "cd", name: "Democratic Republic of Congo", population: 95900000, area: 2344858, gdp: 55,
+    militarySize: 134250, tanks: 175, aircraft: 26, navySize: 54,
+    energyProduction: 9, oilProduction: 0.02, gasProduction: 0,
+    ...createDefaultCulturalData("Christianity", "French", 46, 77)
+  },
+  {
+    id: "ci", name: "Ivory Coast", population: 27500000, area: 322463, gdp: 70,
+    militarySize: 25400, tanks: 10, aircraft: 7, navySize: 9,
+    energyProduction: 9, oilProduction: 0.03, gasProduction: 2,
+    ...createDefaultCulturalData("Christianity", "French", 52, 47)
+  },
+  {
+    id: "sn", name: "Senegal", population: 17200000, area: 196722, gdp: 28,
+    militarySize: 17000, tanks: 30, aircraft: 17, navySize: 32,
+    energyProduction: 4, oilProduction: 0.0, gasProduction: 1,
+    ...createDefaultCulturalData("Islam", "French", 48, 43)
+  },
+  {
+    id: "ml", name: "Mali", population: 21900000, area: 1240192, gdp: 19,
+    militarySize: 7350, tanks: 33, aircraft: 24, navySize: 50,
+    energyProduction: 3, oilProduction: 0.0, gasProduction: 0,
+    ...createDefaultCulturalData("Islam", "French", 44, 35)
+  },
+  {
+    id: "bf", name: "Burkina Faso", population: 22700000, area: 274200, gdp: 18,
+    militarySize: 11200, tanks: 30, aircraft: 19, navySize: 0,
+    energyProduction: 1, oilProduction: 0.0, gasProduction: 0,
+    ...createDefaultCulturalData("Islam", "French", 31, 36)
+  },
+  {
+    id: "ne", name: "Niger", population: 25300000, area: 1267000, gdp: 14,
+    militarySize: 5300, tanks: 65, aircraft: 25, navySize: 0,
+    energyProduction: 1, oilProduction: 0.02, gasProduction: 0,
+    ...createDefaultCulturalData("Islam", "French", 17, 19)
+  },
+  {
+    id: "td", name: "Chad", population: 17200000, area: 1284000, gdp: 12,
+    militarySize: 25350, tanks: 60, aircraft: 2, navySize: 0,
+    energyProduction: 0, oilProduction: 0.1, gasProduction: 0,
+    ...createDefaultCulturalData("Islam", "French", 23, 23)
+  },
+  {
+    id: "zm", name: "Zambia", population: 19600000, area: 752618, gdp: 22,
+    militarySize: 15100, tanks: 30, aircraft: 40, navySize: 0,
+    energyProduction: 15, oilProduction: 0.0, gasProduction: 0,
+    ...createDefaultCulturalData("Christianity", "English", 45, 63)
+  },
+  {
+    id: "zw", name: "Zimbabwe", population: 15100000, area: 390757, gdp: 28,
+    militarySize: 29000, tanks: 30, aircraft: 88, navySize: 0,
+    energyProduction: 7, oilProduction: 0.0, gasProduction: 0,
+    ...createDefaultCulturalData("Christianity", "English", 32, 87)
+  },
+  {
+    id: "bw", name: "Botswana", population: 2400000, area: 581730, gdp: 18,
+    militarySize: 9000, tanks: 80, aircraft: 32, navySize: 0,
+    energyProduction: 2, oilProduction: 0.0, gasProduction: 0,
+    ...createDefaultCulturalData("Christianity", "English", 71, 88)
+  },
+  {
+    id: "na", name: "Namibia", population: 2500000, area: 824292, gdp: 12,
+    militarySize: 9000, tanks: 43, aircraft: 18, navySize: 47,
+    energyProduction: 2, oilProduction: 0.0, gasProduction: 0,
+    ...createDefaultCulturalData("Christianity", "English", 53, 91)
   }
 ];
