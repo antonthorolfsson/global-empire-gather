@@ -716,5 +716,13 @@ export const GAME_COUNTRIES: CountryData[] = [
     militarySize: 8500, tanks: 2, aircraft: 0, navySize: 200,
     energyProduction: 232, oilProduction: 0.0, gasProduction: 0,
     ...createDefaultCulturalData("Christianity", "French", 43, 66)
+  },
+
+  // North Korea
+  {
+    id: "kp", name: "North Korea", population: 25800000, area: 120538, gdp: 40,
+    militarySize: 1280000, tanks: 3500, aircraft: 572, navySize: 60000,
+    energyProduction: 23000, oilProduction: 0.0, gasProduction: 0,
+    ...createDefaultCulturalData("Buddhism", "Korean", 62, 99)
   }
 ];
