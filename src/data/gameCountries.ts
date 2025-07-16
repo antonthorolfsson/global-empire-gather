@@ -394,6 +394,18 @@ export const GAME_COUNTRIES: CountryData[] = [
     ...createDefaultCulturalData("Christianity", "Slovenian", 55, 99)
   },
   { 
+    id: "al", name: "Albania", population: 2838000, area: 28748, gdp: 18,
+    militarySize: 8000, tanks: 0, aircraft: 0, navySize: 19,
+    energyProduction: 8, oilProduction: 0.02, gasProduction: 0.02,
+    ...createDefaultCulturalData("Islam", "Albanian", 62, 98)
+  },
+  { 
+    id: "rs", name: "Serbia", population: 6834000, area: 77474, gdp: 63,
+    militarySize: 26250, tanks: 232, aircraft: 31, navySize: 0,
+    energyProduction: 36, oilProduction: 0.0, gasProduction: 0.5,
+    ...createDefaultCulturalData("Christianity", "Serbian", 56, 99)
+  },
+  { 
     id: "lt", name: "Lithuania", population: 2800000, area: 65300, gdp: 65,
     militarySize: 20000, tanks: 0, aircraft: 5, navySize: 14,
     energyProduction: 5, oilProduction: 0.0, gasProduction: 0,
