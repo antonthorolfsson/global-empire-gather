@@ -1318,12 +1318,6 @@ export const GAME_COUNTRIES: CountryData[] = [
     ...createDefaultCulturalData("Christianity", "German", 14, 100)
   },
   {
-    id: "lu", name: "Luxembourg", population: 640000, area: 2586, gdp: 71,
-    militarySize: 1000, tanks: 0, aircraft: 0, navySize: 0,
-    energyProduction: 3, oilProduction: 0.0, gasProduction: 0,
-    ...createDefaultCulturalData("Christianity", "French", 91, 100)
-  },
-  {
     id: "mg", name: "Madagascar", population: 28400000, area: 587041, gdp: 15,
     militarySize: 13500, tanks: 12, aircraft: 29, navySize: 500,
     energyProduction: 2, oilProduction: 0.0, gasProduction: 0,
@@ -1347,10 +1341,4 @@ export const GAME_COUNTRIES: CountryData[] = [
     energyProduction: 0, oilProduction: 0.0, gasProduction: 0,
     ...createDefaultCulturalData("Islam", "Dhivehi", 40, 98)
   },
-  {
-    id: "mt", name: "Malta", population: 520000, area: 316, gdp: 17,
-    militarySize: 1950, tanks: 0, aircraft: 0, navySize: 0,
-    energyProduction: 2, oilProduction: 0.0, gasProduction: 0,
-    ...createDefaultCulturalData("Christianity", "Maltese", 95, 93)
-  }
 ];
