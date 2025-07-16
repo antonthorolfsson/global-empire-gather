@@ -1006,12 +1006,6 @@ export const GAME_COUNTRIES: CountryData[] = [
     ...createDefaultCulturalData("Islam", "Arabic", 73, 81)
   },
   {
-    id: "ad", name: "Andorra", population: 79000, area: 468, gdp: 3,
-    militarySize: 0, tanks: 0, aircraft: 0, navySize: 0,
-    energyProduction: 0, oilProduction: 0.0, gasProduction: 0,
-    ...createDefaultCulturalData("Christianity", "Catalan", 88, 100)
-  },
-  {
     id: "ag", name: "Antigua and Barbuda", population: 98000, area: 443, gdp: 2,
     militarySize: 180, tanks: 0, aircraft: 0, navySize: 45,
     energyProduction: 0, oilProduction: 0.0, gasProduction: 0,
@@ -1040,18 +1034,6 @@ export const GAME_COUNTRIES: CountryData[] = [
     militarySize: 8000, tanks: 0, aircraft: 0, navySize: 0,
     energyProduction: 8, oilProduction: 0.0, gasProduction: 0,
     ...createDefaultCulturalData("Buddhism", "Dzongkha", 43, 67)
-  },
-  {
-    id: "bo", name: "Bolivia", population: 11700000, area: 1098581, gdp: 43,
-    militarySize: 34100, tanks: 54, aircraft: 92, navySize: 173,
-    energyProduction: 9, oilProduction: 0.06, gasProduction: 13,
-    ...createDefaultCulturalData("Christianity", "Spanish", 70, 93)
-  },
-  {
-    id: "bf", name: "Burkina Faso", population: 21900000, area: 274200, gdp: 19,
-    militarySize: 11200, tanks: 0, aircraft: 0, navySize: 0,
-    energyProduction: 1, oilProduction: 0.0, gasProduction: 0,
-    ...createDefaultCulturalData("Islam", "French", 31, 41)
   },
   {
     id: "bi", name: "Burundi", population: 12300000, area: 27830, gdp: 3,
