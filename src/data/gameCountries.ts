@@ -1800,12 +1800,6 @@ export const GAME_COUNTRIES: CountryData[] = [
     ...createDefaultCulturalData("Islam", "Uzbek", 51, 100)
   },
   {
-    id: "ws", name: "Samoa", population: 200000, area: 2831, gdp: 1,
-    militarySize: 0, tanks: 0, aircraft: 0, navySize: 0,
-    energyProduction: 0, oilProduction: 0.0, gasProduction: 0,
-    ...createDefaultCulturalData("Christianity", "Samoan", 18, 99)
-  },
-  {
     id: "ye", name: "Yemen", population: 30500000, area: 527968, gdp: 21,
     militarySize: 40000, tanks: 0, aircraft: 177, navySize: 0,
     energyProduction: 1, oilProduction: 0.06, gasProduction: 0,
@@ -1848,12 +1842,6 @@ export const GAME_COUNTRIES: CountryData[] = [
     militarySize: 9000, tanks: 43, aircraft: 18, navySize: 47,
     energyProduction: 2, oilProduction: 0.0, gasProduction: 0,
     ...createDefaultCulturalData("Christianity", "English", 53, 91)
-  },
-  {
-    id: "tw", name: "Taiwan", population: 23570000, area: 36193, gdp: 669,
-    militarySize: 165000, tanks: 1110, aircraft: 400, navySize: 117,
-    energyProduction: 270, oilProduction: 0.0, gasProduction: 1,
-    ...createDefaultCulturalData("Buddhism", "Mandarin", 79, 99)
   },
   {
     id: "mn", name: "Mongolia", population: 3300000, area: 1564110, gdp: 15,
