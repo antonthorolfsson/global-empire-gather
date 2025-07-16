@@ -1676,5 +1676,377 @@ export const GAME_COUNTRIES: CountryData[] = [
     militarySize: 482000, tanks: 1545, aircraft: 235, navySize: 189,
     energyProduction: 245, oilProduction: 0.21, gasProduction: 8,
     ...createDefaultCulturalData("Buddhism", "Vietnamese", 38, 95)
+  },
+  
+  // Final batch to complete all 195 UN member states
+  {
+    id: "ao", name: "Angola", population: 33900000, area: 1246700, gdp: 124,
+    militarySize: 117000, tanks: 140, aircraft: 270, navySize: 0,
+    energyProduction: 11, oilProduction: 1.8, gasProduction: 1,
+    ...createDefaultCulturalData("Christianity", "Portuguese", 67, 71)
+  },
+  {
+    id: "ar", name: "Argentina", population: 45800000, area: 2780400, gdp: 487,
+    militarySize: 74200, tanks: 231, aircraft: 201, navySize: 39,
+    energyProduction: 138, oilProduction: 0.79, gasProduction: 40,
+    ...createDefaultCulturalData("Christianity", "Spanish", 92, 99)
+  },
+  {
+    id: "bs", name: "Bahamas", population: 400000, area: 13880, gdp: 13,
+    militarySize: 860, tanks: 0, aircraft: 0, navySize: 0,
+    energyProduction: 2, oilProduction: 0.0, gasProduction: 0,
+    ...createDefaultCulturalData("Christianity", "English", 83, 96)
+  },
+  {
+    id: "bs", name: "Bahamas", population: 400000, area: 13880, gdp: 13,
+    militarySize: 860, tanks: 0, aircraft: 0, navySize: 0,
+    energyProduction: 2, oilProduction: 0.0, gasProduction: 0,
+    ...createDefaultCulturalData("Christianity", "English", 83, 96)
+  },
+  {
+    id: "eg", name: "Egypt", population: 104000000, area: 1001450, gdp: 469,
+    militarySize: 438500, tanks: 4295, aircraft: 1062, navySize: 319,
+    energyProduction: 199, oilProduction: 0.63, gasProduction: 62,
+    ...createDefaultCulturalData("Islam", "Arabic", 43, 71)
+  },
+  {
+    id: "gh", name: "Ghana", population: 32800000, area: 238533, gdp: 75,
+    militarySize: 15500, tanks: 0, aircraft: 13, navySize: 0,
+    energyProduction: 17, oilProduction: 0.2, gasProduction: 1,
+    ...createDefaultCulturalData("Christianity", "English", 57, 79)
+  },
+  {
+    id: "jo", name: "Jordan", population: 10300000, area: 89342, gdp: 47,
+    militarySize: 100500, tanks: 1233, aircraft: 266, navySize: 0,
+    energyProduction: 21, oilProduction: 0.0, gasProduction: 0,
+    ...createDefaultCulturalData("Islam", "Arabic", 91, 98)
+  },
+  {
+    id: "kw", name: "Kuwait", population: 4300000, area: 17818, gdp: 167,
+    militarySize: 15500, tanks: 368, aircraft: 154, navySize: 38,
+    energyProduction: 68, oilProduction: 2.9, gasProduction: 17,
+    ...createDefaultCulturalData("Islam", "Arabic", 98, 96)
+  },
+  {
+    id: "lb", name: "Lebanon", population: 6800000, area: 10400, gdp: 18,
+    militarySize: 60000, tanks: 334, aircraft: 0, navySize: 0,
+    energyProduction: 18, oilProduction: 0.0, gasProduction: 0,
+    ...createDefaultCulturalData("Christianity", "Arabic", 88, 94)
+  },
+  {
+    id: "ng", name: "Nigeria", population: 218500000, area: 923768, gdp: 440,
+    militarySize: 135000, tanks: 360, aircraft: 99, navySize: 0,
+    energyProduction: 33, oilProduction: 1.9, gasProduction: 50,
+    ...createDefaultCulturalData("Christianity", "English", 52, 62)
+  },
+  {
+    id: "om", name: "Oman", population: 5100000, area: 309500, gdp: 84,
+    militarySize: 42600, tanks: 154, aircraft: 126, navySize: 16,
+    energyProduction: 33, oilProduction: 0.97, gasProduction: 36,
+    ...createDefaultCulturalData("Islam", "Arabic", 86, 95)
+  },
+  {
+    id: "pk", name: "Pakistan", population: 231000000, area: 881913, gdp: 348,
+    militarySize: 654000, tanks: 2924, aircraft: 1364, navySize: 197,
+    energyProduction: 138, oilProduction: 0.09, gasProduction: 41,
+    ...createDefaultCulturalData("Islam", "Urdu", 37, 59)
+  },
+  {
+    id: "ps", name: "Palestine", population: 5200000, area: 6020, gdp: 18,
+    militarySize: 0, tanks: 0, aircraft: 0, navySize: 0,
+    energyProduction: 1, oilProduction: 0.0, gasProduction: 0,
+    ...createDefaultCulturalData("Islam", "Arabic", 75, 97)
+  },
+  {
+    id: "qa", name: "Qatar", population: 2900000, area: 11586, gdp: 204,
+    militarySize: 11800, tanks: 30, aircraft: 118, navySize: 29,
+    energyProduction: 46, oilProduction: 1.4, gasProduction: 177,
+    ...createDefaultCulturalData("Islam", "Arabic", 99, 97)
+  },
+  {
+    id: "rw", name: "Rwanda", population: 13300000, area: 26338, gdp: 11,
+    militarySize: 33000, tanks: 0, aircraft: 0, navySize: 0,
+    energyProduction: 1, oilProduction: 0.0, gasProduction: 0,
+    ...createDefaultCulturalData("Christianity", "Kinyarwanda", 17, 73)
+  },
+  {
+    id: "sy", name: "Syria", population: 19400000, area: 185180, gdp: 40,
+    militarySize: 169000, tanks: 2720, aircraft: 201, navySize: 0,
+    energyProduction: 17, oilProduction: 0.02, gasProduction: 3,
+    ...createDefaultCulturalData("Islam", "Arabic", 57, 86)
+  },
+  {
+    id: "tj", name: "Tajikistan", population: 9800000, area: 143100, gdp: 8,
+    militarySize: 8800, tanks: 37, aircraft: 25, navySize: 0,
+    energyProduction: 19, oilProduction: 0.0, gasProduction: 0,
+    ...createDefaultCulturalData("Islam", "Tajik", 27, 100)
+  },
+  {
+    id: "tm", name: "Turkmenistan", population: 6100000, area: 488100, gdp: 45,
+    militarySize: 36500, tanks: 680, aircraft: 90, navySize: 0,
+    energyProduction: 22, oilProduction: 0.23, gasProduction: 62,
+    ...createDefaultCulturalData("Islam", "Turkmen", 53, 100)
+  },
+  {
+    id: "tz", name: "Tanzania", population: 61500000, area: 947300, gdp: 68,
+    militarySize: 27000, tanks: 45, aircraft: 23, navySize: 0,
+    energyProduction: 7, oilProduction: 0.0, gasProduction: 1,
+    ...createDefaultCulturalData("Christianity", "Swahili", 35, 78)
+  },
+  {
+    id: "uz", name: "Uzbekistan", population: 34600000, area: 448969, gdp: 70,
+    militarySize: 48000, tanks: 340, aircraft: 135, navySize: 0,
+    energyProduction: 62, oilProduction: 0.06, gasProduction: 58,
+    ...createDefaultCulturalData("Islam", "Uzbek", 51, 100)
+  },
+  {
+    id: "ws", name: "Samoa", population: 200000, area: 2831, gdp: 1,
+    militarySize: 0, tanks: 0, aircraft: 0, navySize: 0,
+    energyProduction: 0, oilProduction: 0.0, gasProduction: 0,
+    ...createDefaultCulturalData("Christianity", "Samoan", 18, 99)
+  },
+  {
+    id: "ye", name: "Yemen", population: 30500000, area: 527968, gdp: 21,
+    militarySize: 40000, tanks: 0, aircraft: 177, navySize: 0,
+    energyProduction: 1, oilProduction: 0.06, gasProduction: 0,
+    ...createDefaultCulturalData("Islam", "Arabic", 37, 70)
+  },
+  
+  // Final countries to complete all 195 UN member states
+  {
+    id: "td", name: "Chad", population: 17200000, area: 1284000, gdp: 12,
+    militarySize: 25350, tanks: 60, aircraft: 2, navySize: 0,
+    energyProduction: 0, oilProduction: 0.1, gasProduction: 0,
+    ...createDefaultCulturalData("Islam", "French", 23, 23)
+  },
+  {
+    id: "ne", name: "Niger", population: 25300000, area: 1267000, gdp: 14,
+    militarySize: 5300, tanks: 65, aircraft: 25, navySize: 0,
+    energyProduction: 1, oilProduction: 0.02, gasProduction: 0,
+    ...createDefaultCulturalData("Islam", "French", 17, 19)
+  },
+  {
+    id: "zm", name: "Zambia", population: 19600000, area: 752618, gdp: 22,
+    militarySize: 15100, tanks: 30, aircraft: 40, navySize: 0,
+    energyProduction: 15, oilProduction: 0.0, gasProduction: 0,
+    ...createDefaultCulturalData("Christianity", "English", 45, 63)
+  },
+  {
+    id: "zw", name: "Zimbabwe", population: 15100000, area: 390757, gdp: 28,
+    militarySize: 29000, tanks: 30, aircraft: 88, navySize: 0,
+    energyProduction: 7, oilProduction: 0.0, gasProduction: 0,
+    ...createDefaultCulturalData("Christianity", "English", 32, 87)
+  },
+  {
+    id: "bw", name: "Botswana", population: 2400000, area: 581730, gdp: 18,
+    militarySize: 9000, tanks: 80, aircraft: 32, navySize: 0,
+    energyProduction: 2, oilProduction: 0.0, gasProduction: 0,
+    ...createDefaultCulturalData("Christianity", "English", 71, 88)
+  },
+  {
+    id: "na", name: "Namibia", population: 2500000, area: 824292, gdp: 12,
+    militarySize: 9000, tanks: 43, aircraft: 18, navySize: 47,
+    energyProduction: 2, oilProduction: 0.0, gasProduction: 0,
+    ...createDefaultCulturalData("Christianity", "English", 53, 91)
+  },
+  {
+    id: "tw", name: "Taiwan", population: 23570000, area: 36193, gdp: 669,
+    militarySize: 165000, tanks: 1110, aircraft: 400, navySize: 117,
+    energyProduction: 270, oilProduction: 0.0, gasProduction: 1,
+    ...createDefaultCulturalData("Buddhism", "Mandarin", 79, 99)
+  },
+  {
+    id: "mn", name: "Mongolia", population: 3300000, area: 1564110, gdp: 15,
+    militarySize: 10000, tanks: 470, aircraft: 11, navySize: 0,
+    energyProduction: 5, oilProduction: 0.0, gasProduction: 0,
+    ...createDefaultCulturalData("Buddhism", "Mongolian", 68, 99)
+  },
+  {
+    id: "bn", name: "Brunei", population: 440000, area: 5765, gdp: 14,
+    militarySize: 7000, tanks: 20, aircraft: 20, navySize: 0,
+    energyProduction: 4, oilProduction: 0.1, gasProduction: 12,
+    ...createDefaultCulturalData("Islam", "Malay", 78, 96)
+  },
+  {
+    id: "bb", name: "Barbados", population: 290000, area: 430, gdp: 5,
+    militarySize: 610, tanks: 0, aircraft: 0, navySize: 0,
+    energyProduction: 1, oilProduction: 0.0, gasProduction: 0,
+    ...createDefaultCulturalData("Christianity", "English", 31, 99)
+  },
+  {
+    id: "xk", name: "Kosovo", population: 1873000, area: 10887, gdp: 8,
+    militarySize: 2500, tanks: 0, aircraft: 0, navySize: 0,
+    energyProduction: 6, oilProduction: 0.0, gasProduction: 0,
+    ...createDefaultCulturalData("Islam", "Albanian", 38, 92)
+  },
+  
+  // Final 28 countries to complete all 195 UN member states
+  {
+    id: "dj", name: "Djibouti", population: 990000, area: 23200, gdp: 4,
+    militarySize: 10450, tanks: 0, aircraft: 0, navySize: 0,
+    energyProduction: 0, oilProduction: 0.0, gasProduction: 0,
+    ...createDefaultCulturalData("Islam", "French", 78, 68)
+  },
+  {
+    id: "gq", name: "Equatorial Guinea", population: 1400000, area: 28051, gdp: 12,
+    militarySize: 1320, tanks: 0, aircraft: 0, navySize: 0,
+    energyProduction: 0, oilProduction: 0.13, gasProduction: 7,
+    ...createDefaultCulturalData("Christianity", "Spanish", 73, 95)
+  },
+  {
+    id: "er", name: "Eritrea", population: 3200000, area: 117600, gdp: 2,
+    militarySize: 201750, tanks: 270, aircraft: 17, navySize: 1100,
+    energyProduction: 0, oilProduction: 0.0, gasProduction: 0,
+    ...createDefaultCulturalData("Christianity", "Tigrinya", 21, 76)
+  },
+  {
+    id: "fj", name: "Fiji", population: 900000, area: 18274, gdp: 5,
+    militarySize: 3500, tanks: 0, aircraft: 0, navySize: 0,
+    energyProduction: 1, oilProduction: 0.0, gasProduction: 0,
+    ...createDefaultCulturalData("Christianity", "English", 58, 99)
+  },
+  {
+    id: "ga", name: "Gabon", population: 2200000, area: 267667, gdp: 16,
+    militarySize: 5000, tanks: 0, aircraft: 13, navySize: 500,
+    energyProduction: 2, oilProduction: 0.2, gasProduction: 0,
+    ...createDefaultCulturalData("Christianity", "French", 87, 84)
+  },
+  {
+    id: "gm", name: "Gambia", population: 2400000, area: 11295, gdp: 2,
+    militarySize: 800, tanks: 0, aircraft: 0, navySize: 0,
+    energyProduction: 0, oilProduction: 0.0, gasProduction: 0,
+    ...createDefaultCulturalData("Islam", "English", 62, 56)
+  },
+  {
+    id: "gd", name: "Grenada", population: 113000, area: 344, gdp: 1,
+    militarySize: 0, tanks: 0, aircraft: 0, navySize: 0,
+    energyProduction: 0, oilProduction: 0.0, gasProduction: 0,
+    ...createDefaultCulturalData("Christianity", "English", 36, 98)
+  },
+  {
+    id: "gt", name: "Guatemala", population: 17600000, area: 108889, gdp: 85,
+    militarySize: 15500, tanks: 0, aircraft: 11, navySize: 650,
+    energyProduction: 12, oilProduction: 0.01, gasProduction: 0,
+    ...createDefaultCulturalData("Christianity", "Spanish", 52, 81)
+  },
+  {
+    id: "gn", name: "Guinea", population: 13100000, area: 245857, gdp: 16,
+    militarySize: 9700, tanks: 38, aircraft: 0, navySize: 0,
+    energyProduction: 1, oilProduction: 0.0, gasProduction: 0,
+    ...createDefaultCulturalData("Islam", "French", 36, 32)
+  },
+  {
+    id: "gw", name: "Guinea-Bissau", population: 2000000, area: 36125, gdp: 1,
+    militarySize: 4450, tanks: 0, aircraft: 0, navySize: 0,
+    energyProduction: 0, oilProduction: 0.0, gasProduction: 0,
+    ...createDefaultCulturalData("Islam", "Portuguese", 44, 59)
+  },
+  {
+    id: "gy", name: "Guyana", population: 790000, area: 214969, gdp: 7,
+    militarySize: 3400, tanks: 0, aircraft: 0, navySize: 0,
+    energyProduction: 1, oilProduction: 0.12, gasProduction: 0,
+    ...createDefaultCulturalData("Christianity", "English", 27, 88)
+  },
+  {
+    id: "ht", name: "Haiti", population: 11400000, area: 27750, gdp: 20,
+    militarySize: 0, tanks: 0, aircraft: 0, navySize: 0,
+    energyProduction: 1, oilProduction: 0.0, gasProduction: 0,
+    ...createDefaultCulturalData("Christianity", "French", 57, 61)
+  },
+  {
+    id: "hn", name: "Honduras", population: 10000000, area: 112492, gdp: 28,
+    militarySize: 12000, tanks: 0, aircraft: 42, navySize: 0,
+    energyProduction: 9, oilProduction: 0.0, gasProduction: 0,
+    ...createDefaultCulturalData("Christianity", "Spanish", 59, 88)
+  },
+  {
+    id: "is", name: "Iceland", population: 370000, area: 103000, gdp: 24,
+    militarySize: 0, tanks: 0, aircraft: 0, navySize: 0,
+    energyProduction: 19, oilProduction: 0.0, gasProduction: 0,
+    ...createDefaultCulturalData("Christianity", "Icelandic", 94, 99)
+  },
+  {
+    id: "jm", name: "Jamaica", population: 2700000, area: 10991, gdp: 16,
+    militarySize: 3950, tanks: 0, aircraft: 0, navySize: 0,
+    energyProduction: 4, oilProduction: 0.0, gasProduction: 0,
+    ...createDefaultCulturalData("Christianity", "English", 55, 88)
+  },
+  {
+    id: "kz", name: "Kazakhstan", population: 19600000, area: 2724900, gdp: 190,
+    militarySize: 39000, tanks: 300, aircraft: 180, navySize: 0,
+    energyProduction: 109, oilProduction: 1.9, gasProduction: 24,
+    ...createDefaultCulturalData("Islam", "Kazakh", 58, 100)
+  },
+  {
+    id: "ke", name: "Kenya", population: 54000000, area: 580367, gdp: 110,
+    militarySize: 24100, tanks: 76, aircraft: 38, navySize: 0,
+    energyProduction: 11, oilProduction: 0.0, gasProduction: 0,
+    ...createDefaultCulturalData("Christianity", "English", 28, 78)
+  },
+  {
+    id: "ki", name: "Kiribati", population: 120000, area: 811, gdp: 0,
+    militarySize: 0, tanks: 0, aircraft: 0, navySize: 0,
+    energyProduction: 0, oilProduction: 0.0, gasProduction: 0,
+    ...createDefaultCulturalData("Christianity", "English", 57, 97)
+  },
+  {
+    id: "kp", name: "North Korea", population: 25800000, area: 120538, gdp: 18,
+    militarySize: 1320000, tanks: 3500, aircraft: 545, navySize: 967,
+    energyProduction: 26, oilProduction: 0.0, gasProduction: 0,
+    ...createDefaultCulturalData("No Religion", "Korean", 61, 100)
+  },
+  {
+    id: "kg", name: "Kyrgyzstan", population: 6600000, area: 199951, gdp: 8,
+    militarySize: 10900, tanks: 150, aircraft: 33, navySize: 0,
+    energyProduction: 15, oilProduction: 0.0, gasProduction: 0,
+    ...createDefaultCulturalData("Islam", "Kyrgyz", 36, 99)
+  },
+  {
+    id: "la", name: "Laos", population: 7300000, area: 236800, gdp: 19,
+    militarySize: 29100, tanks: 130, aircraft: 24, navySize: 600,
+    energyProduction: 29, oilProduction: 0.0, gasProduction: 0,
+    ...createDefaultCulturalData("Buddhism", "Lao", 36, 85)
+  },
+  {
+    id: "ls", name: "Lesotho", population: 2100000, area: 30355, gdp: 2,
+    militarySize: 2000, tanks: 0, aircraft: 0, navySize: 0,
+    energyProduction: 1, oilProduction: 0.0, gasProduction: 0,
+    ...createDefaultCulturalData("Christianity", "English", 29, 80)
+  },
+  {
+    id: "lr", name: "Liberia", population: 5200000, area: 111369, gdp: 4,
+    militarySize: 2050, tanks: 0, aircraft: 0, navySize: 0,
+    energyProduction: 0, oilProduction: 0.0, gasProduction: 0,
+    ...createDefaultCulturalData("Christianity", "English", 52, 48)
+  },
+  {
+    id: "ly", name: "Libya", population: 6900000, area: 1759540, gdp: 25,
+    militarySize: 7000, tanks: 0, aircraft: 26, navySize: 0,
+    energyProduction: 34, oilProduction: 1.2, gasProduction: 9,
+    ...createDefaultCulturalData("Islam", "Arabic", 81, 91)
+  },
+  {
+    id: "li", name: "Liechtenstein", population: 39000, area: 160, gdp: 7,
+    militarySize: 0, tanks: 0, aircraft: 0, navySize: 0,
+    energyProduction: 0, oilProduction: 0.0, gasProduction: 0,
+    ...createDefaultCulturalData("Christianity", "German", 14, 100)
+  },
+  {
+    id: "lu", name: "Luxembourg", population: 640000, area: 2586, gdp: 71,
+    militarySize: 1000, tanks: 0, aircraft: 0, navySize: 0,
+    energyProduction: 3, oilProduction: 0.0, gasProduction: 0,
+    ...createDefaultCulturalData("Christianity", "French", 91, 100)
+  },
+  {
+    id: "mg", name: "Madagascar", population: 28400000, area: 587041, gdp: 15,
+    militarySize: 13500, tanks: 12, aircraft: 29, navySize: 500,
+    energyProduction: 2, oilProduction: 0.0, gasProduction: 0,
+    ...createDefaultCulturalData("Christianity", "French", 38, 75)
+  },
+  {
+    id: "mw", name: "Malawi", population: 19600000, area: 118484, gdp: 13,
+    militarySize: 5300, tanks: 0, aircraft: 0, navySize: 220,
+    energyProduction: 2, oilProduction: 0.0, gasProduction: 0,
+    ...createDefaultCulturalData("Christianity", "English", 17, 66)
   }
 ];
