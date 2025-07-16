@@ -423,6 +423,60 @@ export const GAME_COUNTRIES: CountryData[] = [
     energyProduction: 13, oilProduction: 0.0, gasProduction: 0,
     ...createDefaultCulturalData("Christianity", "Estonian", 69, 99)
   },
+  { 
+    id: "by", name: "Belarus", population: 9500000, area: 207600, gdp: 63,
+    militarySize: 45000, tanks: 515, aircraft: 183, navySize: 0,
+    energyProduction: 40, oilProduction: 0.0, gasProduction: 0,
+    ...createDefaultCulturalData("Christianity", "Belarusian", 79, 99)
+  },
+  { 
+    id: "ba", name: "Bosnia and Herzegovina", population: 3280000, area: 51197, gdp: 20,
+    militarySize: 10500, tanks: 85, aircraft: 36, navySize: 0,
+    energyProduction: 18, oilProduction: 0.0, gasProduction: 0,
+    ...createDefaultCulturalData("Christianity", "Bosnian", 49, 98)
+  },
+  { 
+    id: "me", name: "Montenegro", population: 628000, area: 13812, gdp: 5,
+    militarySize: 2400, tanks: 30, aircraft: 7, navySize: 5,
+    energyProduction: 3, oilProduction: 0.0, gasProduction: 0,
+    ...createDefaultCulturalData("Christianity", "Montenegrin", 67, 99)
+  },
+  { 
+    id: "mk", name: "North Macedonia", population: 2083000, area: 25713, gdp: 12,
+    militarySize: 8000, tanks: 31, aircraft: 4, navySize: 0,
+    energyProduction: 6, oilProduction: 0.0, gasProduction: 0,
+    ...createDefaultCulturalData("Christianity", "Macedonian", 58, 98)
+  },
+  { 
+    id: "md", name: "Moldova", population: 4034000, area: 33846, gdp: 12,
+    militarySize: 5150, tanks: 6, aircraft: 7, navySize: 0,
+    energyProduction: 1, oilProduction: 0.0, gasProduction: 0,
+    ...createDefaultCulturalData("Christianity", "Romanian", 42, 99)
+  },
+  { 
+    id: "ge", name: "Georgia", population: 3989000, area: 69700, gdp: 18,
+    militarySize: 37000, tanks: 188, aircraft: 7, navySize: 19,
+    energyProduction: 13, oilProduction: 0.0, gasProduction: 0,
+    ...createDefaultCulturalData("Christianity", "Georgian", 60, 99)
+  },
+  { 
+    id: "am", name: "Armenia", population: 3018000, area: 29743, gdp: 14,
+    militarySize: 44800, tanks: 160, aircraft: 15, navySize: 0,
+    energyProduction: 8, oilProduction: 0.0, gasProduction: 0,
+    ...createDefaultCulturalData("Christianity", "Armenian", 63, 99)
+  },
+  { 
+    id: "az", name: "Azerbaijan", population: 10110000, area: 86600, gdp: 48,
+    militarySize: 126400, tanks: 220, aircraft: 145, navySize: 10,
+    energyProduction: 25, oilProduction: 0.8, gasProduction: 24,
+    ...createDefaultCulturalData("Islam", "Azerbaijani", 56, 99)
+  },
+  { 
+    id: "xk", name: "Kosovo", population: 1873000, area: 10887, gdp: 8,
+    militarySize: 4000, tanks: 0, aircraft: 0, navySize: 0,
+    energyProduction: 6, oilProduction: 0.0, gasProduction: 0,
+    ...createDefaultCulturalData("Islam", "Albanian", 39, 92)
+  },
   
   // Middle East & Africa
   { 
@@ -448,6 +502,54 @@ export const GAME_COUNTRIES: CountryData[] = [
     militarySize: 193000, tanks: 415, aircraft: 371, navySize: 5,
     energyProduction: 100, oilProduction: 4.4, gasProduction: 11,
     ...createDefaultCulturalData("Islam", "Arabic", 70, 86)
+  },
+  { 
+    id: "kw", name: "Kuwait", population: 4270000, area: 17818, gdp: 135,
+    militarySize: 17000, tanks: 368, aircraft: 90, navySize: 38,
+    energyProduction: 70, oilProduction: 2.9, gasProduction: 17,
+    ...createDefaultCulturalData("Islam", "Arabic", 100, 96)
+  },
+  { 
+    id: "qa", name: "Qatar", population: 2881000, area: 11586, gdp: 167,
+    militarySize: 11800, tanks: 30, aircraft: 119, navySize: 87,
+    energyProduction: 45, oilProduction: 1.9, gasProduction: 177,
+    ...createDefaultCulturalData("Islam", "Arabic", 99, 97)
+  },
+  { 
+    id: "bh", name: "Bahrain", population: 1701000, area: 765, gdp: 38,
+    militarySize: 8200, tanks: 180, aircraft: 64, navySize: 60,
+    energyProduction: 29, oilProduction: 0.2, gasProduction: 16,
+    ...createDefaultCulturalData("Islam", "Arabic", 89, 97)
+  },
+  { 
+    id: "om", name: "Oman", population: 5107000, area: 309500, gdp: 76,
+    militarySize: 42600, tanks: 154, aircraft: 128, navySize: 16,
+    energyProduction: 33, oilProduction: 0.8, gasProduction: 36,
+    ...createDefaultCulturalData("Islam", "Arabic", 86, 93)
+  },
+  { 
+    id: "jo", name: "Jordan", population: 10203000, area: 89342, gdp: 47,
+    militarySize: 100500, tanks: 1365, aircraft: 133, navySize: 27,
+    energyProduction: 20, oilProduction: 0.0, gasProduction: 0,
+    ...createDefaultCulturalData("Islam", "Arabic", 91, 98)
+  },
+  { 
+    id: "lb", name: "Lebanon", population: 6825000, area: 10452, gdp: 31,
+    militarySize: 60000, tanks: 298, aircraft: 81, navySize: 69,
+    energyProduction: 18, oilProduction: 0.0, gasProduction: 0,
+    ...createDefaultCulturalData("Islam", "Arabic", 89, 94)
+  },
+  { 
+    id: "sy", name: "Syria", population: 17500000, area: 185180, gdp: 40,
+    militarySize: 169000, tanks: 2720, aircraft: 452, navySize: 60,
+    energyProduction: 24, oilProduction: 0.024, gasProduction: 3,
+    ...createDefaultCulturalData("Islam", "Arabic", 56, 86)
+  },
+  { 
+    id: "ye", name: "Yemen", population: 29826000, area: 527968, gdp: 21,
+    militarySize: 40000, tanks: 360, aircraft: 175, navySize: 25,
+    energyProduction: 8, oilProduction: 0.06, gasProduction: 1,
+    ...createDefaultCulturalData("Islam", "Arabic", 38, 70)
   },
   { 
     id: "ua", name: "Ukraine", population: 44130000, area: 603550, gdp: 200,
@@ -594,6 +696,54 @@ export const GAME_COUNTRIES: CountryData[] = [
     militarySize: 39000, tanks: 300, aircraft: 120, navySize: 0,
     energyProduction: 107, oilProduction: 1.8, gasProduction: 24,
     ...createDefaultCulturalData("Islam", "Kazakh", 58, 100)
+  },
+  { 
+    id: "uz", name: "Uzbekistan", population: 33580000, area: 448978, gdp: 69,
+    militarySize: 48000, tanks: 340, aircraft: 135, navySize: 0,
+    energyProduction: 58, oilProduction: 0.06, gasProduction: 56,
+    ...createDefaultCulturalData("Islam", "Uzbek", 50, 100)
+  },
+  { 
+    id: "tm", name: "Turkmenistan", population: 6031000, area: 488100, gdp: 45,
+    militarySize: 36500, tanks: 650, aircraft: 90, navySize: 0,
+    energyProduction: 22, oilProduction: 0.24, gasProduction: 77,
+    ...createDefaultCulturalData("Islam", "Turkmen", 53, 100)
+  },
+  { 
+    id: "tj", name: "Tajikistan", population: 9750000, area: 143100, gdp: 8,
+    militarySize: 8800, tanks: 37, aircraft: 25, navySize: 0,
+    energyProduction: 17, oilProduction: 0.0, gasProduction: 0,
+    ...createDefaultCulturalData("Islam", "Tajik", 27, 100)
+  },
+  { 
+    id: "mn", name: "Mongolia", population: 3280000, area: 1564110, gdp: 14,
+    militarySize: 10000, tanks: 470, aircraft: 11, navySize: 0,
+    energyProduction: 5, oilProduction: 0.0, gasProduction: 0,
+    ...createDefaultCulturalData("Buddhism", "Mongolian", 69, 98)
+  },
+  { 
+    id: "bn", name: "Brunei", population: 438000, area: 5765, gdp: 12,
+    militarySize: 7000, tanks: 20, aircraft: 17, navySize: 17,
+    energyProduction: 4, oilProduction: 0.1, gasProduction: 13,
+    ...createDefaultCulturalData("Islam", "Malay", 78, 96)
+  },
+  { 
+    id: "ps", name: "Palestine", population: 5222000, area: 6020, gdp: 18,
+    militarySize: 0, tanks: 0, aircraft: 0, navySize: 0,
+    energyProduction: 1, oilProduction: 0.0, gasProduction: 0,
+    ...createDefaultCulturalData("Islam", "Arabic", 77, 97)
+  },
+  { 
+    id: "bb", name: "Barbados", population: 287000, area: 430, gdp: 5,
+    militarySize: 610, tanks: 0, aircraft: 0, navySize: 0,
+    energyProduction: 1, oilProduction: 0.0, gasProduction: 0,
+    ...createDefaultCulturalData("Christianity", "English", 31, 100)
+  },
+  { 
+    id: "rw", name: "Rwanda", population: 13280000, area: 26338, gdp: 11,
+    militarySize: 33000, tanks: 12, aircraft: 0, navySize: 0,
+    energyProduction: 1, oilProduction: 0.0, gasProduction: 0,
+    ...createDefaultCulturalData("Christianity", "Kinyarwanda", 17, 73)
   },
   
   // Americas
