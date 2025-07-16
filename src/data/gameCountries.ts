@@ -834,5 +834,11 @@ export const GAME_COUNTRIES: CountryData[] = [
     militarySize: 9000, tanks: 43, aircraft: 18, navySize: 47,
     energyProduction: 2, oilProduction: 0.0, gasProduction: 0,
     ...createDefaultCulturalData("Christianity", "English", 53, 91)
+  },
+  {
+    id: "mz", name: "Mozambique", population: 32200000, area: 801590, gdp: 15,
+    militarySize: 11200, tanks: 80, aircraft: 26, navySize: 9,
+    energyProduction: 18, oilProduction: 0.0, gasProduction: 5,
+    ...createDefaultCulturalData("Christianity", "Portuguese", 38, 60)
   }
 ];
