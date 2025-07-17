@@ -414,13 +414,24 @@ const GameMap: React.FC<GameMapProps> = ({
     styleElement.id = 'map-country-styles';
     
     let cssRules = `
+      #world-map-svg {
+        outline: none !important;
+        user-select: none !important;
+        -webkit-user-select: none !important;
+        -moz-user-select: none !important;
+        -ms-user-select: none !important;
+      }
       #world-map-svg path {
         fill: #000000 !important;
         stroke: #ffffff !important;
         stroke-width: 0.5px !important;
         cursor: pointer !important;
-        transition: ${isDragging || isTouch ? 'none !important' : 'all 0.2s ease !important'};
+        transition: ${isDragging || isTouch ? 'none !important' : 'fill 0.2s ease !important'};
         opacity: 1 !important;
+        outline: none !important;
+      }
+      #world-map-svg path:focus {
+        outline: none !important;
       }
     `;
     
@@ -462,9 +473,8 @@ const GameMap: React.FC<GameMapProps> = ({
     cssRules += `
       #world-map-svg path:not(${ownedCountries.map(id => `#${id}`).join(', ')}):hover {
         fill: hsl(var(--primary-glow)) !important;
-        transform: ${isDragging || isTouch ? 'none !important' : 'scale(1.01) !important'};
-        transform-origin: center !important;
-        z-index: 10 !important;
+        transform: none !important;
+        z-index: 1 !important;
       }
     `;
     
