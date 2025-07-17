@@ -106,7 +106,33 @@ const GameMap: React.FC<GameMapProps> = ({
     e.preventDefault();
     const zoomSpeed = 0.1;
     const newZoom = Math.max(0.5, Math.min(10, zoom + (e.deltaY > 0 ? -zoomSpeed : zoomSpeed)));
-    setZoom(newZoom);
+    
+    // Get container bounds for relative positioning
+    const container = mapContainerRef.current;
+    if (container) {
+      const rect = container.getBoundingClientRect();
+      
+      // Calculate mouse position relative to container
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+      
+      // Calculate world position under mouse cursor at current zoom
+      const worldX = (mouseX - rect.width / 2 - pan.x) / zoom;
+      const worldY = (mouseY - rect.height / 2 - pan.y) / zoom;
+      
+      // Calculate new pan to keep the world position under the same screen position
+      const newPanX = mouseX - rect.width / 2 - worldX * newZoom;
+      const newPanY = mouseY - rect.height / 2 - worldY * newZoom;
+      
+      setZoom(newZoom);
+      setPan({
+        x: newPanX,
+        y: newPanY
+      });
+    } else {
+      // Fallback to simple zoom if container ref is not available
+      setZoom(newZoom);
+    }
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
