@@ -1048,18 +1048,6 @@ export const GAME_COUNTRIES: CountryData[] = [
     ...createDefaultCulturalData("Christianity", "Portuguese", 66, 88)
   },
   {
-    id: "kh", name: "Cambodia", population: 16700000, area: 181035, gdp: 28,
-    militarySize: 124300, tanks: 158, aircraft: 24, navySize: 12,
-    energyProduction: 8, oilProduction: 0.0, gasProduction: 0,
-    ...createDefaultCulturalData("Buddhism", "Khmer", 24, 80)
-  },
-  {
-    id: "cm", name: "Cameroon", population: 27200000, area: 475442, gdp: 42,
-    militarySize: 40000, tanks: 53, aircraft: 33, navySize: 0,
-    energyProduction: 8, oilProduction: 0.07, gasProduction: 0.3,
-    ...createDefaultCulturalData("Christianity", "French", 58, 75)
-  },
-  {
     id: "cf", name: "Central African Republic", population: 4800000, area: 622984, gdp: 2,
     militarySize: 7500, tanks: 0, aircraft: 0, navySize: 0,
     energyProduction: 0, oilProduction: 0.0, gasProduction: 0,
@@ -1102,22 +1090,10 @@ export const GAME_COUNTRIES: CountryData[] = [
     ...createDefaultCulturalData("Christianity", "Spanish", 82, 98)
   },
   {
-    id: "ci", name: "Ivory Coast", population: 27000000, area: 322463, gdp: 70,
-    militarySize: 25000, tanks: 10, aircraft: 5, navySize: 900,
-    energyProduction: 10, oilProduction: 0.04, gasProduction: 2,
-    ...createDefaultCulturalData("Christianity", "French", 52, 47)
-  },
-  {
     id: "cu", name: "Cuba", population: 11300000, area: 109884, gdp: 107,
     militarySize: 49000, tanks: 900, aircraft: 41, navySize: 0,
     energyProduction: 20, oilProduction: 0.05, gasProduction: 1,
     ...createDefaultCulturalData("Christianity", "Spanish", 78, 100)
-  },
-  {
-    id: "cy", name: "Cyprus", population: 1200000, area: 9251, gdp: 25,
-    militarySize: 10000, tanks: 154, aircraft: 0, navySize: 0,
-    energyProduction: 5, oilProduction: 0.0, gasProduction: 0,
-    ...createDefaultCulturalData("Christianity", "Greek", 67, 99)
   },
   {
     id: "dj", name: "Djibouti", population: 990000, area: 23200, gdp: 4,
@@ -1234,12 +1210,6 @@ export const GAME_COUNTRIES: CountryData[] = [
     ...createDefaultCulturalData("Christianity", "Spanish", 59, 88)
   },
   {
-    id: "is", name: "Iceland", population: 370000, area: 103000, gdp: 24,
-    militarySize: 0, tanks: 0, aircraft: 0, navySize: 0,
-    energyProduction: 19, oilProduction: 0.0, gasProduction: 0,
-    ...createDefaultCulturalData("Christianity", "Icelandic", 94, 99)
-  },
-  {
     id: "ir", name: "Iran", population: 85000000, area: 1648195, gdp: 191,
     militarySize: 610000, tanks: 1996, aircraft: 507, navySize: 398,
     energyProduction: 272, oilProduction: 3.5, gasProduction: 251,
@@ -1288,12 +1258,6 @@ export const GAME_COUNTRIES: CountryData[] = [
     ...createDefaultCulturalData("Islam", "Kyrgyz", 36, 99)
   },
   {
-    id: "la", name: "Laos", population: 7300000, area: 236800, gdp: 19,
-    militarySize: 29100, tanks: 130, aircraft: 24, navySize: 600,
-    energyProduction: 29, oilProduction: 0.0, gasProduction: 0,
-    ...createDefaultCulturalData("Buddhism", "Lao", 36, 85)
-  },
-  {
     id: "ls", name: "Lesotho", population: 2100000, area: 30355, gdp: 2,
     militarySize: 2000, tanks: 0, aircraft: 0, navySize: 0,
     energyProduction: 1, oilProduction: 0.0, gasProduction: 0,
@@ -1304,18 +1268,6 @@ export const GAME_COUNTRIES: CountryData[] = [
     militarySize: 2050, tanks: 0, aircraft: 0, navySize: 0,
     energyProduction: 0, oilProduction: 0.0, gasProduction: 0,
     ...createDefaultCulturalData("Christianity", "English", 52, 48)
-  },
-  {
-    id: "ly", name: "Libya", population: 6900000, area: 1759540, gdp: 25,
-    militarySize: 7000, tanks: 0, aircraft: 26, navySize: 0,
-    energyProduction: 34, oilProduction: 1.2, gasProduction: 9,
-    ...createDefaultCulturalData("Islam", "Arabic", 81, 91)
-  },
-  {
-    id: "li", name: "Liechtenstein", population: 39000, area: 160, gdp: 7,
-    militarySize: 0, tanks: 0, aircraft: 0, navySize: 0,
-    energyProduction: 0, oilProduction: 0.0, gasProduction: 0,
-    ...createDefaultCulturalData("Christianity", "German", 14, 100)
   },
   {
     id: "mg", name: "Madagascar", population: 28400000, area: 587041, gdp: 15,
