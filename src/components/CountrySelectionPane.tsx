@@ -55,7 +55,12 @@ const CountrySelectionPane: React.FC<CountrySelectionPaneProps> = ({
       country.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    filtered.sort((a, b) => {
+    // Remove duplicates based on country ID
+    const uniqueCountries = filtered.filter((country, index, self) => 
+      index === self.findIndex(c => c.id === country.id)
+    );
+
+    uniqueCountries.sort((a, b) => {
       switch (sortBy) {
         case 'population':
           return b.population - a.population;
@@ -68,7 +73,7 @@ const CountrySelectionPane: React.FC<CountrySelectionPaneProps> = ({
       }
     });
 
-    return filtered;
+    return uniqueCountries;
   }, [availableCountries, searchTerm, sortBy]);
 
   const formatNumber = (num: number) => {
