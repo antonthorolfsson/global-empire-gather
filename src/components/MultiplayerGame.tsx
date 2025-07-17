@@ -806,13 +806,13 @@ const MultiplayerGame = () => {
         <ResizablePanelGroup direction="horizontal" className="h-full">
           {/* Left Panel - Country Selection */}
           <ResizablePanel defaultSize={25} minSize={20} maxSize={40} className="bg-card/95 backdrop-blur-sm">
-            <div className="h-full flex flex-col">
+            <div className="h-full flex flex-col overflow-hidden">
               {game.game_phase === 'playing' && (
-                <div className="flex-1 flex flex-col">
-                  <div className="p-4 border-b">
+                <div className="flex-1 flex flex-col overflow-hidden">
+                  <div className="p-4 border-b flex-shrink-0">
                     <h3 className="font-semibold">Available Countries</h3>
                   </div>
-                  <div className="flex-1 overflow-hidden">
+                  <div className="flex-1 overflow-y-auto">
                     <CountrySelectionPane
                       countries={GAME_COUNTRIES}
                       onCountrySelect={selectCountry}
@@ -833,7 +833,7 @@ const MultiplayerGame = () => {
               )}
               
               {game.game_phase === 'finished' && (
-                <div className="p-4 space-y-3">
+                <div className="p-4 space-y-3 overflow-y-auto">
                   <h3 className="font-semibold">War Declaration</h3>
                   <WarDeclaration
                     gameId={gameId!}
@@ -873,25 +873,27 @@ const MultiplayerGame = () => {
 
           {/* Right Panel - Empire Stats */}
           <ResizablePanel defaultSize={25} minSize={20} maxSize={40} className="bg-card/95 backdrop-blur-sm">
-            <div className="p-4">
-              <EmpireStats
-                players={players.map(p => ({ 
-                  id: p.id, 
-                  name: p.player_name, 
-                  color: p.color,
-                  countries: gameStatsCountries.filter(c => c.selectedBy === p.player_name).map(c => c.id),
-                  isActive: p.player_order === game?.current_player_turn
-                }))}
-                countries={gameStatsCountries}
-                currentPlayer={userPlayer ? { 
-                  id: userPlayer.id, 
-                  name: userPlayer.player_name, 
-                  color: userPlayer.color,
-                  countries: gameStatsCountries.filter(c => c.selectedBy === userPlayer.player_name).map(c => c.id),
-                  isActive: false
-                } : undefined}
-                gamePhase={game.game_phase as 'setup' | 'selection' | 'finished'}
-              />
+            <div className="h-full overflow-y-auto">
+              <div className="p-4">
+                <EmpireStats
+                  players={players.map(p => ({ 
+                    id: p.id, 
+                    name: p.player_name, 
+                    color: p.color,
+                    countries: gameStatsCountries.filter(c => c.selectedBy === p.player_name).map(c => c.id),
+                    isActive: p.player_order === game?.current_player_turn
+                  }))}
+                  countries={gameStatsCountries}
+                  currentPlayer={userPlayer ? { 
+                    id: userPlayer.id, 
+                    name: userPlayer.player_name, 
+                    color: userPlayer.color,
+                    countries: gameStatsCountries.filter(c => c.selectedBy === userPlayer.player_name).map(c => c.id),
+                    isActive: false
+                  } : undefined}
+                  gamePhase={game.game_phase as 'setup' | 'selection' | 'finished'}
+                />
+              </div>
             </div>
           </ResizablePanel>
         </ResizablePanelGroup>

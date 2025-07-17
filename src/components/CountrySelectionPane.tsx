@@ -79,29 +79,27 @@ const CountrySelectionPane: React.FC<CountrySelectionPaneProps> = ({
   };
 
   return (
-    <Card className="h-full flex flex-col">
-      <CardHeader className="pb-4">
-        <CardTitle className="text-lg flex items-center gap-2">
+    <div className="h-full flex flex-col">
+      <div className="p-4 border-b bg-card flex-shrink-0">
+        <div className="flex items-center gap-2 mb-3">
           <MapPin className="w-5 h-5" />
-          Available Countries
-        </CardTitle>
-        <div className="flex items-center gap-2 mt-2">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-            <Input
-              placeholder="Search countries..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-          </div>
+          <h3 className="font-semibold">Available Countries</h3>
         </div>
-        <div className="flex items-center gap-2 mt-2">
-          <span className="text-sm text-muted-foreground">Sort by:</span>
+        <div className="relative mb-3">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+          <Input
+            placeholder="Search countries..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">Sort:</span>
           <div className="flex gap-1">
             {[
               { key: 'name', label: 'Name' },
-              { key: 'population', label: 'Population' },
+              { key: 'population', label: 'Pop' },
               { key: 'gdp', label: 'GDP' },
               { key: 'area', label: 'Area' }
             ].map(({ key, label }) => (
@@ -110,61 +108,60 @@ const CountrySelectionPane: React.FC<CountrySelectionPaneProps> = ({
                 variant={sortBy === key ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setSortBy(key as typeof sortBy)}
+                className="text-xs"
               >
                 {label}
               </Button>
             ))}
           </div>
         </div>
-      </CardHeader>
-      <CardContent className="flex-1 p-0">
-        <ScrollArea className="h-full">
-          <div className="p-4 space-y-2">
-            {filteredCountries.map((country) => (
-              <Card
-                key={country.id}
-                className="cursor-pointer hover:shadow-md transition-shadow border-l-4 border-l-primary/20 hover:border-l-primary/60"
-                onClick={() => onCountrySelect(country.id)}
-              >
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-foreground mb-2">{country.name}</h3>
-                      <div className="grid grid-cols-2 gap-2 text-sm">
-                        <div className="flex items-center gap-1">
-                          <Users className="w-3 h-3 text-muted-foreground" />
-                          <span className="text-muted-foreground">{formatNumber(country.population)}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <DollarSign className="w-3 h-3 text-muted-foreground" />
-                          <span className="text-muted-foreground">${formatNumber(country.gdp)}B</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Building className="w-3 h-3 text-muted-foreground" />
-                          <span className="text-muted-foreground">{formatNumber(country.area)}km²</span>
-                        </div>
-                        {country.militarySize && (
-                          <div className="flex items-center gap-1">
-                            <Badge variant="secondary" className="text-xs">
-                              {formatNumber(country.militarySize)} troops
-                            </Badge>
-                          </div>
-                        )}
+      </div>
+      <div className="flex-1 overflow-y-auto">
+        <div className="p-4 space-y-2">
+          {filteredCountries.map((country) => (
+            <Card
+              key={country.id}
+              className="cursor-pointer hover:shadow-md transition-shadow border-l-4 border-l-primary/20 hover:border-l-primary/60"
+              onClick={() => onCountrySelect(country.id)}
+            >
+              <CardContent className="p-3">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-foreground mb-2 text-sm">{country.name}</h4>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="flex items-center gap-1">
+                        <Users className="w-3 h-3 text-muted-foreground" />
+                        <span className="text-muted-foreground">{formatNumber(country.population)}</span>
                       </div>
+                      <div className="flex items-center gap-1">
+                        <DollarSign className="w-3 h-3 text-muted-foreground" />
+                        <span className="text-muted-foreground">${formatNumber(country.gdp)}B</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Building className="w-3 h-3 text-muted-foreground" />
+                        <span className="text-muted-foreground">{formatNumber(country.area)}km²</span>
+                      </div>
+                      {country.militarySize && (
+                        <div className="flex items-center gap-1">
+                          <Badge variant="secondary" className="text-xs">
+                            {formatNumber(country.militarySize)}
+                          </Badge>
+                        </div>
+                      )}
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            ))}
-            {filteredCountries.length === 0 && (
-              <div className="text-center py-8 text-muted-foreground">
-                {searchTerm ? 'No countries match your search.' : 'All countries have been selected.'}
-              </div>
-            )}
-          </div>
-        </ScrollArea>
-      </CardContent>
-    </Card>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+          {filteredCountries.length === 0 && (
+            <div className="text-center py-8 text-muted-foreground text-sm">
+              {searchTerm ? 'No countries match your search.' : 'All countries have been selected.'}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 };
 
