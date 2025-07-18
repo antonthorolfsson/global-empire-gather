@@ -33,15 +33,12 @@ const GameMap: React.FC<GameMapProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const [lastMousePos, setLastMousePos] = useState({ x: 0, y: 0 });
   
-  // Simplified touch state
-  const [touchState, setTouchState] = useState({
-    isActive: false,
-    startDistance: 0,
-    startZoom: 1,
-    startPan: { x: 0, y: 0 },
-    lastTouch: { x: 0, y: 0 },
-    isTap: true
-  });
+  // Simple touch state
+  const [touchStart, setTouchStart] = useState<{
+    single?: { x: number; y: number };
+    pinch?: { distance: number; zoom: number };
+  }>({});
+  const [isTouchMoving, setIsTouchMoving] = useState(false);
   
   const mapContainerRef = useRef<HTMLDivElement>(null);
 
@@ -159,94 +156,72 @@ const GameMap: React.FC<GameMapProps> = ({
     setPan({ x: 0, y: 0 });
   };
 
-  // Helper functions for touch - using React.Touch types
-  const getTouchCenter = (touch1: React.Touch, touch2: React.Touch) => ({
-    x: (touch1.clientX + touch2.clientX) / 2,
-    y: (touch1.clientY + touch2.clientY) / 2
-  });
-
+  // Simple distance calculation
   const getDistance = (touch1: React.Touch, touch2: React.Touch) => {
     const dx = touch1.clientX - touch2.clientX;
     const dy = touch1.clientY - touch2.clientY;
     return Math.sqrt(dx * dx + dy * dy);
   };
 
-  // Touch handlers with better event handling
+  // Touch handlers - simple and direct
   const handleTouchStart = (e: React.TouchEvent) => {
-    console.log('Touch start:', e.touches.length, 'fingers');
+    console.log('Touch start:', e.touches.length);
     
     if (e.touches.length === 1) {
-      // Single touch - pan
+      // Single finger - prepare for pan
       const touch = e.touches[0];
-      setTouchState({
-        isActive: true,
-        startDistance: 0,
-        startZoom: zoom,
-        startPan: { ...pan },
-        lastTouch: { x: touch.clientX, y: touch.clientY },
-        isTap: true
+      setTouchStart({
+        single: { x: touch.clientX, y: touch.clientY }
       });
-      setIsDragging(true);
+      setIsTouchMoving(false);
     } else if (e.touches.length === 2) {
-      // Two touches - pinch zoom
-      e.preventDefault();
+      // Two fingers - prepare for pinch zoom
       const distance = getDistance(e.touches[0], e.touches[1]);
-      setTouchState({
-        isActive: true,
-        startDistance: distance,
-        startZoom: zoom,
-        startPan: { ...pan },
-        lastTouch: { x: 0, y: 0 },
-        isTap: false
+      setTouchStart({
+        pinch: { distance, zoom }
       });
+      setIsTouchMoving(false);
     }
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (!touchState.isActive) return;
+    e.preventDefault();
     
-    if (e.touches.length === 1 && touchState.startDistance === 0) {
-      // Single touch pan
-      e.preventDefault();
+    if (e.touches.length === 1 && touchStart.single) {
+      // Single finger pan
       const touch = e.touches[0];
-      const deltaX = touch.clientX - touchState.lastTouch.x;
-      const deltaY = touch.clientY - touchState.lastTouch.y;
+      const deltaX = touch.clientX - touchStart.single.x;
+      const deltaY = touch.clientY - touchStart.single.y;
       
-      // Mark as not a tap if moved significantly
-      if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
-        setTouchState(prev => ({ ...prev, isTap: false }));
-      }
+      setIsTouchMoving(true);
       
-      console.log('Pan delta:', deltaX, deltaY);
-      
-      // Apply pan with zoom compensation
-      const zoomFactor = Math.max(0.5, 1 / Math.sqrt(zoom));
+      // Direct pan update
       setPan(prev => ({
-        x: prev.x + deltaX * zoomFactor,
-        y: prev.y + deltaY * zoomFactor
+        x: prev.x + deltaX,
+        y: prev.y + deltaY
       }));
       
-      setTouchState(prev => ({
-        ...prev,
-        lastTouch: { x: touch.clientX, y: touch.clientY }
-      }));
-    } else if (e.touches.length === 2 && touchState.startDistance > 0) {
-      // Two touch pinch zoom
-      e.preventDefault();
+      // Update start position for next delta
+      setTouchStart({
+        single: { x: touch.clientX, y: touch.clientY }
+      });
+      
+    } else if (e.touches.length === 2 && touchStart.pinch) {
+      // Two finger pinch zoom
       const currentDistance = getDistance(e.touches[0], e.touches[1]);
-      const scale = currentDistance / touchState.startDistance;
-      const newZoom = Math.max(0.3, Math.min(20, touchState.startZoom * scale));
+      const scale = currentDistance / touchStart.pinch.distance;
+      const newZoom = Math.max(0.3, Math.min(20, touchStart.pinch.zoom * scale));
       
-      console.log('Zoom scale:', scale, 'newZoom:', newZoom);
+      setIsTouchMoving(true);
       setZoom(newZoom);
     }
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
-    console.log('Touch end, was tap:', touchState.isTap);
+    console.log('Touch end, was moving:', isTouchMoving);
     
-    if (touchState.isTap && e.changedTouches.length === 1) {
-      // Handle tap for country selection
+    // If it wasn't moving, it's a tap - handle country selection
+    if (!isTouchMoving && e.changedTouches.length === 1) {
       const target = e.target as Element;
       if (target && target.tagName === 'path' && target.id) {
         const countryId = target.id.toLowerCase();
@@ -255,15 +230,9 @@ const GameMap: React.FC<GameMapProps> = ({
       }
     }
     
-    setIsDragging(false);
-    setTouchState({
-      isActive: false,
-      startDistance: 0,
-      startZoom: 1,
-      startPan: { x: 0, y: 0 },
-      lastTouch: { x: 0, y: 0 },
-      isTap: true
-    });
+    // Reset touch state
+    setTouchStart({});
+    setIsTouchMoving(false);
   };
 
   useEffect(() => {
@@ -291,7 +260,7 @@ const GameMap: React.FC<GameMapProps> = ({
         stroke: #ffffff !important;
         stroke-width: ${0.5 / zoom}px !important;
         cursor: pointer !important;
-        transition: ${isDragging || touchState.isActive ? 'none !important' : 'fill 0.2s ease !important'};
+        transition: ${isDragging || isTouchMoving ? 'none !important' : 'fill 0.2s ease !important'};
         opacity: 1 !important;
         outline: none !important;
         shape-rendering: crispEdges !important;
@@ -390,7 +359,7 @@ const GameMap: React.FC<GameMapProps> = ({
         styleEl.remove();
       }
     };
-  }, [svgContent, players, selectedCountries, zoom, isDragging, touchState.isActive]);
+  }, [svgContent, players, selectedCountries, zoom, isDragging, isTouchMoving]);
 
   return (
     <Card className="w-full h-full overflow-hidden" style={{ background: 'hsl(200 70% 85%)' }}>
@@ -409,7 +378,7 @@ const GameMap: React.FC<GameMapProps> = ({
             onTouchEnd={handleTouchEnd}
             style={{ 
               userSelect: 'none',
-              touchAction: 'pan-x pan-y pinch-zoom'
+              touchAction: 'manipulation'
             }}
           >
             <div
