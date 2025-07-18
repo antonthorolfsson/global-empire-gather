@@ -297,7 +297,7 @@ const GameMap: React.FC<GameMapProps> = ({
       }
       
       if (!touchMoved) setTouchMoved(true);
-    } else if (e.touches.length === 1 && initialPinchDistance === 0 && !isAnimating) {
+    } else if (e.touches.length === 1 && initialPinchDistance === 0) {
       // Single finger - only pan if not in momentum animation
       const touch = e.touches[0];
       const deltaX = touch.clientX - lastMousePos.x;
