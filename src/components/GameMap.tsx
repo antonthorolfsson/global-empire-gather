@@ -163,7 +163,7 @@ const GameMap: React.FC<GameMapProps> = ({
     return Math.sqrt(dx * dx + dy * dy);
   };
 
-  // Touch handlers - simple and direct
+  // Touch handlers - fixed to actually work
   const handleTouchStart = (e: React.TouchEvent) => {
     console.log('Touch start:', e.touches.length);
     
@@ -175,7 +175,8 @@ const GameMap: React.FC<GameMapProps> = ({
       });
       setIsTouchMoving(false);
     } else if (e.touches.length === 2) {
-      // Two fingers - prepare for pinch zoom
+      // Two fingers - prepare for pinch zoom  
+      e.preventDefault();
       const distance = getDistance(e.touches[0], e.touches[1]);
       setTouchStart({
         pinch: { distance, zoom }
@@ -185,14 +186,13 @@ const GameMap: React.FC<GameMapProps> = ({
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    e.preventDefault();
-    
     if (e.touches.length === 1 && touchStart.single) {
-      // Single finger pan
+      // Single finger pan - don't preventDefault here
       const touch = e.touches[0];
       const deltaX = touch.clientX - touchStart.single.x;
       const deltaY = touch.clientY - touchStart.single.y;
       
+      console.log('Pan delta:', deltaX, deltaY);
       setIsTouchMoving(true);
       
       // Direct pan update
@@ -208,10 +208,12 @@ const GameMap: React.FC<GameMapProps> = ({
       
     } else if (e.touches.length === 2 && touchStart.pinch) {
       // Two finger pinch zoom
+      e.preventDefault();
       const currentDistance = getDistance(e.touches[0], e.touches[1]);
       const scale = currentDistance / touchStart.pinch.distance;
       const newZoom = Math.max(0.3, Math.min(20, touchStart.pinch.zoom * scale));
       
+      console.log('Zoom scale:', scale, 'newZoom:', newZoom);
       setIsTouchMoving(true);
       setZoom(newZoom);
     }
@@ -378,7 +380,7 @@ const GameMap: React.FC<GameMapProps> = ({
             onTouchEnd={handleTouchEnd}
             style={{ 
               userSelect: 'none',
-              touchAction: 'manipulation'
+              touchAction: 'none'
             }}
           >
             <div
