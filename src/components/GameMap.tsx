@@ -33,9 +33,9 @@ const GameMap: React.FC<GameMapProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const [lastMousePos, setLastMousePos] = useState({ x: 0, y: 0 });
   
-  // Ultra-simple touch state
+  // Ultra-simple touch state with ref for immediate updates
   const [debugInfo, setDebugInfo] = useState('Ready for touch');
-  const [lastTouchPos, setLastTouchPos] = useState({ x: 0, y: 0 });
+  const lastTouchRef = useRef({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
   const [isZooming, setIsZooming] = useState(false);
   
@@ -160,13 +160,13 @@ const GameMap: React.FC<GameMapProps> = ({
     return Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
   };
 
-  // Ultra-simple touch handlers - no complex logic
+  // Fixed touch handlers with immediate ref updates
   const handleTouchStart = (e: React.TouchEvent) => {
     const touchCount = e.touches.length;
     setDebugInfo(`Touch Start: ${touchCount} finger(s)`);
     
     if (touchCount === 1) {
-      setLastTouchPos({ x: e.touches[0].clientX, y: e.touches[0].clientY });
+      lastTouchRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
       setIsPanning(true);
       setIsZooming(false);
     } else if (touchCount === 2) {
@@ -174,7 +174,7 @@ const GameMap: React.FC<GameMapProps> = ({
         e.touches[0].clientX, e.touches[0].clientY,
         e.touches[1].clientX, e.touches[1].clientY
       );
-      setLastTouchPos({ x: dist, y: zoom }); // Store distance and zoom
+      lastTouchRef.current = { x: dist, y: zoom }; // Store distance and zoom
       setIsPanning(false);
       setIsZooming(true);
     }
@@ -186,8 +186,8 @@ const GameMap: React.FC<GameMapProps> = ({
     if (touchCount === 1 && isPanning) {
       const currentX = e.touches[0].clientX;
       const currentY = e.touches[0].clientY;
-      const deltaX = currentX - lastTouchPos.x;
-      const deltaY = currentY - lastTouchPos.y;
+      const deltaX = currentX - lastTouchRef.current.x;
+      const deltaY = currentY - lastTouchRef.current.y;
       
       setDebugInfo(`Panning: ${deltaX.toFixed(0)}, ${deltaY.toFixed(0)}`);
       
@@ -197,7 +197,8 @@ const GameMap: React.FC<GameMapProps> = ({
         y: prev.y + deltaY
       }));
       
-      setLastTouchPos({ x: currentX, y: currentY });
+      // Update ref immediately (not state)
+      lastTouchRef.current = { x: currentX, y: currentY };
       
     } else if (touchCount === 2 && isZooming) {
       const currentDist = getDistance(
@@ -205,8 +206,8 @@ const GameMap: React.FC<GameMapProps> = ({
         e.touches[1].clientX, e.touches[1].clientY
       );
       
-      const initialDist = lastTouchPos.x;
-      const initialZoom = lastTouchPos.y;
+      const initialDist = lastTouchRef.current.x;
+      const initialZoom = lastTouchRef.current.y;
       const scale = currentDist / initialDist;
       const newZoom = Math.max(0.3, Math.min(20, initialZoom * scale));
       
