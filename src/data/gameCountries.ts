@@ -1048,12 +1048,6 @@ export const GAME_COUNTRIES: CountryData[] = [
     ...createDefaultCulturalData("Islam", "Arabic", 29, 78)
   },
   {
-    id: "cg", name: "Congo", population: 5500000, area: 342000, gdp: 12,
-    militarySize: 10000, tanks: 25, aircraft: 22, navySize: 0,
-    energyProduction: 2, oilProduction: 0.34, gasProduction: 1,
-    ...createDefaultCulturalData("Christianity", "French", 68, 80)
-  },
-  {
     id: "cr", name: "Costa Rica", population: 5100000, area: 51100, gdp: 65,
     militarySize: 0, tanks: 0, aircraft: 0, navySize: 400,
     energyProduction: 11, oilProduction: 0.0, gasProduction: 0,
