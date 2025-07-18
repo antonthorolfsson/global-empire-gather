@@ -160,84 +160,92 @@ const GameMap: React.FC<GameMapProps> = ({
     return Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
   };
 
-  // Fixed touch handlers with event prevention
-  const handleTouchStart = (e: React.TouchEvent) => {
-    e.preventDefault(); // Prevent scrolling
-    const touchCount = e.touches.length;
-    setDebugInfo(`Touch Start: ${touchCount} finger(s)`);
-    
-    if (touchCount === 1) {
-      lastTouchRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-      setIsPanning(true);
-      setIsZooming(false);
-    } else if (touchCount === 2) {
-      const dist = getDistance(
-        e.touches[0].clientX, e.touches[0].clientY,
-        e.touches[1].clientX, e.touches[1].clientY
-      );
-      lastTouchRef.current = { x: dist, y: zoom };
-      setIsPanning(false);
-      setIsZooming(true);
-    }
-  };
+  // Use native DOM event listeners instead of React handlers
+  useEffect(() => {
+    const container = mapContainerRef.current;
+    if (!container) return;
 
-  const handleTouchMove = (e: React.TouchEvent) => {
-    e.preventDefault(); // Prevent scrolling
-    const touchCount = e.touches.length;
-    
-    if (touchCount === 1) {
-      // Single finger - always allow panning regardless of state
-      const currentX = e.touches[0].clientX;
-      const currentY = e.touches[0].clientY;
-      const lastX = lastTouchRef.current.x;
-      const lastY = lastTouchRef.current.y;
-      const deltaX = currentX - lastX;
-      const deltaY = currentY - lastY;
+    const handleTouchStart = (e: TouchEvent) => {
+      e.preventDefault();
+      const touchCount = e.touches.length;
+      setDebugInfo(`Native Touch Start: ${touchCount} finger(s)`);
       
-      setDebugInfo(`Current: ${currentX.toFixed(0)}, ${currentY.toFixed(0)} | Last: ${lastX.toFixed(0)}, ${lastY.toFixed(0)} | Delta: ${deltaX.toFixed(0)}, ${deltaY.toFixed(0)}`);
-      
-      // Simple pan - just add the delta
-      setPan(prev => ({
-        x: prev.x + deltaX,
-        y: prev.y + deltaY
-      }));
-      
-      // Update ref immediately
-      lastTouchRef.current = { x: currentX, y: currentY };
-      
-    } else if (touchCount === 2) {
-      // Two fingers - always allow zooming regardless of state
-      const currentDist = getDistance(
-        e.touches[0].clientX, e.touches[0].clientY,
-        e.touches[1].clientX, e.touches[1].clientY
-      );
-      
-      const initialDist = lastTouchRef.current.x;
-      const initialZoom = lastTouchRef.current.y;
-      const scale = currentDist / initialDist;
-      const newZoom = Math.max(0.3, Math.min(20, initialZoom * scale));
-      
-      setDebugInfo(`Zooming: ${newZoom.toFixed(2)}x`);
-      setZoom(newZoom);
-    }
-  };
-
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    e.preventDefault();
-    setDebugInfo('Touch End');
-    setIsPanning(false);
-    setIsZooming(false);
-    
-    // Simple tap detection
-    if (e.changedTouches.length === 1 && !isPanning && !isZooming) {
-      const target = e.target as Element;
-      if (target && target.tagName === 'path' && target.id) {
-        const countryId = target.id.toLowerCase();
-        setDebugInfo(`Tapped: ${countryId}`);
-        handleCountryClick(countryId);
+      if (touchCount === 1) {
+        lastTouchRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        setIsPanning(true);
+      } else if (touchCount === 2) {
+        const dist = getDistance(
+          e.touches[0].clientX, e.touches[0].clientY,
+          e.touches[1].clientX, e.touches[1].clientY
+        );
+        lastTouchRef.current = { x: dist, y: zoom };
+        setIsZooming(true);
       }
-    }
-  };
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      e.preventDefault();
+      const touchCount = e.touches.length;
+      
+      if (touchCount === 1) {
+        const currentX = e.touches[0].clientX;
+        const currentY = e.touches[0].clientY;
+        const lastX = lastTouchRef.current.x;
+        const lastY = lastTouchRef.current.y;
+        const deltaX = currentX - lastX;
+        const deltaY = currentY - lastY;
+        
+        setDebugInfo(`Native Pan: ${deltaX.toFixed(0)}, ${deltaY.toFixed(0)} | Pos: ${currentX.toFixed(0)}, ${currentY.toFixed(0)}`);
+        
+        setPan(prev => ({
+          x: prev.x + deltaX,
+          y: prev.y + deltaY
+        }));
+        
+        lastTouchRef.current = { x: currentX, y: currentY };
+      } else if (touchCount === 2) {
+        const currentDist = getDistance(
+          e.touches[0].clientX, e.touches[0].clientY,
+          e.touches[1].clientX, e.touches[1].clientY
+        );
+        
+        const initialDist = lastTouchRef.current.x;
+        const initialZoom = lastTouchRef.current.y;
+        const scale = currentDist / initialDist;
+        const newZoom = Math.max(0.3, Math.min(20, initialZoom * scale));
+        
+        setDebugInfo(`Native Zoom: ${newZoom.toFixed(2)}x`);
+        setZoom(newZoom);
+      }
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      e.preventDefault();
+      setDebugInfo('Native Touch End');
+      setIsPanning(false);
+      setIsZooming(false);
+      
+      if (e.changedTouches.length === 1) {
+        const target = e.target as Element;
+        if (target && target.tagName === 'path' && target.id) {
+          const countryId = target.id.toLowerCase();
+          setDebugInfo(`Native Tap: ${countryId}`);
+          handleCountryClick(countryId);
+        }
+      }
+    };
+
+    // Add native event listeners
+    container.addEventListener('touchstart', handleTouchStart, { passive: false });
+    container.addEventListener('touchmove', handleTouchMove, { passive: false });
+    container.addEventListener('touchend', handleTouchEnd, { passive: false });
+
+    return () => {
+      container.removeEventListener('touchstart', handleTouchStart);
+      container.removeEventListener('touchmove', handleTouchMove);
+      container.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [zoom, handleCountryClick]);
 
   useEffect(() => {
     if (!svgContent) return;
@@ -377,9 +385,7 @@ const GameMap: React.FC<GameMapProps> = ({
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
+            // Removed React touch handlers - using native DOM listeners instead
             style={{ 
               userSelect: 'none',
               touchAction: 'none'
