@@ -171,9 +171,8 @@ const GameMap: React.FC<GameMapProps> = ({
     return Math.sqrt(dx * dx + dy * dy);
   };
 
-  // Simplified touch handlers
+  // Touch handlers with better event handling
   const handleTouchStart = (e: React.TouchEvent) => {
-    e.preventDefault();
     console.log('Touch start:', e.touches.length, 'fingers');
     
     if (e.touches.length === 1) {
@@ -187,8 +186,10 @@ const GameMap: React.FC<GameMapProps> = ({
         lastTouch: { x: touch.clientX, y: touch.clientY },
         isTap: true
       });
+      setIsDragging(true);
     } else if (e.touches.length === 2) {
       // Two touches - pinch zoom
+      e.preventDefault();
       const distance = getDistance(e.touches[0], e.touches[1]);
       setTouchState({
         isActive: true,
@@ -202,12 +203,11 @@ const GameMap: React.FC<GameMapProps> = ({
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    e.preventDefault();
-    
     if (!touchState.isActive) return;
-
+    
     if (e.touches.length === 1 && touchState.startDistance === 0) {
       // Single touch pan
+      e.preventDefault();
       const touch = e.touches[0];
       const deltaX = touch.clientX - touchState.lastTouch.x;
       const deltaY = touch.clientY - touchState.lastTouch.y;
@@ -219,9 +219,11 @@ const GameMap: React.FC<GameMapProps> = ({
       
       console.log('Pan delta:', deltaX, deltaY);
       
+      // Apply pan with zoom compensation
+      const zoomFactor = Math.max(0.5, 1 / Math.sqrt(zoom));
       setPan(prev => ({
-        x: prev.x + deltaX,
-        y: prev.y + deltaY
+        x: prev.x + deltaX * zoomFactor,
+        y: prev.y + deltaY * zoomFactor
       }));
       
       setTouchState(prev => ({
@@ -230,6 +232,7 @@ const GameMap: React.FC<GameMapProps> = ({
       }));
     } else if (e.touches.length === 2 && touchState.startDistance > 0) {
       // Two touch pinch zoom
+      e.preventDefault();
       const currentDistance = getDistance(e.touches[0], e.touches[1]);
       const scale = currentDistance / touchState.startDistance;
       const newZoom = Math.max(0.3, Math.min(20, touchState.startZoom * scale));
@@ -252,6 +255,7 @@ const GameMap: React.FC<GameMapProps> = ({
       }
     }
     
+    setIsDragging(false);
     setTouchState({
       isActive: false,
       startDistance: 0,
@@ -405,7 +409,7 @@ const GameMap: React.FC<GameMapProps> = ({
             onTouchEnd={handleTouchEnd}
             style={{ 
               userSelect: 'none',
-              touchAction: 'none'
+              touchAction: 'pan-x pan-y pinch-zoom'
             }}
           >
             <div
