@@ -160,8 +160,9 @@ const GameMap: React.FC<GameMapProps> = ({
     return Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
   };
 
-  // Fixed touch handlers with immediate ref updates
+  // Fixed touch handlers with event prevention
   const handleTouchStart = (e: React.TouchEvent) => {
+    e.preventDefault(); // Prevent scrolling
     const touchCount = e.touches.length;
     setDebugInfo(`Touch Start: ${touchCount} finger(s)`);
     
@@ -174,14 +175,18 @@ const GameMap: React.FC<GameMapProps> = ({
         e.touches[0].clientX, e.touches[0].clientY,
         e.touches[1].clientX, e.touches[1].clientY
       );
-      lastTouchRef.current = { x: dist, y: zoom }; // Store distance and zoom
+      lastTouchRef.current = { x: dist, y: zoom };
       setIsPanning(false);
       setIsZooming(true);
     }
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
+    e.preventDefault(); // Prevent scrolling
     const touchCount = e.touches.length;
+    
+    // Debug: Always show when touchMove is called
+    setDebugInfo(`TouchMove called: ${touchCount} fingers`);
     
     if (touchCount === 1 && isPanning) {
       const currentX = e.touches[0].clientX;
@@ -197,7 +202,7 @@ const GameMap: React.FC<GameMapProps> = ({
         y: prev.y + deltaY
       }));
       
-      // Update ref immediately (not state)
+      // Update ref immediately
       lastTouchRef.current = { x: currentX, y: currentY };
       
     } else if (touchCount === 2 && isZooming) {
@@ -217,11 +222,12 @@ const GameMap: React.FC<GameMapProps> = ({
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
+    e.preventDefault();
     setDebugInfo('Touch End');
     setIsPanning(false);
     setIsZooming(false);
     
-    // Simple tap detection - if no movement happened
+    // Simple tap detection
     if (e.changedTouches.length === 1 && !isPanning && !isZooming) {
       const target = e.target as Element;
       if (target && target.tagName === 'path' && target.id) {
