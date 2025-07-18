@@ -49,24 +49,10 @@ const GameMap: React.FC<GameMapProps> = ({
   const mapContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Import the high-resolution SVG content directly
-    import('/src/assets/world-map-hires.svg?raw')
-      .then(module => {
-        let svgContent = module.default;
-        // Enhance the SVG for better resolution
-        svgContent = svgContent.replace(
-          '<svg',
-          '<svg style="shape-rendering: crispEdges; image-rendering: -webkit-optimize-contrast; image-rendering: crisp-edges; image-rendering: pixelated;"'
-        );
-        setSvgContent(svgContent);
-      })
-      .catch(error => {
-        console.error('Error loading high-res world map, falling back to standard map:', error);
-        // Fallback to original map
-        import('/src/assets/world-map.svg?raw')
-          .then(module => setSvgContent(module.default))
-          .catch(err => console.error('Error loading fallback world map:', err));
-      });
+    // Import the SVG content directly
+    import('/src/assets/world-map.svg?raw')
+      .then(module => setSvgContent(module.default))
+      .catch(error => console.error('Error loading world map:', error));
   }, []);
 
   useEffect(() => {
@@ -119,7 +105,7 @@ const GameMap: React.FC<GameMapProps> = ({
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
     const zoomSpeed = 0.1;
-    const newZoom = Math.max(0.3, Math.min(20, zoom + (e.deltaY > 0 ? -zoomSpeed : zoomSpeed)));
+    const newZoom = Math.max(0.5, Math.min(10, zoom + (e.deltaY > 0 ? -zoomSpeed : zoomSpeed)));
     
     // Get container bounds for relative positioning
     const container = mapContainerRef.current;
@@ -173,11 +159,11 @@ const GameMap: React.FC<GameMapProps> = ({
   };
 
   const handleZoomIn = () => {
-    setZoom(prev => Math.min(20, prev + 0.5));
+    setZoom(prev => Math.min(10, prev + 0.5));
   };
 
   const handleZoomOut = () => {
-    setZoom(prev => Math.max(0.3, prev - 0.5));
+    setZoom(prev => Math.max(0.5, prev - 0.5));
   };
 
   const handleResetView = () => {
@@ -282,7 +268,7 @@ const GameMap: React.FC<GameMapProps> = ({
       // Smoother zoom scaling with better curve
       const rawScale = currentDistance / initialPinchDistance;
       const scale = Math.pow(rawScale, 0.9); // More linear feel
-      const newZoom = Math.max(0.3, Math.min(20, initialZoom * scale));
+      const newZoom = Math.max(0.5, Math.min(10, initialZoom * scale));
       
       // Get container bounds for relative positioning
       const container = mapContainerRef.current;
@@ -434,24 +420,15 @@ const GameMap: React.FC<GameMapProps> = ({
         -webkit-user-select: none !important;
         -moz-user-select: none !important;
         -ms-user-select: none !important;
-        shape-rendering: crispEdges !important;
-        image-rendering: -webkit-optimize-contrast !important;
-        image-rendering: crisp-edges !important;
-        image-rendering: pixelated !important;
-        -ms-interpolation-mode: nearest-neighbor !important;
-        width: 100% !important;
-        height: 100% !important;
       }
       #world-map-svg path {
-        fill: #2c3e50 !important;
-        stroke: #34495e !important;
-        stroke-width: 0.3px !important;
+        fill: #000000 !important;
+        stroke: #ffffff !important;
+        stroke-width: 0.5px !important;
         cursor: pointer !important;
-        transition: ${isDragging || isTouch ? 'none !important' : 'fill 0.15s ease !important'};
+        transition: ${isDragging || isTouch ? 'none !important' : 'fill 0.2s ease !important'};
         opacity: 1 !important;
         outline: none !important;
-        vector-effect: non-scaling-stroke !important;
-        shape-rendering: crispEdges !important;
       }
       #world-map-svg path:focus {
         outline: none !important;
@@ -573,9 +550,7 @@ const GameMap: React.FC<GameMapProps> = ({
                 transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
                 transformOrigin: 'center',
                 transition: 'none',
-                willChange: 'transform',
-                imageRendering: 'crisp-edges',
-                shapeRendering: 'crispEdges'
+                willChange: 'transform'
               }}
             />
           </div>
