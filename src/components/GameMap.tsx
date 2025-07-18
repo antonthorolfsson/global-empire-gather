@@ -33,12 +33,11 @@ const GameMap: React.FC<GameMapProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const [lastMousePos, setLastMousePos] = useState({ x: 0, y: 0 });
   
-  // Simple touch state
-  const [touchStart, setTouchStart] = useState<{
-    single?: { x: number; y: number };
-    pinch?: { distance: number; zoom: number };
-  }>({});
-  const [isTouchMoving, setIsTouchMoving] = useState(false);
+  // Ultra-simple touch state
+  const [debugInfo, setDebugInfo] = useState('Ready for touch');
+  const [lastTouchPos, setLastTouchPos] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const [isZooming, setIsZooming] = useState(false);
   
   const mapContainerRef = useRef<HTMLDivElement>(null);
 
@@ -156,85 +155,80 @@ const GameMap: React.FC<GameMapProps> = ({
     setPan({ x: 0, y: 0 });
   };
 
-  // Simple distance calculation
-  const getDistance = (touch1: React.Touch, touch2: React.Touch) => {
-    const dx = touch1.clientX - touch2.clientX;
-    const dy = touch1.clientY - touch2.clientY;
-    return Math.sqrt(dx * dx + dy * dy);
+  // Ultra-simple distance calculation
+  const getDistance = (x1: number, y1: number, x2: number, y2: number) => {
+    return Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
   };
 
-  // Touch handlers - fixed to actually work
+  // Ultra-simple touch handlers - no complex logic
   const handleTouchStart = (e: React.TouchEvent) => {
-    console.log('Touch start:', e.touches.length);
+    const touchCount = e.touches.length;
+    setDebugInfo(`Touch Start: ${touchCount} finger(s)`);
     
-    if (e.touches.length === 1) {
-      // Single finger - prepare for pan
-      const touch = e.touches[0];
-      setTouchStart({
-        single: { x: touch.clientX, y: touch.clientY }
-      });
-      setIsTouchMoving(false);
-    } else if (e.touches.length === 2) {
-      // Two fingers - prepare for pinch zoom  
-      e.preventDefault();
-      const distance = getDistance(e.touches[0], e.touches[1]);
-      setTouchStart({
-        pinch: { distance, zoom }
-      });
-      setIsTouchMoving(false);
+    if (touchCount === 1) {
+      setLastTouchPos({ x: e.touches[0].clientX, y: e.touches[0].clientY });
+      setIsPanning(true);
+      setIsZooming(false);
+    } else if (touchCount === 2) {
+      const dist = getDistance(
+        e.touches[0].clientX, e.touches[0].clientY,
+        e.touches[1].clientX, e.touches[1].clientY
+      );
+      setLastTouchPos({ x: dist, y: zoom }); // Store distance and zoom
+      setIsPanning(false);
+      setIsZooming(true);
     }
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (e.touches.length === 1 && touchStart.single) {
-      // Single finger pan - don't preventDefault here
-      const touch = e.touches[0];
-      const deltaX = touch.clientX - touchStart.single.x;
-      const deltaY = touch.clientY - touchStart.single.y;
+    const touchCount = e.touches.length;
+    
+    if (touchCount === 1 && isPanning) {
+      const currentX = e.touches[0].clientX;
+      const currentY = e.touches[0].clientY;
+      const deltaX = currentX - lastTouchPos.x;
+      const deltaY = currentY - lastTouchPos.y;
       
-      console.log('Pan delta:', deltaX, deltaY);
-      setIsTouchMoving(true);
+      setDebugInfo(`Panning: ${deltaX.toFixed(0)}, ${deltaY.toFixed(0)}`);
       
-      // Direct pan update
+      // Simple pan - just add the delta
       setPan(prev => ({
         x: prev.x + deltaX,
         y: prev.y + deltaY
       }));
       
-      // Update start position for next delta
-      setTouchStart({
-        single: { x: touch.clientX, y: touch.clientY }
-      });
+      setLastTouchPos({ x: currentX, y: currentY });
       
-    } else if (e.touches.length === 2 && touchStart.pinch) {
-      // Two finger pinch zoom
-      e.preventDefault();
-      const currentDistance = getDistance(e.touches[0], e.touches[1]);
-      const scale = currentDistance / touchStart.pinch.distance;
-      const newZoom = Math.max(0.3, Math.min(20, touchStart.pinch.zoom * scale));
+    } else if (touchCount === 2 && isZooming) {
+      const currentDist = getDistance(
+        e.touches[0].clientX, e.touches[0].clientY,
+        e.touches[1].clientX, e.touches[1].clientY
+      );
       
-      console.log('Zoom scale:', scale, 'newZoom:', newZoom);
-      setIsTouchMoving(true);
+      const initialDist = lastTouchPos.x;
+      const initialZoom = lastTouchPos.y;
+      const scale = currentDist / initialDist;
+      const newZoom = Math.max(0.3, Math.min(20, initialZoom * scale));
+      
+      setDebugInfo(`Zooming: ${newZoom.toFixed(2)}x`);
       setZoom(newZoom);
     }
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
-    console.log('Touch end, was moving:', isTouchMoving);
+    setDebugInfo('Touch End');
+    setIsPanning(false);
+    setIsZooming(false);
     
-    // If it wasn't moving, it's a tap - handle country selection
-    if (!isTouchMoving && e.changedTouches.length === 1) {
+    // Simple tap detection - if no movement happened
+    if (e.changedTouches.length === 1 && !isPanning && !isZooming) {
       const target = e.target as Element;
       if (target && target.tagName === 'path' && target.id) {
         const countryId = target.id.toLowerCase();
-        console.log('Country tapped:', countryId);
+        setDebugInfo(`Tapped: ${countryId}`);
         handleCountryClick(countryId);
       }
     }
-    
-    // Reset touch state
-    setTouchStart({});
-    setIsTouchMoving(false);
   };
 
   useEffect(() => {
@@ -262,7 +256,7 @@ const GameMap: React.FC<GameMapProps> = ({
         stroke: #ffffff !important;
         stroke-width: ${0.5 / zoom}px !important;
         cursor: pointer !important;
-        transition: ${isDragging || isTouchMoving ? 'none !important' : 'fill 0.2s ease !important'};
+        transition: ${isDragging || isPanning || isZooming ? 'none !important' : 'fill 0.2s ease !important'};
         opacity: 1 !important;
         outline: none !important;
         shape-rendering: crispEdges !important;
@@ -361,7 +355,7 @@ const GameMap: React.FC<GameMapProps> = ({
         styleEl.remove();
       }
     };
-  }, [svgContent, players, selectedCountries, zoom, isDragging, isTouchMoving]);
+  }, [svgContent, players, selectedCountries, zoom, isDragging, isPanning, isZooming]);
 
   return (
     <Card className="w-full h-full overflow-hidden" style={{ background: 'hsl(200 70% 85%)' }}>
@@ -427,8 +421,11 @@ const GameMap: React.FC<GameMapProps> = ({
           </Button>
         </div>
 
-        {/* Game UI Overlay */}
+        {/* Debug Info for Mobile */}
         <div className="absolute top-4 left-4 right-4 flex justify-between items-start pointer-events-none">
+          <div className="bg-red-500 text-white rounded-lg p-2 text-sm font-bold">
+            {debugInfo}
+          </div>
           <div className="bg-card/90 backdrop-blur-sm rounded-lg p-3 animate-strategic-fade-in">
             <p className="text-sm font-medium text-card-foreground">
               Current Turn: <span 
