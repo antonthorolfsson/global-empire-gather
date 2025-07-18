@@ -420,27 +420,30 @@ const GameMap: React.FC<GameMapProps> = ({
         -webkit-user-select: none !important;
         -moz-user-select: none !important;
         -ms-user-select: none !important;
-        shape-rendering: geometricPrecision !important;
-        image-rendering: -webkit-optimize-contrast !important;
+        shape-rendering: crispEdges !important;
+        image-rendering: pixelated !important;
+        image-rendering: -moz-crisp-edges !important;
         image-rendering: crisp-edges !important;
+        -ms-interpolation-mode: nearest-neighbor !important;
       }
       #world-map-svg path {
         fill: #000000 !important;
         stroke: #ffffff !important;
-        stroke-width: 0.5px !important;
+        stroke-width: ${0.5 / zoom}px !important;
         cursor: pointer !important;
         transition: ${isDragging || isTouch ? 'none !important' : 'fill 0.2s ease !important'};
         opacity: 1 !important;
         outline: none !important;
-        shape-rendering: geometricPrecision !important;
+        shape-rendering: crispEdges !important;
         vector-effect: non-scaling-stroke !important;
       }
       #world-map-svg path:focus {
         outline: none !important;
       }
       #world-map-svg text {
-        shape-rendering: geometricPrecision !important;
+        shape-rendering: crispEdges !important;
         text-rendering: geometricPrecision !important;
+        vector-effect: non-scaling-stroke !important;
       }
     `;
     
@@ -553,13 +556,8 @@ const GameMap: React.FC<GameMapProps> = ({
               id="world-map-container"
               className="w-full h-full"
               dangerouslySetInnerHTML={{ 
-                __html: svgContent.replace('<svg', '<svg id="world-map-svg"')
-              }}
-              style={{
-                transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
-                transformOrigin: 'center',
-                transition: 'none',
-                willChange: 'transform'
+                __html: svgContent
+                  .replace('<svg', `<svg id="world-map-svg" style="transform: translate(${pan.x}px, ${pan.y}px) scale(${zoom}); transform-origin: center; will-change: transform;"`)
               }}
             />
           </div>
