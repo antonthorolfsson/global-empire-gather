@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
+import { ZoomIn, ZoomOut, RotateCcw, MapPin } from 'lucide-react';
 
 interface Country {
   id: string;
@@ -33,11 +33,18 @@ const GameMap: React.FC<GameMapProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const [lastMousePos, setLastMousePos] = useState({ x: 0, y: 0 });
   
-  // Ultra-simple touch state with ref for immediate updates
-  const [debugInfo, setDebugInfo] = useState('Ready for touch');
-  const lastTouchRef = useRef({ x: 0, y: 0 });
-  const [isPanning, setIsPanning] = useState(false);
-  const [isZooming, setIsZooming] = useState(false);
+  // Touch/pinch zoom states
+  const [isTouch, setIsTouch] = useState(false);
+  const [initialPinchDistance, setInitialPinchDistance] = useState(0);
+  const [initialZoom, setInitialZoom] = useState(1);
+  const [touchCount, setTouchCount] = useState(0);
+  const [initialPinchCenter, setInitialPinchCenter] = useState({ x: 0, y: 0 });
+  const [initialPan, setInitialPan] = useState({ x: 0, y: 0 });
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [velocity, setVelocity] = useState({ x: 0, y: 0 });
+  const lastTouchTime = useRef(0);
+  const lastTouchPos = useRef({ x: 0, y: 0 });
+  const animationFrameRef = useRef<number>();
   
   const mapContainerRef = useRef<HTMLDivElement>(null);
 
@@ -46,6 +53,15 @@ const GameMap: React.FC<GameMapProps> = ({
     import('/src/assets/world-map.svg?raw')
       .then(module => setSvgContent(module.default))
       .catch(error => console.error('Error loading world map:', error));
+  }, []);
+
+  useEffect(() => {
+    // Cleanup animation frame on unmount
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
   }, []);
 
   const getCountryOwner = (countryId: string) => {
@@ -89,7 +105,7 @@ const GameMap: React.FC<GameMapProps> = ({
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
     const zoomSpeed = 0.1;
-    const newZoom = Math.max(0.3, Math.min(20, zoom + (e.deltaY > 0 ? -zoomSpeed : zoomSpeed)));
+    const newZoom = Math.max(0.5, Math.min(10, zoom + (e.deltaY > 0 ? -zoomSpeed : zoomSpeed)));
     
     // Get container bounds for relative positioning
     const container = mapContainerRef.current;
@@ -143,11 +159,11 @@ const GameMap: React.FC<GameMapProps> = ({
   };
 
   const handleZoomIn = () => {
-    setZoom(prev => Math.min(20, prev + 0.5));
+    setZoom(prev => Math.min(10, prev + 0.5));
   };
 
   const handleZoomOut = () => {
-    setZoom(prev => Math.max(0.3, prev - 0.5));
+    setZoom(prev => Math.max(0.5, prev - 0.5));
   };
 
   const handleResetView = () => {
@@ -155,49 +171,243 @@ const GameMap: React.FC<GameMapProps> = ({
     setPan({ x: 0, y: 0 });
   };
 
-  // Ultra-simple distance calculation
-  const getDistance = (x1: number, y1: number, x2: number, y2: number) => {
-    return Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+  // Helper function to calculate center between two touch points
+  const getTouchCenter = (touch1: React.Touch, touch2: React.Touch) => {
+    return {
+      x: (touch1.clientX + touch2.clientX) / 2,
+      y: (touch1.clientY + touch2.clientY) / 2
+    };
   };
 
-  // Minimal test - just count touch events
+  // Helper function to calculate distance between two touch points
+  const getDistance = (touch1: React.Touch, touch2: React.Touch) => {
+    const dx = touch1.clientX - touch2.clientX;
+    const dy = touch1.clientY - touch2.clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  };
+
+  // Touch event handlers for pinch zoom
+  const [touchStartTime, setTouchStartTime] = useState(0);
+  const [touchMoved, setTouchMoved] = useState(false);
+  
+  // Momentum and smoothness for mobile
   useEffect(() => {
-    const container = mapContainerRef.current;
-    if (!container) return;
-
-    let touchStartCount = 0;
-    let touchMoveCount = 0;
-    let touchEndCount = 0;
-
-    const handleTouchStart = (e: TouchEvent) => {
-      touchStartCount++;
-      setDebugInfo(`TouchStart: ${touchStartCount}`);
+    if (!isAnimating) return;
+    
+    let animationId: number;
+    const deceleration = 0.95;
+    const minVelocity = 0.1;
+    
+    const animate = () => {
+      setVelocity(prev => {
+        const newVelocity = {
+          x: prev.x * deceleration,
+          y: prev.y * deceleration
+        };
+        
+        if (Math.abs(newVelocity.x) < minVelocity && Math.abs(newVelocity.y) < minVelocity) {
+          setIsAnimating(false);
+          return { x: 0, y: 0 };
+        }
+        
+        setPan(prevPan => ({
+          x: prevPan.x + newVelocity.x,
+          y: prevPan.y + newVelocity.y
+        }));
+        
+        return newVelocity;
+      });
+      
+      animationId = requestAnimationFrame(animate);
     };
-
-    const handleTouchMove = (e: TouchEvent) => {
-      touchMoveCount++;
-      setDebugInfo(`TouchMove: ${touchMoveCount}`);
-    };
-
-    const handleTouchEnd = (e: TouchEvent) => {
-      touchEndCount++;
-      setDebugInfo(`TouchEnd: ${touchEndCount}`);
-    };
-
-    // Try both passive and non-passive listeners
-    container.addEventListener('touchstart', handleTouchStart, { passive: true });
-    container.addEventListener('touchmove', handleTouchMove, { passive: true });
-    container.addEventListener('touchend', handleTouchEnd, { passive: true });
-
+    
+    animationId = requestAnimationFrame(animate);
+    
     return () => {
-      container.removeEventListener('touchstart', handleTouchStart);
-      container.removeEventListener('touchmove', handleTouchMove);
-      container.removeEventListener('touchend', handleTouchEnd);
+      if (animationId) {
+        cancelAnimationFrame(animationId);
+      }
     };
-  }, []);
+  }, [isAnimating]);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    console.log('Touch start - fingers:', e.touches.length);
+    setIsTouch(true);
+    setTouchCount(e.touches.length);
+    setTouchStartTime(Date.now());
+    setTouchMoved(false);
+    setIsAnimating(false); // Stop any ongoing momentum
+    setVelocity({ x: 0, y: 0 });
+    
+    if (e.touches.length === 2) {
+      // Two fingers - start pinch zoom
+      const distance = getDistance(e.touches[0], e.touches[1]);
+      const center = getTouchCenter(e.touches[0], e.touches[1]);
+      
+      setInitialPinchDistance(distance);
+      setInitialZoom(zoom);
+      setInitialPinchCenter(center);
+      setInitialPan({ ...pan });
+      e.preventDefault();
+    } else if (e.touches.length === 1) {
+      // Single finger - prepare for drag
+      const touch = e.touches[0];
+      setLastMousePos({ x: touch.clientX, y: touch.clientY });
+      lastTouchTime.current = Date.now();
+      lastTouchPos.current = { x: touch.clientX, y: touch.clientY };
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (e.touches.length === 2 && initialPinchDistance > 0) {
+      // Two fingers - ultra-smooth pinch zoom
+      e.preventDefault();
+      const currentDistance = getDistance(e.touches[0], e.touches[1]);
+      const currentCenter = getTouchCenter(e.touches[0], e.touches[1]);
+      
+      // Smoother zoom scaling with better curve
+      const rawScale = currentDistance / initialPinchDistance;
+      const scale = Math.pow(rawScale, 0.9); // More linear feel
+      const newZoom = Math.max(0.5, Math.min(10, initialZoom * scale));
+      
+      // Get container bounds for relative positioning
+      const container = mapContainerRef.current;
+      if (container) {
+        const rect = container.getBoundingClientRect();
+        
+        // Calculate the center point relative to the container
+        const centerX = currentCenter.x - rect.left;
+        const centerY = currentCenter.y - rect.top;
+        
+        // Calculate world position under the pinch center at initial zoom
+        const worldX = (centerX - rect.width / 2 - initialPan.x) / initialZoom;
+        const worldY = (centerY - rect.height / 2 - initialPan.y) / initialZoom;
+        
+        // Calculate new pan to keep the world position under the same screen position
+        const newPanX = centerX - rect.width / 2 - worldX * newZoom;
+        const newPanY = centerY - rect.height / 2 - worldY * newZoom;
+        
+        setZoom(newZoom);
+        setPan({
+          x: newPanX,
+          y: newPanY
+        });
+      } else {
+        setZoom(newZoom);
+      }
+      
+      if (!touchMoved) setTouchMoved(true);
+    } else if (e.touches.length === 1 && initialPinchDistance === 0 && !isAnimating) {
+      // Single finger - only pan if not in momentum animation
+      const touch = e.touches[0];
+      const deltaX = touch.clientX - lastMousePos.x;
+      const deltaY = touch.clientY - lastMousePos.y;
+      const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+      
+      // Require minimum movement to start panning (reduces jitter)
+      if (distance > 3) {
+        if (!touchMoved) {
+          setTouchMoved(true);
+          setIsDragging(true);
+        }
+        e.preventDefault();
+        
+        // Throttle updates for smoother performance
+        const now = Date.now();
+        if (now - lastTouchTime.current > 16) { // ~60fps
+          // Improved pan calculation for better mobile experience at high zoom
+          const zoomFactor = Math.max(0.3, 1 / Math.sqrt(zoom)); // Less aggressive scaling
+          const panDeltaX = deltaX * zoomFactor;
+          const panDeltaY = deltaY * zoomFactor;
+          
+          setPan(prev => ({
+            x: prev.x + panDeltaX,
+            y: prev.y + panDeltaY
+          }));
+          
+          // Simple velocity for momentum
+          setVelocity({
+            x: panDeltaX * 0.8,
+            y: panDeltaY * 0.8
+          });
+          
+          setLastMousePos({ x: touch.clientX, y: touch.clientY });
+          lastTouchTime.current = now;
+        }
+      }
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    console.log('Touch end - touchMoved:', touchMoved, 'touchCount:', touchCount, 'touches:', e.touches.length);
+    
+    if (e.touches.length === 0) {
+      // All fingers lifted
+      const touchDuration = Date.now() - touchStartTime;
+      console.log('Touch duration:', touchDuration, 'touchMoved:', touchMoved);
+      
+      // If it was a quick tap without movement, trigger country selection
+      if (!touchMoved && touchDuration < 300 && touchCount === 1) {
+        console.log('Quick tap detected, checking for country under touch');
+        // Get the element under the original touch point
+        const target = e.target as Element;
+        if (target && target.tagName === 'path' && target.id) {
+          const countryId = target.id.toLowerCase();
+          console.log('Country tapped:', countryId);
+          handleCountryClick(countryId);
+        }
+      } else if (touchMoved && touchCount === 1) {
+        // Enable momentum for smooth deceleration
+        const currentVelocity = velocity;
+        const velocityMagnitude = Math.sqrt(currentVelocity.x * currentVelocity.x + currentVelocity.y * currentVelocity.y);
+        
+        if (velocityMagnitude > 1) { // Only start momentum if there's significant velocity
+          setIsAnimating(true);
+        }
+      }
+      
+      // Reset all touch states
+      setIsDragging(false);
+      setIsTouch(false);
+      setInitialPinchDistance(0);
+      setTouchCount(0);
+      setTouchMoved(false);
+    } else if (e.touches.length === 1 && touchCount === 2) {
+      // Went from 2 fingers to 1 finger
+      setInitialPinchDistance(0);
+      setTouchCount(1);
+      setLastMousePos({ 
+        x: e.touches[0].clientX, 
+        y: e.touches[0].clientY 
+      });
+      lastTouchTime.current = Date.now();
+      lastTouchPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    }
+  };
 
   useEffect(() => {
     if (!svgContent) return;
+
+    console.log('GameMap: Updating country styles, players:', players);
+    
+    // Debug player countries data
+    players.forEach((player, index) => {
+      console.log(`Player ${index + 1} (${player.name}):`, {
+        countries: player.countries,
+        color: player.color
+      });
+      
+      // Debug specific countries
+      if (player.countries && Array.isArray(player.countries)) {
+        player.countries.forEach(countryId => {
+          if (countryId && typeof countryId === 'string') {
+            console.log(`  Country ${countryId} -> CSS selector: #world-map-svg path#${countryId.toUpperCase()}, Color: ${player.color}`);
+          } else {
+            console.log(`  Invalid country ID:`, countryId);
+          }
+        });
+      }
+    });
 
     // Add CSS styles for countries directly to the document
     const styleElement = document.getElementById('map-country-styles') || document.createElement('style');
@@ -210,30 +420,18 @@ const GameMap: React.FC<GameMapProps> = ({
         -webkit-user-select: none !important;
         -moz-user-select: none !important;
         -ms-user-select: none !important;
-        shape-rendering: crispEdges !important;
-        image-rendering: pixelated !important;
-        image-rendering: -moz-crisp-edges !important;
-        image-rendering: crisp-edges !important;
-        -ms-interpolation-mode: nearest-neighbor !important;
       }
       #world-map-svg path {
         fill: #000000 !important;
         stroke: #ffffff !important;
-        stroke-width: ${0.5 / zoom}px !important;
+        stroke-width: 0.5px !important;
         cursor: pointer !important;
-        transition: ${isDragging || isPanning || isZooming ? 'none !important' : 'fill 0.2s ease !important'};
+        transition: ${isDragging || isTouch ? 'none !important' : 'fill 0.2s ease !important'};
         opacity: 1 !important;
         outline: none !important;
-        shape-rendering: crispEdges !important;
-        vector-effect: non-scaling-stroke !important;
       }
       #world-map-svg path:focus {
         outline: none !important;
-      }
-      #world-map-svg text {
-        shape-rendering: crispEdges !important;
-        text-rendering: geometricPrecision !important;
-        vector-effect: non-scaling-stroke !important;
       }
     `;
     
@@ -320,7 +518,7 @@ const GameMap: React.FC<GameMapProps> = ({
         styleEl.remove();
       }
     };
-  }, [svgContent, players, selectedCountries, zoom, isDragging, isPanning, isZooming]);
+  }, [svgContent, players, selectedCountries]);
 
   return (
     <Card className="w-full h-full overflow-hidden" style={{ background: 'hsl(200 70% 85%)' }}>
@@ -334,18 +532,25 @@ const GameMap: React.FC<GameMapProps> = ({
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
-            // Removed React touch handlers - using native DOM listeners instead
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
             style={{ 
               userSelect: 'none',
-              touchAction: 'none'
+              touchAction: 'none' // Prevent browser's default touch behaviors
             }}
           >
             <div
               id="world-map-container"
               className="w-full h-full"
               dangerouslySetInnerHTML={{ 
-                __html: svgContent
-                  .replace('<svg', `<svg id="world-map-svg" style="transform: translate(${pan.x}px, ${pan.y}px) scale(${zoom}); transform-origin: center; will-change: transform;"`)
+                __html: svgContent.replace('<svg', '<svg id="world-map-svg"')
+              }}
+              style={{
+                transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+                transformOrigin: 'center',
+                transition: 'none',
+                willChange: 'transform'
               }}
             />
           </div>
@@ -384,11 +589,8 @@ const GameMap: React.FC<GameMapProps> = ({
           </Button>
         </div>
 
-        {/* Debug Info for Mobile */}
+        {/* Game UI Overlay */}
         <div className="absolute top-4 left-4 right-4 flex justify-between items-start pointer-events-none">
-          <div className="bg-red-500 text-white rounded-lg p-2 text-sm font-bold">
-            {debugInfo}
-          </div>
           <div className="bg-card/90 backdrop-blur-sm rounded-lg p-3 animate-strategic-fade-in">
             <p className="text-sm font-medium text-card-foreground">
               Current Turn: <span 
@@ -407,6 +609,7 @@ const GameMap: React.FC<GameMapProps> = ({
           </div>
         </div>
 
+
         {/* Zoom indicator */}
         <div className="absolute bottom-16 left-4 bg-card/90 backdrop-blur-sm rounded-lg p-2 pointer-events-none">
           <p className="text-xs text-card-foreground">
@@ -417,5 +620,6 @@ const GameMap: React.FC<GameMapProps> = ({
     </Card>
   );
 };
+
 
 export default GameMap;
