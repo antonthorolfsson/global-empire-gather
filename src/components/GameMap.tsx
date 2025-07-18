@@ -189,10 +189,12 @@ const GameMap: React.FC<GameMapProps> = ({
       // Single finger - always allow panning regardless of state
       const currentX = e.touches[0].clientX;
       const currentY = e.touches[0].clientY;
-      const deltaX = currentX - lastTouchRef.current.x;
-      const deltaY = currentY - lastTouchRef.current.y;
+      const lastX = lastTouchRef.current.x;
+      const lastY = lastTouchRef.current.y;
+      const deltaX = currentX - lastX;
+      const deltaY = currentY - lastY;
       
-      setDebugInfo(`Panning: ${deltaX.toFixed(0)}, ${deltaY.toFixed(0)}`);
+      setDebugInfo(`Current: ${currentX.toFixed(0)}, ${currentY.toFixed(0)} | Last: ${lastX.toFixed(0)}, ${lastY.toFixed(0)} | Delta: ${deltaX.toFixed(0)}, ${deltaY.toFixed(0)}`);
       
       // Simple pan - just add the delta
       setPan(prev => ({
