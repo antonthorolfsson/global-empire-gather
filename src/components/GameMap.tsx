@@ -160,92 +160,41 @@ const GameMap: React.FC<GameMapProps> = ({
     return Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
   };
 
-  // Use native DOM event listeners instead of React handlers
+  // Minimal test - just count touch events
   useEffect(() => {
     const container = mapContainerRef.current;
     if (!container) return;
 
+    let touchStartCount = 0;
+    let touchMoveCount = 0;
+    let touchEndCount = 0;
+
     const handleTouchStart = (e: TouchEvent) => {
-      e.preventDefault();
-      const touchCount = e.touches.length;
-      setDebugInfo(`Native Touch Start: ${touchCount} finger(s)`);
-      
-      if (touchCount === 1) {
-        lastTouchRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-        setIsPanning(true);
-      } else if (touchCount === 2) {
-        const dist = getDistance(
-          e.touches[0].clientX, e.touches[0].clientY,
-          e.touches[1].clientX, e.touches[1].clientY
-        );
-        lastTouchRef.current = { x: dist, y: zoom };
-        setIsZooming(true);
-      }
+      touchStartCount++;
+      setDebugInfo(`TouchStart: ${touchStartCount}`);
     };
 
     const handleTouchMove = (e: TouchEvent) => {
-      e.preventDefault();
-      const touchCount = e.touches.length;
-      
-      if (touchCount === 1) {
-        const currentX = e.touches[0].clientX;
-        const currentY = e.touches[0].clientY;
-        const lastX = lastTouchRef.current.x;
-        const lastY = lastTouchRef.current.y;
-        const deltaX = currentX - lastX;
-        const deltaY = currentY - lastY;
-        
-        setDebugInfo(`Native Pan: ${deltaX.toFixed(0)}, ${deltaY.toFixed(0)} | Pos: ${currentX.toFixed(0)}, ${currentY.toFixed(0)}`);
-        
-        setPan(prev => ({
-          x: prev.x + deltaX,
-          y: prev.y + deltaY
-        }));
-        
-        lastTouchRef.current = { x: currentX, y: currentY };
-      } else if (touchCount === 2) {
-        const currentDist = getDistance(
-          e.touches[0].clientX, e.touches[0].clientY,
-          e.touches[1].clientX, e.touches[1].clientY
-        );
-        
-        const initialDist = lastTouchRef.current.x;
-        const initialZoom = lastTouchRef.current.y;
-        const scale = currentDist / initialDist;
-        const newZoom = Math.max(0.3, Math.min(20, initialZoom * scale));
-        
-        setDebugInfo(`Native Zoom: ${newZoom.toFixed(2)}x`);
-        setZoom(newZoom);
-      }
+      touchMoveCount++;
+      setDebugInfo(`TouchMove: ${touchMoveCount}`);
     };
 
     const handleTouchEnd = (e: TouchEvent) => {
-      e.preventDefault();
-      setDebugInfo('Native Touch End');
-      setIsPanning(false);
-      setIsZooming(false);
-      
-      if (e.changedTouches.length === 1) {
-        const target = e.target as Element;
-        if (target && target.tagName === 'path' && target.id) {
-          const countryId = target.id.toLowerCase();
-          setDebugInfo(`Native Tap: ${countryId}`);
-          handleCountryClick(countryId);
-        }
-      }
+      touchEndCount++;
+      setDebugInfo(`TouchEnd: ${touchEndCount}`);
     };
 
-    // Add native event listeners
-    container.addEventListener('touchstart', handleTouchStart, { passive: false });
-    container.addEventListener('touchmove', handleTouchMove, { passive: false });
-    container.addEventListener('touchend', handleTouchEnd, { passive: false });
+    // Try both passive and non-passive listeners
+    container.addEventListener('touchstart', handleTouchStart, { passive: true });
+    container.addEventListener('touchmove', handleTouchMove, { passive: true });
+    container.addEventListener('touchend', handleTouchEnd, { passive: true });
 
     return () => {
       container.removeEventListener('touchstart', handleTouchStart);
       container.removeEventListener('touchmove', handleTouchMove);
       container.removeEventListener('touchend', handleTouchEnd);
     };
-  }, [zoom, handleCountryClick]);
+  }, []);
 
   useEffect(() => {
     if (!svgContent) return;
