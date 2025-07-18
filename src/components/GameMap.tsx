@@ -185,10 +185,8 @@ const GameMap: React.FC<GameMapProps> = ({
     e.preventDefault(); // Prevent scrolling
     const touchCount = e.touches.length;
     
-    // Debug: Always show when touchMove is called
-    setDebugInfo(`TouchMove called: ${touchCount} fingers`);
-    
-    if (touchCount === 1 && isPanning) {
+    if (touchCount === 1) {
+      // Single finger - always allow panning regardless of state
       const currentX = e.touches[0].clientX;
       const currentY = e.touches[0].clientY;
       const deltaX = currentX - lastTouchRef.current.x;
@@ -205,7 +203,8 @@ const GameMap: React.FC<GameMapProps> = ({
       // Update ref immediately
       lastTouchRef.current = { x: currentX, y: currentY };
       
-    } else if (touchCount === 2 && isZooming) {
+    } else if (touchCount === 2) {
+      // Two fingers - always allow zooming regardless of state
       const currentDist = getDistance(
         e.touches[0].clientX, e.touches[0].clientY,
         e.touches[1].clientX, e.touches[1].clientY
