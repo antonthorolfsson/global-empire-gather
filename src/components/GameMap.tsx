@@ -231,12 +231,11 @@ const GameMap: React.FC<GameMapProps> = ({
   }, [isAnimating]);
 
   const handleTouchStart = (e: React.TouchEvent) => {
-    console.log('Touch start - fingers:', e.touches.length);
     setIsTouch(true);
     setTouchCount(e.touches.length);
     setTouchStartTime(Date.now());
     setTouchMoved(false);
-    setIsAnimating(false); // Stop any ongoing momentum
+    setIsAnimating(false);
     setVelocity({ x: 0, y: 0 });
     
     if (e.touches.length === 2) {
@@ -248,11 +247,11 @@ const GameMap: React.FC<GameMapProps> = ({
       setInitialZoom(zoom);
       setInitialPinchCenter(center);
       setInitialPan({ ...pan });
-      e.preventDefault();
     } else if (e.touches.length === 1) {
       // Single finger - prepare for drag
       const touch = e.touches[0];
       setLastMousePos({ x: touch.clientX, y: touch.clientY });
+      setInitialPinchDistance(0); // Reset pinch distance for single touch
       lastTouchTime.current = Date.now();
       lastTouchPos.current = { x: touch.clientX, y: touch.clientY };
     }
@@ -260,63 +259,51 @@ const GameMap: React.FC<GameMapProps> = ({
 
   const handleTouchMove = (e: React.TouchEvent) => {
     if (e.touches.length === 2 && initialPinchDistance > 0) {
-      // Two fingers - ultra-smooth pinch zoom
+      // Two fingers - pinch zoom
       e.preventDefault();
       const currentDistance = getDistance(e.touches[0], e.touches[1]);
       const currentCenter = getTouchCenter(e.touches[0], e.touches[1]);
       
-      // Smoother zoom scaling with better curve
       const rawScale = currentDistance / initialPinchDistance;
-      const scale = Math.pow(rawScale, 0.9); // More linear feel
+      const scale = Math.pow(rawScale, 0.9);
       const newZoom = Math.max(0.3, Math.min(20, initialZoom * scale));
       
-      // Get container bounds for relative positioning
       const container = mapContainerRef.current;
       if (container) {
         const rect = container.getBoundingClientRect();
-        
-        // Calculate the center point relative to the container
         const centerX = currentCenter.x - rect.left;
         const centerY = currentCenter.y - rect.top;
         
-        // Calculate world position under the pinch center at initial zoom
         const worldX = (centerX - rect.width / 2 - initialPan.x) / initialZoom;
         const worldY = (centerY - rect.height / 2 - initialPan.y) / initialZoom;
         
-        // Calculate new pan to keep the world position under the same screen position
         const newPanX = centerX - rect.width / 2 - worldX * newZoom;
         const newPanY = centerY - rect.height / 2 - worldY * newZoom;
         
         setZoom(newZoom);
-        setPan({
-          x: newPanX,
-          y: newPanY
-        });
+        setPan({ x: newPanX, y: newPanY });
       } else {
         setZoom(newZoom);
       }
       
       if (!touchMoved) setTouchMoved(true);
-    } else if (e.touches.length === 1 && initialPinchDistance === 0) {
-      // Single finger - only pan if not in momentum animation
+    } else if (e.touches.length === 1) {
+      // Single finger - pan
       const touch = e.touches[0];
       const deltaX = touch.clientX - lastMousePos.x;
       const deltaY = touch.clientY - lastMousePos.y;
       const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
       
-      // Require minimum movement to start panning (reduces jitter)
-      if (distance > 3) {
+      if (distance > 2) {
         if (!touchMoved) {
           setTouchMoved(true);
           setIsDragging(true);
         }
         e.preventDefault();
         
-        // Throttle updates for smoother performance
         const now = Date.now();
-        if (now - lastTouchTime.current > 16) { // ~60fps
-          // Improved pan calculation for better mobile experience at high zoom
-          const zoomFactor = Math.max(0.3, 1 / Math.sqrt(zoom)); // Less aggressive scaling
+        if (now - lastTouchTime.current > 16) { // ~60fps throttling
+          const zoomFactor = Math.max(0.5, 1 / Math.sqrt(zoom));
           const panDeltaX = deltaX * zoomFactor;
           const panDeltaY = deltaY * zoomFactor;
           
@@ -325,7 +312,6 @@ const GameMap: React.FC<GameMapProps> = ({
             y: prev.y + panDeltaY
           }));
           
-          // Simple velocity for momentum
           setVelocity({
             x: panDeltaX * 0.8,
             y: panDeltaY * 0.8
@@ -339,21 +325,15 @@ const GameMap: React.FC<GameMapProps> = ({
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
-    console.log('Touch end - touchMoved:', touchMoved, 'touchCount:', touchCount, 'touches:', e.touches.length);
-    
     if (e.touches.length === 0) {
       // All fingers lifted
       const touchDuration = Date.now() - touchStartTime;
-      console.log('Touch duration:', touchDuration, 'touchMoved:', touchMoved);
       
-      // If it was a quick tap without movement, trigger country selection
+      // Quick tap without movement = country selection
       if (!touchMoved && touchDuration < 300 && touchCount === 1) {
-        console.log('Quick tap detected, checking for country under touch');
-        // Get the element under the original touch point
         const target = e.target as Element;
         if (target && target.tagName === 'path' && target.id) {
           const countryId = target.id.toLowerCase();
-          console.log('Country tapped:', countryId);
           handleCountryClick(countryId);
         }
       } else if (touchMoved && touchCount === 1) {
@@ -361,7 +341,7 @@ const GameMap: React.FC<GameMapProps> = ({
         const currentVelocity = velocity;
         const velocityMagnitude = Math.sqrt(currentVelocity.x * currentVelocity.x + currentVelocity.y * currentVelocity.y);
         
-        if (velocityMagnitude > 1) { // Only start momentum if there's significant velocity
+        if (velocityMagnitude > 1) {
           setIsAnimating(true);
         }
       }
@@ -549,7 +529,7 @@ const GameMap: React.FC<GameMapProps> = ({
             onTouchEnd={handleTouchEnd}
             style={{ 
               userSelect: 'none',
-              touchAction: 'none' // Prevent browser's default touch behaviors
+              touchAction: 'manipulation' // Allow pinch-zoom but prevent other gestures
             }}
           >
             <div
