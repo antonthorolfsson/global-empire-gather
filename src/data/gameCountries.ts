@@ -808,7 +808,7 @@ export const GAME_COUNTRIES: CountryData[] = [
 
   // Togo
   {
-    id: "tg", name: "Togo", population: 8450000, area: 56785, gdp: 8500,
+    id: "tg", name: "Togo", population: 8450000, area: 56785, gdp: 8.5,
     militarySize: 8500, tanks: 2, aircraft: 0, navySize: 200,
     energyProduction: 232, oilProduction: 0.0, gasProduction: 0,
     ...createDefaultCulturalData("Christianity", "French", 43, 66)
