@@ -1395,4 +1395,28 @@ export const GAME_COUNTRIES: CountryData[] = [
     energyProduction: 0, oilProduction: 0.0, gasProduction: 0,
     ...createDefaultCulturalData("Christianity", "Bislama", 26, 87)
   },
+  {
+    id: "gl", name: "Greenland", population: 56661, area: 2166086, gdp: 3.05,
+    militarySize: 0, tanks: 0, aircraft: 0, navySize: 0,
+    energyProduction: 0.6, oilProduction: 0, gasProduction: 0,
+    religions: [
+      { name: "Christianity", percentage: 95 },
+      { name: "No Religion", percentage: 4 },
+      { name: "Other", percentage: 1 }
+    ],
+    languages: [
+      { name: "Greenlandic", percentage: 70 },
+      { name: "Danish", percentage: 12 },
+      { name: "Other", percentage: 18 }
+    ],
+    demographics: {
+      ageGroups: [
+        { range: "0-14", percentage: 21 },
+        { range: "15-64", percentage: 69 },
+        { range: "65+", percentage: 10 }
+      ],
+      urbanPopulation: 87,
+      literacyRate: 100
+    }
+  },
 ];
