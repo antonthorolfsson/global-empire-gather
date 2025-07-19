@@ -810,23 +810,18 @@ const MultiplayerGame = () => {
               {game.game_phase === 'playing' && (
                 <div className="flex-1 flex flex-col overflow-hidden">
                   <div className="p-4 border-b flex-shrink-0">
-                    <h3 className="font-semibold">Available Countries</h3>
+                    <h3 className="font-semibold">Country Selection</h3>
                   </div>
                   <div className="flex-1 overflow-y-auto">
-                    <CountrySelectionPane
-                      countries={GAME_COUNTRIES}
+                    <CountryPreselection
                       onCountrySelect={selectCountry}
-                      currentPlayer={(() => {
-                        const currentTurnPlayer = players.find(p => p.player_order === game?.current_player_turn);
-                        return currentTurnPlayer?.player_name || '';
-                      })()}
-                      players={players.map(p => ({ 
-                        id: p.id, 
-                        name: p.player_name, 
-                        color: p.color, 
-                        countries: gameStatsCountries.filter(c => c.selectedBy === p.player_name).map(c => c.id),
-                        isActive: p.player_order === game?.current_player_turn
-                      }))}
+                      selectedCountries={selectedCountriesArray}
+                      isPlayerTurn={game.current_player_turn === userPlayer?.player_order}
+                      gameId={game.id}
+                      playerId={userPlayer?.id || ''}
+                      preselectionList={preselectionList}
+                      setPreselectionList={setPreselectionList}
+                      autoSelectTimer={autoSelectTimer}
                     />
                   </div>
                 </div>
