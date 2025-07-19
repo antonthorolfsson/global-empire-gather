@@ -64,6 +64,7 @@ const MultiplayerGame = () => {
   const [autoSelectTimer, setAutoSelectTimer] = useState<NodeJS.Timeout | null>(null);
   const [isSavingPreselections, setIsSavingPreselections] = useState<boolean>(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const autoVoteIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (!gameId) return;
@@ -71,8 +72,27 @@ const MultiplayerGame = () => {
     loadGameData();
     const cleanup = setupRealtimeSubscriptions();
     
-    return cleanup;
-  }, [gameId, user]);
+    // Set up auto-vote checking interval (every 15 seconds)
+    const autoVoteInterval = setInterval(async () => {
+      if (game?.status === 'active' && game?.game_phase === 'playing') {
+        try {
+          await supabase.rpc('trigger_auto_vote_check');
+        } catch (error) {
+          console.error('Auto-vote check failed:', error);
+        }
+      }
+    }, 15000); // Check every 15 seconds
+    
+    autoVoteIntervalRef.current = autoVoteInterval;
+    
+    return () => {
+      cleanup();
+      if (autoVoteIntervalRef.current) {
+        clearInterval(autoVoteIntervalRef.current);
+        autoVoteIntervalRef.current = null;
+      }
+    };
+  }, [gameId, user, game?.status, game?.game_phase]);
 
   const loadGameData = async () => {
     try {

@@ -532,6 +532,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      trigger_auto_vote_check: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       validate_game_input: {
         Args: { _name: string; _max_players: number }
         Returns: boolean
