@@ -48,6 +48,68 @@ const GameMap: React.FC<GameMapProps> = ({
       .catch(error => console.error('Error loading world map:', error));
   }, []);
 
+  const container = mapContainerRef.current;
+  if (!container) return;
+
+  let lastPan = { ...pan };
+  let lastZoom = zoom;
+  let lastTouch = null;
+  let lastDistance = 0;
+
+  function getTouchPos(e: TouchEvent, idx = 0) {
+    const rect = container.getBoundingClientRect();
+    const t = e.touches[idx];
+    return { x: t.clientX - rect.left, y: t.clientY - rect.top };
+  }
+
+  function getDistance(t1, t2) {
+    return Math.sqrt((t2.x - t1.x) ** 2 + (t2.y - t1.y) ** 2);
+  }
+
+  function handleTouchStart(e: TouchEvent) {
+    if (e.touches.length === 1) {
+      lastTouch = getTouchPos(e);
+      lastPan = { ...pan };
+    } else if (e.touches.length === 2) {
+      const p1 = getTouchPos(e, 0);
+      const p2 = getTouchPos(e, 1);
+      lastDistance = getDistance(p1, p2);
+      lastZoom = zoom;
+    }
+  }
+
+  function handleTouchMove(e: TouchEvent) {
+    if (e.touches.length === 1 && lastTouch) {
+      const curr = getTouchPos(e);
+      const dx = (curr.x - lastTouch.x) / zoom;
+      const dy = (curr.y - lastTouch.y) / zoom;
+      setPan({ x: lastPan.x + dx, y: lastPan.y + dy });
+    } else if (e.touches.length === 2) {
+      const p1 = getTouchPos(e, 0);
+      const p2 = getTouchPos(e, 1);
+      const dist = getDistance(p1, p2);
+      const scale = dist / lastDistance;
+      setZoom(Math.max(0.3, Math.min(20, lastZoom * scale)));
+    }
+    e.preventDefault();
+  }
+
+  function handleTouchEnd(e: TouchEvent) {
+    lastTouch = null;
+  }
+
+  container.addEventListener('touchstart', handleTouchStart, { passive: false });
+  container.addEventListener('touchmove', handleTouchMove, { passive: false });
+  container.addEventListener('touchend', handleTouchEnd, { passive: false });
+
+  return () => {
+    container.removeEventListener('touchstart', handleTouchStart);
+    container.removeEventListener('touchmove', handleTouchMove);
+    container.removeEventListener('touchend', handleTouchEnd);
+  };
+// End of first useEffect (for touch pan/zoom)
+// (No code here; this line is intentionally left blank to remove the misplaced closing brace and parenthesis)
+
   const getCountryOwner = (countryId: string) => {
     return players.find(player => 
       player.countries && 
@@ -156,7 +218,7 @@ const GameMap: React.FC<GameMapProps> = ({
   };
 
   // Ultra-simple distance calculation
-  const getDistance = (x1: number, y1: number, x2: number, y2: number) => {
+  const getDistanceSimple = (x1: number, y1: number, x2: number, y2: number) => {
     return Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
   };
 
