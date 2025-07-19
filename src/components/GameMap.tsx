@@ -534,19 +534,17 @@ const GameMap: React.FC<GameMapProps> = ({
               id="world-map-container"
               className="w-full h-full"
               dangerouslySetInnerHTML={{ 
-                __html: svgContent
-                  .replace('<svg', '<svg id="world-map-svg" shape-rendering="geometricPrecision" text-rendering="geometricPrecision"')
-                  .replace(/width="[^"]*"/, `width="${1000 * zoom}"`)
-                  .replace(/height="[^"]*"/, `height="${500 * zoom}"`)
-                  .replace(/viewBox="[^"]*"/, `viewBox="${-pan.x / zoom} ${-pan.y / zoom} ${1000} ${500}"`)
+                __html: svgContent.replace(
+                  '<svg', 
+                  '<svg id="world-map-svg" shape-rendering="geometricPrecision" text-rendering="geometricPrecision" vector-effect="non-scaling-stroke"'
+                )
               }}
               style={{
+                transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
                 transformOrigin: 'center',
                 transition: 'none',
                 willChange: 'transform',
-                imageRendering: 'crisp-edges' as any,
-                shapeRendering: 'geometricPrecision' as any,
-                overflow: 'visible'
+                vectorEffect: 'non-scaling-stroke'
               }}
             />
           </div>
