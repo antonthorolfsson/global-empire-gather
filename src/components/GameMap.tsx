@@ -538,7 +538,9 @@ const GameMap: React.FC<GameMapProps> = ({
                 transformOrigin: 'center',
                 transition: 'none',
                 willChange: 'transform',
-                imageRendering: 'auto' as const,
+                imageRendering: 'crisp-edges' as const,
+                shapeRendering: 'crispEdges' as const,
+                textRendering: 'geometricPrecision' as const,
                 vectorEffect: 'non-scaling-stroke'
               } as React.CSSProperties}
             />
