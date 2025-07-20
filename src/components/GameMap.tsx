@@ -534,13 +534,14 @@ const GameMap: React.FC<GameMapProps> = ({
               id="world-map-container"
               className="w-full h-full"
               dangerouslySetInnerHTML={{ 
-                __html: svgContent.replace('<svg', '<svg id="world-map-svg"')
+                __html: svgContent
+                  .replace('<svg', '<svg id="world-map-svg"')
+                  .replace(/<svg[^>]*>/, match => `${match}<g id="viewport-group">`)
+                  .replace('</svg>', '</g></svg>')
               }}
               style={{
-                transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
-                transformOrigin: 'center',
                 transition: 'none',
-                willChange: 'transform'
+                willChange: 'auto'
               }}
             />
           </div>
@@ -549,6 +550,13 @@ const GameMap: React.FC<GameMapProps> = ({
             <div className="text-primary-foreground">Loading world map...</div>
           </div>
         )}
+
+        useEffect(() => {
+          const g = document.querySelector('#world-map-svg #viewport-group') as SVGGElement;
+          if (g) {
+            g.setAttribute('transform', `translate(${pan.x}, ${pan.y}) scale(${zoom})`);
+          }
+        }, [pan, zoom]);
 
         {/* Zoom Controls */}
         <div className="absolute bottom-4 right-4 flex flex-col gap-2 pointer-events-auto">
