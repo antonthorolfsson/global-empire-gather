@@ -462,9 +462,6 @@ const GameMap: React.FC<GameMapProps> = ({
     cssRules += `
       #world-map-svg path:not(${ownedCountries.map(id => `#${id}`).join(', ')}):hover {
         fill: hsl(var(--primary-glow)) !important;
-        transform: ${isDragging || isTouch ? 'none !important' : 'scale(1.01) !important'};
-        transform-origin: center !important;
-        z-index: 10 !important;
       }
     `;
     
@@ -534,15 +531,15 @@ const GameMap: React.FC<GameMapProps> = ({
               id="world-map-container"
               className="w-full h-full"
               dangerouslySetInnerHTML={{ 
-                __html: svgContent.replace('<svg', '<svg id="world-map-svg"')
+                __html: svgContent
+                  .replace('<svg', '<svg id="world-map-svg"')
+                  .replace(/viewBox="[^"]*"/, '') // Remove existing viewBox
+                  .replace('<svg id="world-map-svg"', `<svg id="world-map-svg" viewBox="${-800/zoom + pan.x/zoom} ${-400/zoom + pan.y/zoom} ${1600/zoom} ${800/zoom}"`)
               }}
               style={{
-                transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
-                transformOrigin: 'center',
-                transition: 'none',
-                willChange: 'transform',
-                imageRendering: 'crisp-edges',
-                shapeRendering: 'crispEdges'
+                width: '100%',
+                height: '100%',
+                transition: 'none'
               }}
             />
           </div>
