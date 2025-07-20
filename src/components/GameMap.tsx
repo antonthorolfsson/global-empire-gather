@@ -559,6 +559,17 @@ const GameMap: React.FC<GameMapProps> = ({
           }
         }, [pan, zoom]);
 
+        useEffect(() => {
+          const svgEl = document.getElementById('world-map-svg');
+          if (svgEl) {
+            svgEl.style.display = 'none'; // force browser to re-render
+            // Slight delay ensures DOM updates
+            requestAnimationFrame(() => {
+              svgEl.style.display = 'block';
+            });
+          }
+        }, [zoom, pan]);
+        
         {/* Zoom Controls */}
         <div className="absolute bottom-4 right-4 flex flex-col gap-2 pointer-events-auto">
           <Button
