@@ -147,8 +147,8 @@ const GameMap: React.FC<GameMapProps> = ({
     const deltaY = e.clientY - lastMousePos.y;
     
     setPan(prev => ({
-      x: prev.x + deltaX / zoom,
-      y: prev.y + deltaY / zoom
+      x: prev.x + deltaX,
+      y: prev.y + deltaY
     }));
     
     setLastMousePos({ x: e.clientX, y: e.clientY });
@@ -531,16 +531,16 @@ const GameMap: React.FC<GameMapProps> = ({
               id="world-map-container"
               className="w-full h-full"
               dangerouslySetInnerHTML={{ 
-                __html: svgContent
-                  .replace('<svg', '<svg id="world-map-svg"')
-                  .replace(/viewBox="[^"]*"/, '') // Remove existing viewBox
-                  .replace('<svg id="world-map-svg"', `<svg id="world-map-svg" viewBox="${-800/zoom + pan.x/zoom} ${-400/zoom + pan.y/zoom} ${1600/zoom} ${800/zoom}"`)
+                __html: svgContent.replace('<svg', '<svg id="world-map-svg"')
               }}
               style={{
-                width: '100%',
-                height: '100%',
-                transition: 'none'
-              }}
+                transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+                transformOrigin: 'center',
+                transition: 'none',
+                willChange: 'transform',
+                imageRendering: 'auto' as const,
+                vectorEffect: 'non-scaling-stroke'
+              } as React.CSSProperties}
             />
           </div>
         ) : (
