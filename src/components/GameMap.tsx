@@ -540,7 +540,9 @@ const GameMap: React.FC<GameMapProps> = ({
                 transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
                 transformOrigin: 'center',
                 transition: 'none',
-                willChange: 'transform'
+                willChange: 'transform',
+                imageRendering: 'crisp-edges',
+                shapeRendering: 'crispEdges'
               }}
             />
           </div>
