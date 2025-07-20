@@ -104,8 +104,8 @@ const GameMap: React.FC<GameMapProps> = ({
   // Zoom and pan handlers
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
-    const zoomSpeed = 0.1;
-    const newZoom = Math.max(0.5, Math.min(10, zoom + (e.deltaY > 0 ? -zoomSpeed : zoomSpeed)));
+    const zoomFactor = 1.2; // 20% increase/decrease per scroll step
+    const newZoom = Math.max(0.5, Math.min(10, e.deltaY > 0 ? zoom / zoomFactor : zoom * zoomFactor));
     
     // Get container bounds for relative positioning
     const container = mapContainerRef.current;
