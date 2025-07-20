@@ -535,7 +535,7 @@ const GameMap: React.FC<GameMapProps> = ({
               className="w-full h-full"
               dangerouslySetInnerHTML={{ 
                 __html: svgContent
-                  .replace('<svg', '<svg id="world-map-svg" width="100%" height="100%" preserveAspectRatio="xMidYMid meet"')
+                  .replace('<svg', '<svg id="world-map-svg" width="100%" height="100%" viewBox="0 0 2000 1000" preserveAspectRatio="xMidYMid meet"')
                   .replace(/<svg[^>]*viewBox="[^"]*"/, '') // remove existing viewBox if present
                   .replace(/<svg[^>]*>/, match => `${match}<g id="viewport-group">`)
                   .replace('</svg>', '</g></svg>')
