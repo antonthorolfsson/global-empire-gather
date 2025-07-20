@@ -2,7 +2,6 @@ import React, { useEffect, useState, useRef } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ZoomIn, ZoomOut, RotateCcw, MapPin } from 'lucide-react';
-import { ReactComponent as WorldMapSvg } from '../assets/world-map.svg';
 
 interface Country {
   id: string;
@@ -20,33 +19,6 @@ interface GameMapProps {
   selectedCountries: string[];
   players: Array<{ id: string; name: string; countries: string[]; color: string }>;
 }
-
-interface WorldMapProps {
-  pan: { x: number; y: number };
-  zoom: number;
-}
-
-const WorldMap: React.FC<WorldMapProps> = ({ pan, zoom }) => {
-  return (
-    <svg
-      width="100%"
-      height="100%"
-      id="world-map-svg"
-      viewBox="0 0 2000 1000" // Adjust this to match your actual SVG dimensions
-      preserveAspectRatio="xMidYMid meet"
-      style={{
-        shapeRendering: 'geometricPrecision',
-        overflow: 'visible',
-      }}
-    >
-      <g id="viewport-group" transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}>
-        <WorldMapSvg />
-      </g>
-    </svg>
-  );
-};
-
-export default WorldMap;
 
 const GameMap: React.FC<GameMapProps> = ({ 
   countries, 
@@ -558,36 +530,26 @@ const GameMap: React.FC<GameMapProps> = ({
               touchAction: 'none' // Prevent browser's default touch behaviors
             }}
           >
-            <WorldMap pan={pan} zoom={zoom} />
-            <!--div
+            <div
               id="world-map-container"
               className="w-full h-full"
               dangerouslySetInnerHTML={{ 
-                __html: svgContent
-                  .replace('<svg', '<svg id="world-map-svg" width="100%" height="100%" viewBox="0 0 2000 1000" preserveAspectRatio="xMidYMid meet"')
-                  .replace(/<svg[^>]*viewBox="[^"]*"/, '') // remove existing viewBox if present
-                  .replace(/<svg[^>]*>/, match => `${match}<g id="viewport-group">`)
-                  .replace('</svg>', '</g></svg>')
+                __html: svgContent.replace('<svg', '<svg id="world-map-svg"')
               }}
               style={{
+                transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+                transformOrigin: 'center',
                 transition: 'none',
-                willChange: 'auto'
+                willChange: 'transform'
               }}
             />
-          </div-->
+          </div>
         ) : (
           <div className="flex items-center justify-center h-full">
             <div className="text-primary-foreground">Loading world map...</div>
           </div>
         )}
 
-        useEffect(() => {
-          const g = document.querySelector('#world-map-svg #viewport-group') as SVGGElement;
-          if (g) {
-            g.setAttribute('transform', `translate(${pan.x}, ${pan.y}) scale(${zoom})`);
-          }
-        }, [pan, zoom]);
-        
         {/* Zoom Controls */}
         <div className="absolute bottom-4 right-4 flex flex-col gap-2 pointer-events-auto">
           <Button
