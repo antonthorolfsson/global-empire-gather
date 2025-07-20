@@ -529,21 +529,20 @@ const GameMap: React.FC<GameMapProps> = ({
           >
             <div
               id="world-map-container"
-              className="w-full h-full"
-              dangerouslySetInnerHTML={{ 
-                __html: svgContent.replace('<svg', '<svg id="world-map-svg"')
+              className="w-full h-full overflow-hidden"
+              style={{ 
+                userSelect: 'none',
+                touchAction: 'none'
               }}
-              style={{
-                transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
-                transformOrigin: 'center',
-                transition: 'none',
-                willChange: 'transform',
-                imageRendering: 'crisp-edges' as const,
-                shapeRendering: 'crispEdges' as const,
-                textRendering: 'geometricPrecision' as const,
-                vectorEffect: 'non-scaling-stroke'
-              } as React.CSSProperties}
-            />
+            >
+              <div
+                className="w-full h-full"
+                dangerouslySetInnerHTML={{ 
+                  __html: svgContent.replace('<svg', 
+                    `<svg id="world-map-svg" style="transform: translate(${pan.x}px, ${pan.y}px) scale(${zoom}); transform-origin: center; image-rendering: -webkit-optimize-contrast; image-rendering: crisp-edges; shape-rendering: crispEdges;"`)
+                }}
+              />
+            </div>
           </div>
         ) : (
           <div className="flex items-center justify-center h-full">
