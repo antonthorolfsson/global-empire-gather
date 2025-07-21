@@ -524,7 +524,7 @@ const GameMap: React.FC<GameMapProps> = ({
             onTouchEnd={handleTouchEnd}
             style={{ 
               userSelect: 'none',
-              touchAction: 'none' // Prevent browser's default touch behaviors
+              touchAction: 'pan-y' // Allow vertical scrolling but handle horizontal panning
             }}
           >
             <div
