@@ -508,7 +508,7 @@ const GameMap: React.FC<GameMapProps> = ({
   }, [svgContent, players, selectedCountries]);
 
   return (
-    <Card className="w-full overflow-hidden md:h-full h-[70vh]" style={{ background: 'hsl(200 70% 85%)' }}>
+    <Card className="w-full h-full overflow-hidden" style={{ background: 'hsl(200 70% 85%)' }}>
       <div className="relative w-full h-full animate-map-zoom">
         {svgContent ? (
           <div 
