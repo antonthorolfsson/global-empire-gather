@@ -49,9 +49,57 @@ const GameMap: React.FC<GameMapProps> = ({
   const mapContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Import the SVG content directly
+    // Import the SVG content directly and normalize it for crisp rendering
     import('/src/assets/world-map.svg?raw')
-      .then(module => setSvgContent(module.default))
+      .then(module => {
+        if (typeof window === 'undefined' || typeof DOMParser === 'undefined') {
+          setSvgContent(module.default);
+          return;
+        }
+
+        const parser = new DOMParser();
+        const documentFragment = parser.parseFromString(module.default, 'image/svg+xml');
+        const svgElement = documentFragment.documentElement as SVGSVGElement | null;
+
+        if (!svgElement || svgElement.tagName.toLowerCase() !== 'svg') {
+          setSvgContent(module.default);
+          return;
+        }
+
+        const originalWidth = parseFloat(svgElement.getAttribute('width') || '1009.6727');
+        const originalHeight = parseFloat(svgElement.getAttribute('height') || '665.96301');
+
+        svgElement.setAttribute('id', 'world-map-svg');
+        svgElement.setAttribute('width', '100%');
+        svgElement.setAttribute('height', '100%');
+        svgElement.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+
+        if (!svgElement.getAttribute('viewBox')) {
+          svgElement.setAttribute('viewBox', `0 0 ${originalWidth} ${originalHeight}`);
+        }
+
+        svgElement.setAttribute('shape-rendering', 'geometricPrecision');
+        svgElement.setAttribute('text-rendering', 'geometricPrecision');
+        svgElement.setAttribute('image-rendering', 'crisp-edges');
+        svgElement.setAttribute(
+          'style',
+          'image-rendering: -webkit-optimize-contrast; image-rendering: crisp-edges; shape-rendering: geometricPrecision; text-rendering: geometricPrecision;'
+        );
+
+        const paths = svgElement.querySelectorAll<SVGPathElement>('path');
+        paths.forEach(path => {
+          path.setAttribute('vector-effect', 'non-scaling-stroke');
+          path.setAttribute('shape-rendering', 'geometricPrecision');
+        });
+
+        if (typeof XMLSerializer === 'undefined') {
+          setSvgContent(svgElement.outerHTML);
+          return;
+        }
+
+        const serializer = new XMLSerializer();
+        setSvgContent(serializer.serializeToString(svgElement));
+      })
       .catch(error => console.error('Error loading world map:', error));
   }, []);
 
@@ -545,8 +593,7 @@ const GameMap: React.FC<GameMapProps> = ({
               id="world-map-container"
               className="w-full h-full"
               dangerouslySetInnerHTML={{
-                __html: svgContent.replace('<svg',
-                  `<svg id="world-map-svg" style="image-rendering: -webkit-optimize-contrast; image-rendering: crisp-edges; shape-rendering: crispEdges;"`)
+                __html: svgContent
               }}
             />
           </div>
