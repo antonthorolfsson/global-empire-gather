@@ -1,6 +1,13 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Chess, type Move as ChessJsMove, type Square } from 'chess.js';
+import { Chessground } from '@lichess-org/chessground';
+import type { Api as ChessgroundApi } from '@lichess-org/chessground/api';
+import type { Config as ChessgroundConfig } from '@lichess-org/chessground/config';
+import type { Color as ChessgroundColor, Dests, Key } from '@lichess-org/chessground/types';
+import '@lichess-org/chessground/assets/chessground.base.css';
+import '@lichess-org/chessground/assets/chessground.brown.css';
+import '@lichess-org/chessground/assets/chessground.cburnett.css';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/components/AuthWrapper';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -13,1110 +20,720 @@ interface ChessGameProps {
   onGameEnd: (winnerId: string) => void;
 }
 
-interface ChessPiece {
+type PlayerColor = 'white' | 'black';
+type GameStatus = 'playing' | 'checkmate' | 'stalemate' | 'draw' | 'timeout';
+
+interface PersistedBoardState {
+  fen: string;
+  lastMove?: [Square, Square] | null;
+  pgn?: string;
+}
+
+interface LegacyChessPiece {
   type: 'king' | 'queen' | 'rook' | 'bishop' | 'knight' | 'pawn';
-  color: 'white' | 'black';
+  color: PlayerColor;
 }
 
-interface ChessSquare {
-  piece: ChessPiece | null;
-  isSelected: boolean;
-  isPossibleMove: boolean;
+interface LegacyChessSquare {
+  piece: LegacyChessPiece | null;
 }
 
-interface ChessMove {
+interface ChessMoveRow {
   id: string;
   move_number: number;
-  player_color: 'white' | 'black';
+  player_color: PlayerColor;
   from_row: number;
   from_col: number;
   to_row: number;
   to_col: number;
   piece_type: string;
   captured_piece: string | null;
-  board_state: ChessSquare[][];
-  special_move?: 'castle_kingside' | 'castle_queenside' | 'en_passant' | null;
+  board_state: unknown;
+  special_move?: string | null;
 }
 
-interface Position {
-  row: number;
-  col: number;
-}
+const INITIAL_FEN = new Chess().fen();
+const PIECE_TYPE_BY_SYMBOL: Record<string, string> = {
+  p: 'pawn',
+  n: 'knight',
+  b: 'bishop',
+  r: 'rook',
+  q: 'queen',
+  k: 'king',
+};
+const FILES = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'] as const;
+
+const toPlayerColor = (turn: 'w' | 'b'): PlayerColor => (turn === 'w' ? 'white' : 'black');
+
+const toChessgroundColor = (color: PlayerColor | null | undefined): ChessgroundColor | undefined => {
+  if (color === 'white' || color === 'black') {
+    return color;
+  }
+
+  return undefined;
+};
+
+const squareToCoords = (square: Square) => {
+  return {
+    row: 8 - Number.parseInt(square[1], 10),
+    col: square.charCodeAt(0) - 97,
+  };
+};
+
+const coordsToSquare = (row: number, col: number): Square => `${FILES[col]}${8 - row}` as Square;
+
+const normalizeStoredFen = (fen: string) => {
+  const trimmedFen = fen.trim();
+  return trimmedFen.includes(' ') ? trimmedFen : `${trimmedFen} w - - 0 1`;
+};
+
+const isPersistedBoardState = (value: unknown): value is PersistedBoardState => {
+  return typeof value === 'object' && value !== null && 'fen' in value && typeof (value as PersistedBoardState).fen === 'string';
+};
+
+const isLegacyBoardState = (value: unknown): value is LegacyChessSquare[][] => Array.isArray(value) && value.every(row => Array.isArray(row));
+
+const legacyBoardToFen = (legacyBoard: LegacyChessSquare[][]) => {
+  const rows = legacyBoard.map(row => {
+    let fenRow = '';
+    let emptyCount = 0;
+
+    row.forEach(square => {
+      const piece = square?.piece;
+
+      if (!piece) {
+        emptyCount += 1;
+        return;
+      }
+
+      if (emptyCount > 0) {
+        fenRow += String(emptyCount);
+        emptyCount = 0;
+      }
+
+      const symbol = piece.type === 'knight' ? 'n' : piece.type[0];
+      fenRow += piece.color === 'white' ? symbol.toUpperCase() : symbol;
+    });
+
+    if (emptyCount > 0) {
+      fenRow += String(emptyCount);
+    }
+
+    return fenRow || '8';
+  });
+
+  return `${rows.join('/')} w - - 0 1`;
+};
+
+const readBoardState = (boardState: unknown): PersistedBoardState => {
+  if (isPersistedBoardState(boardState)) {
+    return {
+      ...boardState,
+      fen: normalizeStoredFen(boardState.fen),
+    };
+  }
+
+  if (isLegacyBoardState(boardState)) {
+    return {
+      fen: legacyBoardToFen(boardState),
+      lastMove: null,
+    };
+  }
+
+  return {
+    fen: INITIAL_FEN,
+    lastMove: null,
+  };
+};
+
+const getGameStatusFromChess = (game: Chess): GameStatus => {
+  if (game.isCheckmate()) {
+    return 'checkmate';
+  }
+
+  if (game.isStalemate()) {
+    return 'stalemate';
+  }
+
+  if (game.isDraw()) {
+    return 'draw';
+  }
+
+  return 'playing';
+};
+
+const getResultMessage = (status: Exclude<GameStatus, 'playing'>, winner: PlayerColor | null) => {
+  if (status === 'checkmate' && winner) {
+    return `Checkmate! ${winner.charAt(0).toUpperCase() + winner.slice(1)} wins!`;
+  }
+
+  if (status === 'timeout' && winner) {
+    return `${winner.charAt(0).toUpperCase() + winner.slice(1)} wins on time!`;
+  }
+
+  if (status === 'stalemate') {
+    return 'Stalemate! The game is a draw.';
+  }
+
+  return 'The game ended in a draw.';
+};
 
 const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd }) => {
   const { toast } = useToast();
-  const { user } = useAuth();
   const isMobile = useIsMobile();
   const { checkRateLimit } = useRateLimit();
-  const [board, setBoard] = useState<ChessSquare[][]>([]);
-  const [currentPlayer, setCurrentPlayer] = useState<'white' | 'black'>('white');
-  const [selectedSquare, setSelectedSquare] = useState<{row: number, col: number} | null>(null);
-  const [gameStatus, setGameStatus] = useState<'playing' | 'checkmate' | 'stalemate' | 'draw' | 'timeout'>('playing');
-  const [winner, setWinner] = useState<'white' | 'black' | null>(null);
+
+  const boardElementRef = useRef<HTMLDivElement>(null);
+  const chessgroundRef = useRef<ChessgroundApi | null>(null);
+  const chessRef = useRef(new Chess());
+  const moveNumberRef = useRef(0);
+  const timerIntervalRef = useRef<ReturnType<typeof window.setInterval> | null>(null);
+
+  const [fen, setFen] = useState(INITIAL_FEN);
+  const [currentPlayer, setCurrentPlayer] = useState<PlayerColor>('white');
+  const [gameStatus, setGameStatus] = useState<GameStatus>('playing');
+  const [winner, setWinner] = useState<PlayerColor | null>(null);
   const [moveNumber, setMoveNumber] = useState(0);
-  const [isMyTurn, setIsMyTurn] = useState(false);
-  const [gameHistory, setGameHistory] = useState<string[]>([]);
-  const [isInCheck, setIsInCheck] = useState<{ white: boolean; black: boolean }>({ white: false, black: false });
-  
-  // Special move tracking state
-  const [lastMove, setLastMove] = useState<ChessMove | null>(null);
-  const [castlingRights, setCastlingRights] = useState({
-    white: { kingside: true, queenside: true },
-    black: { kingside: true, queenside: true }
-  });
-  
-  // Chess clock state
-  const [whiteTimeRemaining, setWhiteTimeRemaining] = useState(300); // 5 minutes in seconds
-  const [blackTimeRemaining, setBlackTimeRemaining] = useState(300); // 5 minutes in seconds
-  const [timerInterval, setTimerInterval] = useState<NodeJS.Timeout | null>(null);
+  const [lastMove, setLastMove] = useState<[Square, Square] | null>(null);
+  const [whiteTimeRemaining, setWhiteTimeRemaining] = useState(300);
+  const [blackTimeRemaining, setBlackTimeRemaining] = useState(300);
   const [chessGameId, setChessGameId] = useState<string | null>(null);
 
-  useEffect(() => {
-    console.log('ChessGame: Initializing for warId:', warId, 'userPlayerSide:', userPlayerSide);
-    initializeBoard();
-    loadGameState();
-    initializeChessGame();
-    
-    const cleanup = setupRealtimeSubscription();
-    return () => {
-      cleanup();
-      if (timerInterval) {
-        clearInterval(timerInterval);
-      }
-    };
-  }, [warId]);
+  const isMyTurn = userPlayerSide !== null && currentPlayer === userPlayerSide && gameStatus === 'playing';
 
   useEffect(() => {
-    console.log('ChessGame: Turn changed - currentPlayer:', currentPlayer, 'userPlayerSide:', userPlayerSide);
-    setIsMyTurn(currentPlayer === userPlayerSide);
-  }, [currentPlayer, userPlayerSide]);
-
-  // Timer effect
-  useEffect(() => {
-    if (gameStatus === 'playing' && (whiteTimeRemaining <= 0 || blackTimeRemaining <= 0)) {
-      handleTimeout();
-    }
-  }, [whiteTimeRemaining, blackTimeRemaining, gameStatus]);
-  
-  // Timer and chess game initialization functions
-  const initializeChessGame = async () => {
-    try {
-      console.log('ChessGame: Initializing chess game for warId:', warId);
-      
-      // Check if chess game already exists
-      const { data: existingGame, error: fetchError } = await supabase
-        .from('chess_games')
-        .select('*')
-        .eq('war_id', warId)
-        .maybeSingle();
-
-      if (fetchError) {
-        console.error('ChessGame: Error fetching chess game:', fetchError);
-        throw fetchError;
-      }
-
-      if (existingGame) {
-        console.log('ChessGame: Found existing chess game:', existingGame);
-        // Load existing game state
-        setChessGameId(existingGame.id);
-        setWhiteTimeRemaining(existingGame.white_time_remaining);
-        setBlackTimeRemaining(existingGame.black_time_remaining);
-        setCurrentPlayer(existingGame.current_player as 'white' | 'black');
-        setGameStatus(existingGame.game_status as 'playing' | 'checkmate' | 'stalemate' | 'draw' | 'timeout');
-        if (existingGame.winner) {
-          setWinner(existingGame.winner as 'white' | 'black');
-        }
-      } else {
-        console.log('ChessGame: Creating new chess game');
-        // Create new chess game
-        const { data: newGame, error: createError } = await supabase
-          .from('chess_games')
-          .insert({
-            war_id: warId,
-            white_time_remaining: 300,
-            black_time_remaining: 300,
-            current_player: 'white',
-            game_status: 'playing'
-          })
-          .select()
-          .single();
-
-        if (createError) {
-          console.error('ChessGame: Error creating chess game:', createError);
-          throw createError;
-        }
-        
-        console.log('ChessGame: Created new chess game:', newGame);
-        setChessGameId(newGame.id);
-      }
-    } catch (error: any) {
-      console.error('Error initializing chess game:', error);
-    }
-  };
-
-  const startTimer = useCallback(() => {
-    // Don't start timer until first move is made
-    if (moveNumber === 0) return;
-    
-    // Start timer if game is playing (for any player)
-    if (gameStatus === 'playing') {
-      console.log('ChessGame: Starting timer for', currentPlayer);
-      
-      const newInterval = setInterval(() => {
-        if (currentPlayer === 'white') {
-          setWhiteTimeRemaining(prev => Math.max(0, prev - 1));
-        } else {
-          setBlackTimeRemaining(prev => Math.max(0, prev - 1));
-        }
-      }, 1000);
-
-      setTimerInterval(newInterval);
-    }
-  }, [gameStatus, currentPlayer, moveNumber]);
+    moveNumberRef.current = moveNumber;
+  }, [moveNumber]);
 
   const stopTimer = useCallback(() => {
-    console.log('ChessGame: Stopping timer');
-    setTimerInterval(prev => {
-      if (prev) {
-        clearInterval(prev);
-      }
-      return null;
-    });
+    if (timerIntervalRef.current !== null) {
+      window.clearInterval(timerIntervalRef.current);
+      timerIntervalRef.current = null;
+    }
   }, []);
 
-  // Update database periodically (every 10 seconds) instead of on every tick
-  useEffect(() => {
-    if (gameStatus === 'playing' && isMyTurn && moveNumber > 0) {
-      const updateInterval = setInterval(() => {
-        if (chessGameId) {
-          updateTimerInDatabase(whiteTimeRemaining, blackTimeRemaining);
-        }
-      }, 10000); // Update every 10 seconds
+  const buildBoardState = useCallback((game: Chess, move: [Square, Square] | null): PersistedBoardState => {
+    return {
+      fen: game.fen(),
+      lastMove: move,
+      pgn: game.pgn(),
+    };
+  }, []);
 
-      return () => clearInterval(updateInterval);
+  const buildMoveDests = useCallback((game: Chess): Dests => {
+    const destinations: Dests = new Map();
+
+    game.moves({ verbose: true }).forEach(move => {
+      const origin = move.from as Key;
+      const destination = move.to as Key;
+      const currentDestinations = destinations.get(origin) ?? [];
+      currentDestinations.push(destination);
+      destinations.set(origin, currentDestinations);
+    });
+
+    return destinations;
+  }, []);
+
+  const syncBoardUi = useCallback(() => {
+    if (!chessgroundRef.current) {
+      return;
     }
-  }, [gameStatus, isMyTurn, moveNumber, chessGameId, whiteTimeRemaining, blackTimeRemaining]);
 
-  const updateTimerInDatabase = async (whiteTime: number, blackTime: number) => {
-    if (!chessGameId) return;
+    const config: ChessgroundConfig = {
+      fen,
+      orientation: toChessgroundColor(userPlayerSide) ?? 'white',
+      turnColor: toChessgroundColor(currentPlayer) ?? 'white',
+      coordinates: true,
+      movable: {
+        color: isMyTurn ? currentPlayer : undefined,
+        dests: buildMoveDests(chessRef.current),
+        rookCastle: true,
+      },
+      premovable: {
+        enabled: false,
+      },
+      animation: {
+        enabled: true,
+        duration: 180,
+      },
+      draggable: {
+        enabled: gameStatus === 'playing',
+      },
+      selectable: {
+        enabled: gameStatus === 'playing',
+      },
+      lastMove: lastMove ? [lastMove[0] as Key, lastMove[1] as Key] : undefined,
+      check: chessRef.current.inCheck() ? currentPlayer : false,
+      drawable: {
+        enabled: false,
+        visible: false,
+      },
+    };
+
+    chessgroundRef.current.set(config);
+  }, [buildMoveDests, currentPlayer, fen, gameStatus, isMyTurn, lastMove, userPlayerSide]);
+
+  const applyChessPosition = useCallback((game: Chess, nextMoveNumber: number, nextLastMove: [Square, Square] | null) => {
+    chessRef.current = game;
+    moveNumberRef.current = nextMoveNumber;
+    setFen(game.fen());
+    setMoveNumber(nextMoveNumber);
+    setCurrentPlayer(toPlayerColor(game.turn()));
+    setLastMove(nextLastMove);
+  }, []);
+
+  const setGameResult = useCallback((status: GameStatus, nextWinner: PlayerColor | null, shouldNotify = false) => {
+    setGameStatus(status);
+    setWinner(nextWinner);
+
+    if (status !== 'playing') {
+      stopTimer();
+    }
+
+    if (shouldNotify && status !== 'playing') {
+      toast({
+        title: status === 'timeout' ? "Time's Up!" : 'Game Over',
+        description: getResultMessage(status, nextWinner),
+      });
+    }
+  }, [stopTimer, toast]);
+
+  const updateTimerInDatabase = useCallback(async (whiteTime: number, blackTime: number) => {
+    if (!chessGameId) {
+      return;
+    }
+
+    await supabase
+      .from('chess_games')
+      .update({
+        white_time_remaining: whiteTime,
+        black_time_remaining: blackTime,
+        current_player: currentPlayer,
+      })
+      .eq('id', chessGameId);
+  }, [chessGameId, currentPlayer]);
+
+  const handleTimeout = useCallback(async () => {
+    if (gameStatus !== 'playing' || !chessGameId) {
+      return;
+    }
+
+    const timedOutPlayer = whiteTimeRemaining <= 0 ? 'white' : 'black';
+    const timeoutWinner = timedOutPlayer === 'white' ? 'black' : 'white';
+    const persistedState = buildBoardState(chessRef.current, lastMove);
 
     try {
       await supabase
         .from('chess_games')
         .update({
-          white_time_remaining: whiteTime,
-          black_time_remaining: blackTime,
-          current_player: currentPlayer
+          game_status: 'timeout',
+          winner: timeoutWinner,
+          white_time_remaining: Math.max(whiteTimeRemaining, 0),
+          black_time_remaining: Math.max(blackTimeRemaining, 0),
         })
         .eq('id', chessGameId);
-    } catch (error: any) {
-      console.error('Error updating timer:', error);
-    }
-  };
 
-  const handleTimeout = async () => {
-    if (gameStatus !== 'playing') return;
-
-    const loser = whiteTimeRemaining <= 0 ? 'white' : 'black';
-    const winner = loser === 'white' ? 'black' : 'white';
-
-    try {
-      // Update chess game status
-      if (chessGameId) {
-        await supabase
-          .from('chess_games')
-          .update({
-            game_status: 'timeout',
-            winner: winner
-          })
-          .eq('id', chessGameId);
-      }
-
-      // Save timeout move with valid coordinates and piece type
       await supabase
         .from('chess_moves')
         .insert({
           war_id: warId,
-          move_number: moveNumber + 1,
-          player_color: loser,
+          move_number: moveNumberRef.current + 1,
+          player_color: timedOutPlayer,
           from_row: 0,
           from_col: 0,
           to_row: 0,
           to_col: 0,
-          piece_type: 'king', // Use valid piece type
-          captured_piece: 'timeout', // This indicates it's a timeout
-          board_state: JSON.parse(JSON.stringify(board))
+          piece_type: 'king',
+          captured_piece: 'timeout',
+          board_state: persistedState,
+          special_move: null,
         });
 
-      setGameStatus('timeout');
-      setWinner(winner);
-      stopTimer();
-      onGameEnd(winner);
-
-      toast({
-        title: "Time's Up!",
-        description: `${loser.charAt(0).toUpperCase() + loser.slice(1)} ran out of time. ${winner.charAt(0).toUpperCase() + winner.slice(1)} wins!`,
-      });
+      moveNumberRef.current += 1;
+      setMoveNumber(moveNumberRef.current);
+      setGameResult('timeout', timeoutWinner, true);
+      onGameEnd(timeoutWinner);
     } catch (error: any) {
-      console.error('Error handling timeout:', error);
+      toast({
+        title: 'Error handling timeout',
+        description: error.message,
+        variant: 'destructive',
+      });
     }
-  };
+  }, [blackTimeRemaining, buildBoardState, chessGameId, gameStatus, lastMove, onGameEnd, setGameResult, toast, warId, whiteTimeRemaining]);
 
-  const formatTime = (seconds: number): string => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
-  };
+  const applyMoveFromDatabase = useCallback((move: ChessMoveRow) => {
+    if (move.move_number <= moveNumberRef.current) {
+      return;
+    }
 
-  // Single timer control effect - manages timer based on game state and current player
+    const persistedState = readBoardState(move.board_state);
+    const nextGame = new Chess(normalizeStoredFen(persistedState.fen));
+    const moveSquares: [Square, Square] | null = persistedState.lastMove ?? [coordsToSquare(move.from_row, move.from_col), coordsToSquare(move.to_row, move.to_col)];
+
+    applyChessPosition(nextGame, move.move_number, moveSquares);
+
+    if (move.captured_piece === 'timeout') {
+      setGameResult('timeout', move.player_color === 'white' ? 'black' : 'white');
+      return;
+    }
+
+    if (move.captured_piece === 'forfeit') {
+      setGameResult('checkmate', move.player_color === 'white' ? 'black' : 'white');
+      return;
+    }
+
+    const derivedStatus = getGameStatusFromChess(nextGame);
+    setGameResult(derivedStatus, derivedStatus === 'checkmate' ? move.player_color : null);
+  }, [applyChessPosition, setGameResult]);
+
+  const loadGameState = useCallback(async () => {
+    const { data, error } = await supabase
+      .from('chess_moves')
+      .select('*')
+      .eq('war_id', warId)
+      .order('move_number', { ascending: true });
+
+    if (error) {
+      throw error;
+    }
+
+    if (!data || data.length === 0) {
+      const freshGame = new Chess();
+      applyChessPosition(freshGame, 0, null);
+      setGameStatus('playing');
+      setWinner(null);
+      return;
+    }
+
+    applyMoveFromDatabase(data[data.length - 1] as ChessMoveRow);
+  }, [applyChessPosition, applyMoveFromDatabase, warId]);
+
+  const initializeChessGame = useCallback(async () => {
+    const { data: existingGame, error: fetchError } = await supabase
+      .from('chess_games')
+      .select('*')
+      .eq('war_id', warId)
+      .maybeSingle();
+
+    if (fetchError) {
+      throw fetchError;
+    }
+
+    if (existingGame) {
+      setChessGameId(existingGame.id);
+      setWhiteTimeRemaining(existingGame.white_time_remaining);
+      setBlackTimeRemaining(existingGame.black_time_remaining);
+      setCurrentPlayer(existingGame.current_player as PlayerColor);
+      setGameStatus(existingGame.game_status as GameStatus);
+      setWinner(existingGame.winner as PlayerColor | null);
+      return;
+    }
+
+    const { data: createdGame, error: createError } = await supabase
+      .from('chess_games')
+      .insert({
+        war_id: warId,
+        white_time_remaining: 300,
+        black_time_remaining: 300,
+        current_player: 'white',
+        game_status: 'playing',
+      })
+      .select()
+      .single();
+
+    if (createError) {
+      throw createError;
+    }
+
+    setChessGameId(createdGame.id);
+  }, [warId]);
+
+  const submitMove = useCallback(async (from: Key, to: Key) => {
+    if (!isMyTurn || gameStatus !== 'playing') {
+      syncBoardUi();
+      return;
+    }
+
+    const allowed = await checkRateLimit('chess_move');
+    if (!allowed) {
+      syncBoardUi();
+      return;
+    }
+
+    const workingGame = new Chess(chessRef.current.fen());
+    const candidateMoves = workingGame.moves({ verbose: true, square: from as Square });
+    const moveCandidate = candidateMoves.find(candidate => candidate.to === to) ?? null;
+
+    if (!moveCandidate) {
+      syncBoardUi();
+      return;
+    }
+
+    try {
+      const executedMove = workingGame.move({
+        from,
+        to,
+        promotion: moveCandidate.promotion ?? 'q',
+      }) as ChessJsMove;
+      const nextStatus = getGameStatusFromChess(workingGame);
+      const winningColor = nextStatus === 'checkmate' ? currentPlayer : null;
+      const persistedState = buildBoardState(workingGame, [from as Square, to as Square]);
+      const fromCoords = squareToCoords(from as Square);
+      const toCoords = squareToCoords(to as Square);
+      const nextMoveNumber = moveNumberRef.current + 1;
+
+      const moveInsert = {
+        war_id: warId,
+        move_number: nextMoveNumber,
+        player_color: currentPlayer,
+        from_row: fromCoords.row,
+        from_col: fromCoords.col,
+        to_row: toCoords.row,
+        to_col: toCoords.col,
+        piece_type: PIECE_TYPE_BY_SYMBOL[executedMove.piece],
+        captured_piece: executedMove.captured ? PIECE_TYPE_BY_SYMBOL[executedMove.captured] : null,
+        board_state: persistedState,
+        special_move: executedMove.isKingsideCastle()
+          ? 'castle_kingside'
+          : executedMove.isQueensideCastle()
+            ? 'castle_queenside'
+            : executedMove.isEnPassant()
+              ? 'en_passant'
+              : null,
+      };
+
+      const { error: insertError } = await supabase.from('chess_moves').insert(moveInsert);
+      if (insertError) {
+        throw insertError;
+      }
+
+      applyChessPosition(workingGame, nextMoveNumber, [from as Square, to as Square]);
+      setGameResult(nextStatus, winningColor, nextStatus !== 'playing');
+
+      if (chessGameId) {
+        const { error: updateError } = await supabase
+          .from('chess_games')
+          .update({
+            current_player: toPlayerColor(workingGame.turn()),
+            game_status: nextStatus,
+            winner: winningColor,
+            white_time_remaining: whiteTimeRemaining,
+            black_time_remaining: blackTimeRemaining,
+          })
+          .eq('id', chessGameId);
+
+        if (updateError) {
+          throw updateError;
+        }
+      }
+
+      if (winningColor) {
+        onGameEnd(winningColor);
+      }
+    } catch (error: any) {
+      toast({
+        title: 'Error making move',
+        description: error.message,
+        variant: 'destructive',
+      });
+      syncBoardUi();
+    }
+  }, [applyChessPosition, blackTimeRemaining, buildBoardState, checkRateLimit, chessGameId, currentPlayer, gameStatus, isMyTurn, onGameEnd, setGameResult, syncBoardUi, toast, warId, whiteTimeRemaining]);
+
+  const forfeitGame = useCallback(async () => {
+    const losingColor = currentPlayer;
+    const winningColor = losingColor === 'white' ? 'black' : 'white';
+    const persistedState = buildBoardState(chessRef.current, lastMove);
+
+    try {
+      const nextMoveNumber = moveNumberRef.current + 1;
+
+      await supabase.from('chess_moves').insert({
+        war_id: warId,
+        move_number: nextMoveNumber,
+        player_color: losingColor,
+        from_row: 0,
+        from_col: 0,
+        to_row: 0,
+        to_col: 0,
+        piece_type: 'king',
+        captured_piece: 'forfeit',
+        board_state: persistedState,
+        special_move: null,
+      });
+
+      if (chessGameId) {
+        await supabase
+          .from('chess_games')
+          .update({
+            game_status: 'checkmate',
+            winner: winningColor,
+          })
+          .eq('id', chessGameId);
+      }
+
+      moveNumberRef.current = nextMoveNumber;
+      setMoveNumber(nextMoveNumber);
+      setGameResult('checkmate', winningColor, true);
+      onGameEnd(winningColor);
+    } catch (error: any) {
+      toast({
+        title: 'Error forfeiting game',
+        description: error.message,
+        variant: 'destructive',
+      });
+    }
+  }, [buildBoardState, chessGameId, currentPlayer, lastMove, onGameEnd, setGameResult, toast, warId]);
+
   useEffect(() => {
-    console.log('ChessGame: Timer control effect - gameStatus:', gameStatus, 'currentPlayer:', currentPlayer, 'moveNumber:', moveNumber);
-    
-    // Always stop any existing timer first
-    stopTimer();
-    
-    // Only start timer if game is playing and after first move
-    if (gameStatus === 'playing' && moveNumber > 0) {
-      startTimer();
-    }
-  }, [gameStatus, currentPlayer, moveNumber, startTimer, stopTimer]);
+    let isMounted = true;
 
-  const setupRealtimeSubscription = () => {
-    console.log('ChessGame: Setting up realtime subscription for warId:', warId);
-    
+    const initialize = async () => {
+      try {
+        await Promise.all([initializeChessGame(), loadGameState()]);
+      } catch (error: any) {
+        if (!isMounted) {
+          return;
+        }
+
+        toast({
+          title: 'Error loading chess game',
+          description: error.message,
+          variant: 'destructive',
+        });
+      }
+    };
+
+    initialize();
+
     const channel = supabase
       .channel(`chess-${warId}`)
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
         table: 'chess_moves',
-        filter: `war_id=eq.${warId}`
-      }, (payload) => {
-        console.log('ChessGame: New chess move received:', payload);
-        const move = payload.new as any;
-        applyMoveFromDatabase(move);
+        filter: `war_id=eq.${warId}`,
+      }, payload => {
+        if (isMounted) {
+          applyMoveFromDatabase(payload.new as ChessMoveRow);
+        }
       })
       .on('postgres_changes', {
         event: 'UPDATE',
         schema: 'public',
         table: 'chess_games',
-        filter: `war_id=eq.${warId}`
-      }, (payload) => {
-        console.log('ChessGame: Chess game state updated:', payload);
-        const gameData = payload.new as any;
-        setWhiteTimeRemaining(gameData.white_time_remaining);
-        setBlackTimeRemaining(gameData.black_time_remaining);
-        setCurrentPlayer(gameData.current_player);
-        setGameStatus(gameData.game_status);
-        if (gameData.winner) {
-          setWinner(gameData.winner);
+        filter: `war_id=eq.${warId}`,
+      }, payload => {
+        if (!isMounted) {
+          return;
         }
+
+        const updatedGame = payload.new as {
+          white_time_remaining: number;
+          black_time_remaining: number;
+          current_player: PlayerColor;
+          game_status: GameStatus;
+          winner: PlayerColor | null;
+        };
+
+        setWhiteTimeRemaining(updatedGame.white_time_remaining);
+        setBlackTimeRemaining(updatedGame.black_time_remaining);
+        setCurrentPlayer(updatedGame.current_player);
+        setGameStatus(updatedGame.game_status);
+        setWinner(updatedGame.winner);
       })
-      .subscribe((status) => {
-        console.log('ChessGame: Subscription status:', status);
-      });
+      .subscribe();
 
     return () => {
-      console.log('ChessGame: Cleaning up subscription');
+      isMounted = false;
+      stopTimer();
       supabase.removeChannel(channel);
     };
-  };
+  }, [applyMoveFromDatabase, initializeChessGame, loadGameState, stopTimer, toast, warId]);
 
-  const loadGameState = async () => {
-    try {
-      console.log('ChessGame: Loading game state for warId:', warId);
-      const { data: moves, error } = await supabase
-        .from('chess_moves')
-        .select('*')
-        .eq('war_id', warId)
-        .order('move_number', { ascending: true });
+  useEffect(() => {
+    if (gameStatus !== 'playing' || moveNumber === 0) {
+      stopTimer();
+      return;
+    }
 
-      if (error) throw error;
-
-      console.log('ChessGame: Loaded moves:', moves);
-      
-      if (moves && moves.length > 0) {
-        // Apply all moves to reconstruct game state
-        const latestMove = moves[moves.length - 1];
-        console.log('ChessGame: Latest move:', latestMove);
-        setBoard(JSON.parse(JSON.stringify(latestMove.board_state)) as ChessSquare[][]);
-        setMoveNumber(latestMove.move_number);
-        // Next player is opposite of who just moved
-        const nextPlayer = latestMove.player_color === 'white' ? 'black' : 'white';
-        console.log('ChessGame: Setting current player to:', nextPlayer);
-        setCurrentPlayer(nextPlayer);
+    stopTimer();
+    timerIntervalRef.current = window.setInterval(() => {
+      if (currentPlayer === 'white') {
+        setWhiteTimeRemaining(previous => Math.max(0, previous - 1));
       } else {
-        console.log('ChessGame: No moves found, game starts with white');
-        // No moves yet, white starts
-        setCurrentPlayer('white');
-        setMoveNumber(0);
+        setBlackTimeRemaining(previous => Math.max(0, previous - 1));
       }
-    } catch (error: any) {
-      console.error('ChessGame: Error loading game state:', error);
-    }
-  };
+    }, 1000);
 
-  const applyMoveFromDatabase = (move: any) => {
-    console.log('ChessGame: Applying move from database:', move);
-    console.log('ChessGame: Current board before update:', board.length, 'x', board[0]?.length);
-    
-    try {
-      const newBoard = JSON.parse(JSON.stringify(move.board_state)) as ChessSquare[][];
-      console.log('ChessGame: Parsed new board:', newBoard.length, 'x', newBoard[0]?.length);
-      
-      setBoard(newBoard);
-      setMoveNumber(move.move_number);
-      const nextPlayer = move.player_color === 'white' ? 'black' : 'white';
-      console.log('ChessGame: Setting current player from', currentPlayer, 'to', nextPlayer);
-      setCurrentPlayer(nextPlayer);
-      
-      // Update last move for en passant tracking
-      setLastMove(move);
-      
-      // Update castling rights based on the move
-      if (move.piece_type === 'king' || move.piece_type === 'rook') {
-        updateCastlingRightsFromMove(move);
-      }
-      
-      // Update game history for repetition detection
-      const boardHash = getBoardHash(newBoard);
-      setGameHistory(prev => [...prev, boardHash]);
-      
-      // Check for game end conditions
-      if (move.captured_piece === 'forfeit' || move.captured_piece === 'timeout' || move.captured_piece === 'king') {
-        console.log('ChessGame: Game ended by forfeit/timeout or king capture, winner:', move.player_color);
-        const gameEndStatus = move.captured_piece === 'timeout' ? 'timeout' : 'checkmate';
-        setGameStatus(gameEndStatus);
-        setWinner(move.player_color);
-        onGameEnd(move.player_color);
-      } else {
-        // Check for natural game endings (checkmate, stalemate, draw)
-        const gameResult = checkGameEnd(newBoard, nextPlayer);
-        if (gameResult !== 'playing') {
-          console.log('ChessGame: Game ended naturally:', gameResult);
-          setGameStatus(gameResult);
-          
-          if (gameResult === 'checkmate') {
-            setWinner(move.player_color); // Player who just moved wins
-            onGameEnd(move.player_color);
-          } else {
-            setWinner(null); // Draw/stalemate
-          }
-          
-          // Show appropriate message
-          const messages = {
-            checkmate: `Checkmate! ${move.player_color.charAt(0).toUpperCase() + move.player_color.slice(1)} wins!`,
-            stalemate: "Stalemate! The game is a draw.",
-            draw: "Draw by repetition!"
-          };
-          
-          toast({
-            title: "Game Over",
-            description: messages[gameResult],
-          });
-        }
-      }
-      
-      console.log('ChessGame: Move applied successfully');
-    } catch (error) {
-      console.error('ChessGame: Error applying move from database:', error);
-    }
-  };
-
-  const initializeBoard = () => {
-    const newBoard: ChessSquare[][] = Array(8).fill(null).map(() => 
-      Array(8).fill(null).map(() => ({ piece: null, isSelected: false, isPossibleMove: false }))
-    );
-
-    // Initialize pieces
-    const pieceOrder: ChessPiece['type'][] = ['rook', 'knight', 'bishop', 'queen', 'king', 'bishop', 'knight', 'rook'];
-    
-    // Black pieces (top)
-    for (let col = 0; col < 8; col++) {
-      newBoard[0][col].piece = { type: pieceOrder[col], color: 'black' };
-      newBoard[1][col].piece = { type: 'pawn', color: 'black' };
-    }
-    
-    // White pieces (bottom)
-    for (let col = 0; col < 8; col++) {
-      newBoard[7][col].piece = { type: pieceOrder[col], color: 'white' };
-      newBoard[6][col].piece = { type: 'pawn', color: 'white' };
-    }
-
-    setBoard(newBoard);
-  };
-
-  const getPieceSymbol = (piece: ChessPiece | null): string => {
-    if (!piece) return '';
-    
-    // Use the same outline symbols for both colors
-    const symbols = {
-      king: '♔', queen: '♕', rook: '♖', bishop: '♗', knight: '♘', pawn: '♙'
+    return () => {
+      stopTimer();
     };
-    
-    return symbols[piece.type];
-  };
+  }, [currentPlayer, gameStatus, moveNumber, stopTimer]);
 
-  const getPieceClasses = (piece: ChessPiece | null): string => {
-    if (!piece) return '';
-    
-    const baseClasses = "select-none pointer-events-none font-bold transition-all duration-200";
-    const colorClasses = piece.color === 'white' 
-      ? "text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)] stroke-black stroke-[0.5px]" 
-      : "text-gray-900 drop-shadow-[0_1px_1px_rgba(255,255,255,0.3)]";
-    
-    return `${baseClasses} ${colorClasses}`;
-  };
-
-  // Chess logic functions
-  const isPathClear = (fromRow: number, fromCol: number, toRow: number, toCol: number): boolean => {
-    const rowDiff = toRow - fromRow;
-    const colDiff = toCol - fromCol;
-    const steps = Math.max(Math.abs(rowDiff), Math.abs(colDiff));
-    
-    if (steps <= 1) return true;
-    
-    const rowStep = rowDiff === 0 ? 0 : rowDiff / Math.abs(rowDiff);
-    const colStep = colDiff === 0 ? 0 : colDiff / Math.abs(colDiff);
-    
-    for (let i = 1; i < steps; i++) {
-      const checkRow = fromRow + (rowStep * i);
-      const checkCol = fromCol + (colStep * i);
-      if (board[checkRow][checkCol].piece) return false;
+  useEffect(() => {
+    if (gameStatus === 'playing' && (whiteTimeRemaining <= 0 || blackTimeRemaining <= 0)) {
+      void handleTimeout();
     }
-    
-    return true;
-  };
+  }, [blackTimeRemaining, gameStatus, handleTimeout, whiteTimeRemaining]);
 
-  const findKing = (color: 'white' | 'black', gameBoard: ChessSquare[][]): Position | null => {
-    for (let row = 0; row < 8; row++) {
-      for (let col = 0; col < 8; col++) {
-        const piece = gameBoard[row][col].piece;
-        if (piece && piece.type === 'king' && piece.color === color) {
-          return { row, col };
-        }
-      }
-    }
-    return null;
-  };
-
-  const isSquareAttacked = (row: number, col: number, byColor: 'white' | 'black', gameBoard: ChessSquare[][]): boolean => {
-    for (let r = 0; r < 8; r++) {
-      for (let c = 0; c < 8; c++) {
-        const piece = gameBoard[r][c].piece;
-        if (piece && piece.color === byColor) {
-          if (canPieceAttackSquare(r, c, row, col, piece, gameBoard)) {
-            return true;
-          }
-        }
-      }
-    }
-    return false;
-  };
-
-  const canPieceAttackSquare = (fromRow: number, fromCol: number, toRow: number, toCol: number, piece: ChessPiece, gameBoard: ChessSquare[][]): boolean => {
-    const rowDiff = Math.abs(fromRow - toRow);
-    const colDiff = Math.abs(fromCol - toCol);
-    
-    switch (piece.type) {
-      case 'pawn':
-        const direction = piece.color === 'white' ? -1 : 1;
-        return toRow === fromRow + direction && Math.abs(fromCol - toCol) === 1;
-        
-      case 'rook':
-        return (fromRow === toRow || fromCol === toCol) && isPathClearForBoard(fromRow, fromCol, toRow, toCol, gameBoard);
-        
-      case 'bishop':
-        return rowDiff === colDiff && isPathClearForBoard(fromRow, fromCol, toRow, toCol, gameBoard);
-        
-      case 'queen':
-        return (fromRow === toRow || fromCol === toCol || rowDiff === colDiff) && 
-               isPathClearForBoard(fromRow, fromCol, toRow, toCol, gameBoard);
-        
-      case 'king':
-        return rowDiff <= 1 && colDiff <= 1;
-        
-      case 'knight':
-        return (rowDiff === 2 && colDiff === 1) || (rowDiff === 1 && colDiff === 2);
-        
-      default:
-        return false;
-    }
-  };
-
-  const isPathClearForBoard = (fromRow: number, fromCol: number, toRow: number, toCol: number, gameBoard: ChessSquare[][]): boolean => {
-    const rowDiff = toRow - fromRow;
-    const colDiff = toCol - fromCol;
-    const steps = Math.max(Math.abs(rowDiff), Math.abs(colDiff));
-    
-    if (steps <= 1) return true;
-    
-    const rowStep = rowDiff === 0 ? 0 : rowDiff / Math.abs(rowDiff);
-    const colStep = colDiff === 0 ? 0 : colDiff / Math.abs(colDiff);
-    
-    for (let i = 1; i < steps; i++) {
-      const checkRow = fromRow + (rowStep * i);
-      const checkCol = fromCol + (colStep * i);
-      if (gameBoard[checkRow][checkCol].piece) return false;
-    }
-    
-    return true;
-  };
-
-  const isInCheckAfterMove = (fromRow: number, fromCol: number, toRow: number, toCol: number, color: 'white' | 'black', gameBoard: ChessSquare[][]): boolean => {
-    // Create a temporary board to test the move
-    const tempBoard = gameBoard.map(row => row.map(square => ({ ...square })));
-    const piece = tempBoard[fromRow][fromCol].piece;
-    
-    if (!piece) return false;
-    
-    // Make the move on temp board
-    tempBoard[toRow][toCol].piece = piece;
-    tempBoard[fromRow][fromCol].piece = null;
-    
-    // Find king position after move
-    const kingPos = findKing(color, tempBoard);
-    if (!kingPos) return true; // King captured = check
-    
-    // Check if king is attacked
-    const oppositeColor = color === 'white' ? 'black' : 'white';
-    return isSquareAttacked(kingPos.row, kingPos.col, oppositeColor, tempBoard);
-  };
-
-  const getBoardHash = (gameBoard: ChessSquare[][]): string => {
-    return JSON.stringify(gameBoard.map(row => 
-      row.map(square => square.piece ? `${square.piece.color}${square.piece.type}` : null)
-    ));
-  };
-
-  const isThreefoldRepetition = (gameBoard: ChessSquare[][]): boolean => {
-    const currentHash = getBoardHash(gameBoard);
-    const positions = [...gameHistory, currentHash];
-    
-    let count = 0;
-    for (const position of positions) {
-      if (position === currentHash) count++;
-      if (count >= 3) return true;
-    }
-    
-    return false;
-  };
-
-  const getAllLegalMoves = (color: 'white' | 'black', gameBoard: ChessSquare[][]): Position[] => {
-    const legalMoves: Position[] = [];
-    
-    for (let fromRow = 0; fromRow < 8; fromRow++) {
-      for (let fromCol = 0; fromCol < 8; fromCol++) {
-        const piece = gameBoard[fromRow][fromCol].piece;
-        if (piece && piece.color === color) {
-          for (let toRow = 0; toRow < 8; toRow++) {
-            for (let toCol = 0; toCol < 8; toCol++) {
-              if (isValidMoveComplete(fromRow, fromCol, toRow, toCol, gameBoard)) {
-                legalMoves.push({ row: toRow, col: toCol });
-              }
-            }
-          }
-        }
-      }
-    }
-    
-    return legalMoves;
-  };
-
-  const isValidMoveComplete = (fromRow: number, fromCol: number, toRow: number, toCol: number, gameBoard: ChessSquare[][]): boolean => {
-    const piece = gameBoard[fromRow][fromCol].piece;
-    if (!piece) return false;
-    
-    // Can't move to same square
-    if (fromRow === toRow && fromCol === toCol) return false;
-    
-    // Can't capture own pieces
-    const targetPiece = gameBoard[toRow][toCol].piece;
-    if (targetPiece && targetPiece.color === piece.color) return false;
-    
-    // Check piece-specific movement rules
-    if (!isValidPieceMove(fromRow, fromCol, toRow, toCol, piece, gameBoard)) return false;
-    
-    // Check if move leaves king in check
-    if (isInCheckAfterMove(fromRow, fromCol, toRow, toCol, piece.color, gameBoard)) return false;
-    
-    return true;
-  };
-
-  const isValidPieceMove = (fromRow: number, fromCol: number, toRow: number, toCol: number, piece: ChessPiece, gameBoard: ChessSquare[][]): boolean => {
-    const rowDiff = Math.abs(fromRow - toRow);
-    const colDiff = Math.abs(fromCol - toCol);
-    const targetPiece = gameBoard[toRow][toCol].piece;
-    
-    switch (piece.type) {
-      case 'pawn':
-        const direction = piece.color === 'white' ? -1 : 1;
-        const startRow = piece.color === 'white' ? 6 : 1;
-        
-        // Forward move
-        if (fromCol === toCol && !targetPiece) {
-          if (toRow === fromRow + direction) return true;
-          if (fromRow === startRow && toRow === fromRow + 2 * direction) return true;
-        }
-        // Capture
-        if (Math.abs(fromCol - toCol) === 1 && toRow === fromRow + direction && targetPiece) {
-          return true;
-        }
-        
-        // En passant
-        if (Math.abs(fromCol - toCol) === 1 && toRow === fromRow + direction && !targetPiece) {
-          return canEnPassant(fromRow, fromCol, toRow, toCol, piece.color);
-        }
-        
-        return false;
-        
-      case 'rook':
-        return (fromRow === toRow || fromCol === toCol) && isPathClearForBoard(fromRow, fromCol, toRow, toCol, gameBoard);
-        
-      case 'bishop':
-        return rowDiff === colDiff && isPathClearForBoard(fromRow, fromCol, toRow, toCol, gameBoard);
-        
-      case 'queen':
-        return (fromRow === toRow || fromCol === toCol || rowDiff === colDiff) && 
-               isPathClearForBoard(fromRow, fromCol, toRow, toCol, gameBoard);
-        
-      case 'king':
-        // Normal king move
-        if (rowDiff <= 1 && colDiff <= 1) return true;
-        
-        // Castling - king moves 2 squares horizontally
-        if (rowDiff === 0 && colDiff === 2) {
-          return canCastle(fromRow, fromCol, toRow, toCol, piece.color, gameBoard);
-        }
-        return false;
-        
-      case 'knight':
-        return (rowDiff === 2 && colDiff === 1) || (rowDiff === 1 && colDiff === 2);
-        
-      default:
-        return false;
-    }
-  };
-
-  const checkGameEnd = (gameBoard: ChessSquare[][], playerToMove: 'white' | 'black'): 'playing' | 'checkmate' | 'stalemate' | 'draw' => {
-    const legalMoves = getAllLegalMoves(playerToMove, gameBoard);
-    const kingPos = findKing(playerToMove, gameBoard);
-    
-    if (!kingPos) return 'checkmate'; // King captured
-    
-    const oppositeColor = playerToMove === 'white' ? 'black' : 'white';
-    const inCheck = isSquareAttacked(kingPos.row, kingPos.col, oppositeColor, gameBoard);
-    
-    if (legalMoves.length === 0) {
-      return inCheck ? 'checkmate' : 'stalemate';
-    }
-    
-    if (isThreefoldRepetition(gameBoard)) {
-      return 'draw';
-    }
-    
-    return 'playing';
-  };
-
-  const makeMove = async (fromRow: number, fromCol: number, toRow: number, toCol: number) => {
-    if (!isValidMoveComplete(fromRow, fromCol, toRow, toCol, board)) return false;
-    if (!isMyTurn) {
-      toast({
-        title: "Not your turn",
-        description: "Please wait for your opponent to move.",
-        variant: "destructive",
-      });
-      return false;
-    }
-
-    // Check rate limit for chess moves
-    const canProceed = await checkRateLimit('chess_move');
-    if (!canProceed) return false;
-
-    const newBoard = board.map(row => row.map(square => ({ ...square, isSelected: false, isPossibleMove: false })));
-    const movingPiece = newBoard[fromRow][fromCol].piece;
-    const capturedPiece = newBoard[toRow][toCol].piece;
-    
-    if (!movingPiece) return false;
-
-    // Handle special moves
-    let specialMove: 'castle_kingside' | 'castle_queenside' | 'en_passant' | null = null;
-    let actualCapturedPiece = capturedPiece;
-
-    // Check for castling
-    if (movingPiece.type === 'king' && Math.abs(toCol - fromCol) === 2) {
-      // Move the rook as well
-      if (toCol > fromCol) {
-        // Kingside castling
-        specialMove = 'castle_kingside';
-        newBoard[fromRow][5].piece = newBoard[fromRow][7].piece; // Move rook to f-file
-        newBoard[fromRow][7].piece = null;
-      } else {
-        // Queenside castling
-        specialMove = 'castle_queenside';
-        newBoard[fromRow][3].piece = newBoard[fromRow][0].piece; // Move rook to d-file
-        newBoard[fromRow][0].piece = null;
-      }
-    }
-    
-    // Check for en passant
-    if (movingPiece.type === 'pawn' && Math.abs(toCol - fromCol) === 1 && !capturedPiece) {
-      if (canEnPassant(fromRow, fromCol, toRow, toCol, movingPiece.color)) {
-        specialMove = 'en_passant';
-        // Remove the captured pawn
-        const capturedPawnRow = movingPiece.color === 'white' ? toRow + 1 : toRow - 1;
-        actualCapturedPiece = newBoard[capturedPawnRow][toCol].piece;
-        newBoard[capturedPawnRow][toCol].piece = null;
-      }
-    }
-
-    // Make the main move
-    newBoard[toRow][toCol].piece = movingPiece;
-    newBoard[fromRow][fromCol].piece = null;
-
-    // Update castling rights
-    updateCastlingRights(fromRow, fromCol, toRow, toCol, movingPiece);
-    
-    // Check for game ending conditions
-    const nextPlayer = currentPlayer === 'white' ? 'black' : 'white';
-    const gameResult = checkGameEnd(newBoard, nextPlayer);
-    
-    // Update game history for repetition detection
-    const boardHash = getBoardHash(newBoard);
-    setGameHistory(prev => [...prev, boardHash]);
-    
-    // Save move to database
-    try {
-      const moveData = {
-        war_id: warId,
-        move_number: moveNumber + 1,
-        player_color: currentPlayer,
-        from_row: fromRow,
-        from_col: fromCol,
-        to_row: toRow,
-        to_col: toCol,
-        piece_type: movingPiece.type,
-        captured_piece: actualCapturedPiece?.type || null,
-        board_state: JSON.parse(JSON.stringify(newBoard)),
-        special_move: specialMove
-      };
-      
-      console.log('ChessGame: Saving move to database:', moveData);
-      
-      const { error } = await supabase
-        .from('chess_moves')
-        .insert(moveData);
-
-      if (error) throw error;
-
-      console.log('ChessGame: Move saved successfully to database');
-      
-      // Update last move for en passant tracking
-      setLastMove({ ...moveData, id: 'temp-' + Date.now() } as ChessMove);
-      
-      // Update chess game state with new player turn
-      if (chessGameId) {
-        const { error: updateError } = await supabase
-          .from('chess_games')
-          .update({
-            current_player: nextPlayer,
-            white_time_remaining: whiteTimeRemaining,
-            black_time_remaining: blackTimeRemaining
-          })
-          .eq('id', chessGameId);
-          
-        if (updateError) {
-          console.error('Error updating chess game state:', updateError);
-        }
-      }
-      
-      // Handle game ending
-      if (gameResult !== 'playing') {
-        setGameStatus(gameResult);
-        
-        let winnerId: string | null = null;
-        if (gameResult === 'checkmate') {
-          winnerId = currentPlayer; // Current player wins by checkmate
-          setWinner(currentPlayer);
-        } else if (gameResult === 'stalemate' || gameResult === 'draw') {
-          setWinner(null);
-        }
-        
-        if (winnerId) {
-          onGameEnd(winnerId);
-        }
-        
-        // Show appropriate message
-        const messages = {
-          checkmate: `Checkmate! ${currentPlayer.charAt(0).toUpperCase() + currentPlayer.slice(1)} wins!`,
-          stalemate: "Stalemate! The game is a draw.",
-          draw: "Draw by repetition!"
-        };
-        
-        toast({
-          title: "Game Over",
-          description: messages[gameResult],
-        });
-      }
-      
-      setSelectedSquare(null);
-      
-    } catch (error: any) {
-      toast({
-        title: "Error making move",
-        description: error.message,
-        variant: "destructive",
-      });
-      return false;
-    }
-    
-    return true;
-  };
-
-  const handleSquareClick = (row: number, col: number) => {
-    // Flip coordinates for black player
-    const actualRow = userPlayerSide === 'black' ? 7 - row : row;
-    const actualCol = userPlayerSide === 'black' ? 7 - col : col;
-    
-    console.log('ChessGame: Square clicked:', row, col, 'actual coordinates:', actualRow, actualCol, 'gameStatus:', gameStatus, 'isMyTurn:', isMyTurn, 'currentPlayer:', currentPlayer, 'userPlayerSide:', userPlayerSide);
-    
-    if (gameStatus !== 'playing') {
-      console.log('ChessGame: Game not in playing status');
-      return;
-    }
-    
-    if (!isMyTurn) {
-      console.log('ChessGame: Not user\'s turn');
+  useEffect(() => {
+    if (gameStatus !== 'playing' || !isMyTurn || moveNumber === 0) {
       return;
     }
 
-    const clickedSquare = board[actualRow][actualCol];
-    console.log('ChessGame: Clicked square has piece:', clickedSquare.piece);
-    
-    if (selectedSquare) {
-      // If clicking on own piece, select it instead of trying to move
-      if (clickedSquare.piece && clickedSquare.piece.color === currentPlayer) {
-        console.log('ChessGame: Selecting new piece');
-        setSelectedSquare({ row: actualRow, col: actualCol });
-        highlightPossibleMoves(actualRow, actualCol);
-        return;
-      }
-      
-      // Try to make a move (use actual coordinates)
-      console.log('ChessGame: Trying to make move from', selectedSquare, 'to', {row: actualRow, col: actualCol});
-      if (makeMove(selectedSquare.row, selectedSquare.col, actualRow, actualCol)) {
-        return;
-      }
-      
-      // If move failed and not clicking on own piece, clear selection
-      console.log('ChessGame: Clearing selection');
-      setSelectedSquare(null);
-      clearHighlights();
-    } else {
-      // Select a piece
-      if (clickedSquare.piece && clickedSquare.piece.color === currentPlayer) {
-        console.log('ChessGame: Selecting piece');
-        setSelectedSquare({ row: actualRow, col: actualCol });
-        highlightPossibleMoves(actualRow, actualCol);
-      } else {
-        console.log('ChessGame: Cannot select this square - no piece or wrong color');
-      }
-    }
-  };
+    const intervalId = window.setInterval(() => {
+      void updateTimerInDatabase(whiteTimeRemaining, blackTimeRemaining);
+    }, 10000);
 
-  const highlightPossibleMoves = (row: number, col: number) => {
-    const newBoard = board.map(boardRow => boardRow.map(square => ({ ...square, isSelected: false, isPossibleMove: false })));
-    newBoard[row][col].isSelected = true;
-    
-    // Highlight possible moves
-    for (let r = 0; r < 8; r++) {
-      for (let c = 0; c < 8; c++) {
-        if (isValidMoveComplete(row, col, r, c, board)) {
-          newBoard[r][c].isPossibleMove = true;
-        }
-      }
-    }
-    
-    setBoard(newBoard);
-  };
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [blackTimeRemaining, gameStatus, isMyTurn, moveNumber, updateTimerInDatabase, whiteTimeRemaining]);
 
-  const clearHighlights = () => {
-    const newBoard = board.map(row => row.map(square => ({ ...square, isSelected: false, isPossibleMove: false })));
-    setBoard(newBoard);
-  };
+  useEffect(() => {
+    if (!boardElementRef.current || chessgroundRef.current) {
+      return;
+    }
 
-  const forfeitGame = async () => {
-    try {
-      const winner = currentPlayer === 'white' ? 'black' : 'white';
-      
-      await supabase
-        .from('chess_moves')
-        .insert({
-          war_id: warId,
-          move_number: moveNumber + 1,
-          player_color: currentPlayer,
-          from_row: 0,
-          from_col: 0,
-          to_row: 0,
-          to_col: 0,
-          piece_type: 'king', // Use valid piece type
-          captured_piece: 'forfeit', // This indicates it's a forfeit
-          board_state: JSON.parse(JSON.stringify(board))
-        });
-
-      setGameStatus('checkmate');
-      setWinner(winner);
-      onGameEnd(winner);
-      
-      toast({
-        title: "Game Forfeited",
-        description: `You forfeited the game.`,
-      });
-    } catch (error: any) {
-      toast({
-        title: "Error forfeiting game",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-  };
-
-  // Special move functions
-  const canEnPassant = (fromRow: number, fromCol: number, toRow: number, toCol: number, color: 'white' | 'black'): boolean => {
-    if (!lastMove) return false;
-    
-    // Check if last move was a pawn moving two squares
-    if (lastMove.piece_type !== 'pawn') return false;
-    if (Math.abs(lastMove.to_row - lastMove.from_row) !== 2) return false;
-    
-    // Check if the pawn is adjacent and on the same rank
-    const expectedRow = color === 'white' ? 3 : 4; // 5th rank for white, 4th rank for black
-    if (fromRow !== expectedRow) return false;
-    if (lastMove.to_col !== toCol) return false;
-    if (Math.abs(fromCol - toCol) !== 1) return false;
-    
-    // Check if target square is empty and one rank forward
-    const direction = color === 'white' ? -1 : 1;
-    return toRow === fromRow + direction;
-  };
-
-  const canCastle = (fromRow: number, fromCol: number, toRow: number, toCol: number, color: 'white' | 'black', gameBoard: ChessSquare[][]): boolean => {
-    console.log(`ChessGame: Checking castling - from: ${fromRow},${fromCol} to: ${toRow},${toCol} color: ${color}`);
-    
-    // Check if king is in starting position
-    const startRow = color === 'white' ? 7 : 0;
-    if (fromRow !== startRow || fromCol !== 4) {
-      console.log(`ChessGame: Castling failed - king not in starting position. Expected: ${startRow},4 Got: ${fromRow},${fromCol}`);
-      return false;
-    }
-    
-    // Check castling rights
-    const isKingside = toCol > fromCol;
-    const rights = castlingRights[color];
-    console.log(`ChessGame: Castling rights for ${color}:`, rights);
-    if (isKingside && !rights.kingside) {
-      console.log(`ChessGame: Castling failed - no kingside rights`);
-      return false;
-    }
-    if (!isKingside && !rights.queenside) {
-      console.log(`ChessGame: Castling failed - no queenside rights`);
-      return false;
-    }
-    
-    // Check if king is in check
-    const oppositeColor = color === 'white' ? 'black' : 'white';
-    if (isSquareAttacked(fromRow, fromCol, oppositeColor, gameBoard)) {
-      console.log(`ChessGame: Castling failed - king is in check`);
-      return false;
-    }
-    
-    // Check if path is clear and squares aren't attacked
-    const rookCol = isKingside ? 7 : 0;
-    const direction = isKingside ? 1 : -1;
-    const squares = isKingside ? [5, 6] : [1, 2, 3];
-    
-    // Check if rook is in position
-    const rook = gameBoard[startRow][rookCol].piece;
-    if (!rook || rook.type !== 'rook' || rook.color !== color) {
-      console.log(`ChessGame: Castling failed - rook not in position. Rook:`, rook);
-      return false;
-    }
-    
-    // Check if squares are empty and not attacked
-    for (const col of squares) {
-      if (gameBoard[startRow][col].piece) {
-        console.log(`ChessGame: Castling failed - square ${startRow},${col} is occupied`);
-        return false;
-      }
-      if (col >= 2 && col <= 6) { // Only check attack on squares the king passes through
-        if (isSquareAttacked(startRow, col, oppositeColor, gameBoard)) {
-          console.log(`ChessGame: Castling failed - square ${startRow},${col} is under attack`);
-          return false;
-        }
-      }
-    }
-    
-    console.log(`ChessGame: Castling is valid!`);
-    return true;
-  };
-
-  const updateCastlingRights = (fromRow: number, fromCol: number, toRow: number, toCol: number, piece: ChessPiece) => {
-    setCastlingRights(prev => {
-      const newRights = { ...prev };
-      
-      // King moved
-      if (piece.type === 'king') {
-        newRights[piece.color] = { kingside: false, queenside: false };
-      }
-      
-      // Rook moved
-      if (piece.type === 'rook') {
-        const startRow = piece.color === 'white' ? 7 : 0;
-        if (fromRow === startRow) {
-          if (fromCol === 0) { // Queenside rook
-            newRights[piece.color].queenside = false;
-          } else if (fromCol === 7) { // Kingside rook
-            newRights[piece.color].kingside = false;
-          }
-        }
-      }
-      
-      // Rook captured
-      const captureRow = piece.color === 'white' ? 0 : 7; // Opponent's back rank
-      if (toRow === captureRow) {
-        const oppositeColor = piece.color === 'white' ? 'black' : 'white';
-        if (toCol === 0) {
-          newRights[oppositeColor].queenside = false;
-        } else if (toCol === 7) {
-          newRights[oppositeColor].kingside = false;
-        }
-      }
-      
-      return newRights;
+    chessgroundRef.current = Chessground(boardElementRef.current, {
+      fen,
+      orientation: toChessgroundColor(userPlayerSide) ?? 'white',
+      turnColor: toChessgroundColor(currentPlayer) ?? 'white',
+      coordinates: true,
+      movable: {
+        color: isMyTurn ? currentPlayer : undefined,
+        dests: buildMoveDests(chessRef.current),
+        events: {
+          after: (from, to) => {
+            void submitMove(from, to);
+          },
+        },
+      },
+      premovable: {
+        enabled: false,
+      },
+      drawable: {
+        enabled: false,
+        visible: false,
+      },
     });
-  };
 
-  const updateCastlingRightsFromMove = (move: any) => {
-    setCastlingRights(prev => {
-      const newRights = { ...prev };
-      
-      if (move.piece_type === 'king') {
-        newRights[move.player_color] = { kingside: false, queenside: false };
-      }
-      
-      if (move.piece_type === 'rook') {
-        const startRow = move.player_color === 'white' ? 7 : 0;
-        if (move.from_row === startRow) {
-          if (move.from_col === 0) {
-            newRights[move.player_color].queenside = false;
-          } else if (move.from_col === 7) {
-            newRights[move.player_color].kingside = false;
-          }
-        }
-      }
-      
-      return newRights;
-    });
+    return () => {
+      chessgroundRef.current?.destroy();
+      chessgroundRef.current = null;
+    };
+  }, [buildMoveDests, currentPlayer, fen, isMyTurn, submitMove, userPlayerSide]);
+
+  useEffect(() => {
+    syncBoardUi();
+  }, [syncBoardUi]);
+
+  const formatTime = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
   return (
@@ -1131,9 +748,7 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
             <p className="text-lg">
               Current Turn: <span className="font-semibold capitalize">{currentPlayer}</span>
             </p>
-            <p className="text-sm text-muted-foreground">
-              {isMyTurn ? "Your turn!" : "Waiting for opponent..."}
-            </p>
+            <p className="text-sm text-muted-foreground">{isMyTurn ? 'Your turn!' : 'Waiting for opponent...'}</p>
             {userPlayerSide && (
               <p className="text-sm text-muted-foreground">
                 You are playing as <span className="font-medium capitalize">{userPlayerSide}</span>
@@ -1148,16 +763,8 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
                 {winner.charAt(0).toUpperCase() + winner.slice(1)} Wins!
               </span>
             )}
-            {gameStatus === 'stalemate' && (
-              <span className="flex items-center justify-center">
-                Stalemate - Draw!
-              </span>
-            )}
-            {gameStatus === 'draw' && (
-              <span className="flex items-center justify-center">
-                Draw by Repetition!
-              </span>
-            )}
+            {gameStatus === 'stalemate' && <span className="flex items-center justify-center">Stalemate - Draw!</span>}
+            {gameStatus === 'draw' && <span className="flex items-center justify-center">Draw!</span>}
             {gameStatus === 'timeout' && winner && (
               <span className="flex items-center justify-center gap-2">
                 <Crown className="w-5 h-5" />
@@ -1168,17 +775,14 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
         )}
       </div>
 
-      {/* Chess game layout with clocks above and below */}
       <div className="flex flex-col items-center space-y-4">
-        {/* Top timer - opponent's clock */}
         <div className={`border-2 rounded-lg transition-colors ${isMobile ? 'p-3 min-w-[200px]' : 'p-4 min-w-[240px]'} ${
-          (userPlayerSide === 'white' ? currentPlayer === 'black' : currentPlayer === 'white') && gameStatus === 'playing' 
-            ? 'border-primary bg-primary/10' : 'border-border bg-card'
+          (userPlayerSide === 'white' ? currentPlayer === 'black' : currentPlayer === 'white') && gameStatus === 'playing'
+            ? 'border-primary bg-primary/10'
+            : 'border-border bg-card'
         }`}>
           <div className="text-center">
-            <div className={`font-medium text-muted-foreground ${isMobile ? 'text-sm' : 'text-base'}`}>
-              Opponent
-            </div>
+            <div className={`font-medium text-muted-foreground ${isMobile ? 'text-sm' : 'text-base'}`}>Opponent</div>
             <div className={`font-medium text-muted-foreground ${isMobile ? 'text-sm' : 'text-base'}`}>
               ({userPlayerSide === 'white' ? 'Black' : 'White'})
             </div>
@@ -1190,60 +794,17 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
           </div>
         </div>
 
-        {/* Chess Board */}
-        <div className={`grid grid-cols-8 gap-0 border-4 border-primary/20 shadow-lg rounded-lg overflow-hidden bg-card ${
-          isMobile ? 'w-[90vw] max-w-[360px]' : 'w-[480px] max-w-[480px]'
-        }`}>
-          {(userPlayerSide === 'black' ? [...board].reverse() : board).map((row, displayRowIndex) => 
-            (userPlayerSide === 'black' ? [...row].reverse() : row).map((square, displayColIndex) => {
-              // Calculate actual indices for highlighting
-              const actualRowIndex = userPlayerSide === 'black' ? 7 - displayRowIndex : displayRowIndex;
-              const actualColIndex = userPlayerSide === 'black' ? 7 - displayColIndex : displayColIndex;
-              const actualSquare = board[actualRowIndex][actualColIndex];
-              
-              const isLightSquare = (actualRowIndex + actualColIndex) % 2 === 0;
-              
-              return (
-                <div
-                  key={`${actualRowIndex}-${actualColIndex}`}
-                  className={`
-                    aspect-square flex items-center justify-center cursor-pointer relative
-                    ${isMobile ? 'text-xl sm:text-2xl' : 'text-3xl'}
-                    ${isLightSquare 
-                      ? 'bg-amber-50 dark:bg-amber-100/20' 
-                      : 'bg-amber-800/40 dark:bg-amber-900/40'
-                    }
-                    ${actualSquare.isSelected ? 'bg-blue-400/60 dark:bg-blue-500/60 ring-2 ring-blue-500' : ''}
-                    ${actualSquare.isPossibleMove ? 'bg-green-400/60 dark:bg-green-500/60 ring-2 ring-green-500' : ''}
-                    ${!isMyTurn ? 'cursor-not-allowed opacity-75' : 'hover:bg-primary/10'}
-                    transition-all duration-200
-                  `}
-                  onClick={() => handleSquareClick(displayRowIndex, displayColIndex)}
-                >
-                  {actualSquare.isPossibleMove && !actualSquare.piece && (
-                    <div className={`bg-green-500/70 rounded-full ${isMobile ? 'w-2 h-2' : 'w-3 h-3'}`} />
-                  )}
-                  {actualSquare.isPossibleMove && actualSquare.piece && (
-                    <div className="absolute inset-0 ring-4 ring-green-500/70 rounded-sm" />
-                  )}
-                  <span className={getPieceClasses(actualSquare.piece)}>
-                    {getPieceSymbol(actualSquare.piece)}
-                  </span>
-                </div>
-              );
-            })
-          )}
+        <div className={`rounded-lg overflow-hidden border-4 border-primary/20 shadow-lg ${isMobile ? 'w-[90vw] max-w-[360px]' : 'w-[480px] max-w-[480px]'}`}>
+          <div ref={boardElementRef} className="aspect-square w-full" style={{ backgroundColor: '#f0d9b5' }} />
         </div>
 
-        {/* Bottom timer - user's clock */}
         <div className={`border-2 rounded-lg transition-colors ${isMobile ? 'p-3 min-w-[200px]' : 'p-4 min-w-[240px]'} ${
-          (userPlayerSide === 'white' ? currentPlayer === 'white' : currentPlayer === 'black') && gameStatus === 'playing' 
-            ? 'border-primary bg-primary/10' : 'border-border bg-card'
+          (userPlayerSide === 'white' ? currentPlayer === 'white' : currentPlayer === 'black') && gameStatus === 'playing'
+            ? 'border-primary bg-primary/10'
+            : 'border-border bg-card'
         }`}>
           <div className="text-center">
-            <div className={`font-medium text-muted-foreground ${isMobile ? 'text-sm' : 'text-base'}`}>
-              You
-            </div>
+            <div className={`font-medium text-muted-foreground ${isMobile ? 'text-sm' : 'text-base'}`}>You</div>
             <div className={`font-medium text-muted-foreground ${isMobile ? 'text-sm' : 'text-base'}`}>
               ({userPlayerSide === 'white' ? 'White' : 'Black'})
             </div>
