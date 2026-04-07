@@ -1,7 +1,7 @@
 import React, { useState, useEffect, createContext, useContext } from 'react';
+import { Navigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
-import Auth from '@/pages/Auth';
 import { Loader2 } from 'lucide-react';
 
 interface AuthContextType {
@@ -31,6 +31,7 @@ interface AuthWrapperProps {
 }
 
 const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
+  const location = useLocation();
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
@@ -60,6 +61,8 @@ const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
     window.location.href = '/auth';
   };
 
+  const redirectTarget = `${location.pathname}${location.search}${location.hash}`;
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-ocean to-primary flex items-center justify-center">
@@ -69,7 +72,7 @@ const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
   }
 
   if (!user) {
-    return <Auth />;
+    return <Navigate to={`/auth?redirect=${encodeURIComponent(redirectTarget)}`} replace />;
   }
 
   return (
