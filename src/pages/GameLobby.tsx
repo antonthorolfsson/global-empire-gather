@@ -49,6 +49,28 @@ const GameLobby = () => {
 
   useEffect(() => {
     fetchGames();
+
+    const channel = supabase
+      .channel('lobby-updates')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'games',
+      }, () => {
+        fetchGames();
+      })
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'game_players',
+      }, () => {
+        fetchGames();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const fetchGames = async () => {

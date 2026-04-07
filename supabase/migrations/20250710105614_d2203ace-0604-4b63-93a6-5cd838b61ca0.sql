@@ -1,4 +1,5 @@
 -- Add RLS policy to allow country transfers after war completion
+DROP POLICY IF EXISTS "Allow country transfer after war completion" ON public.game_countries;
 CREATE POLICY "Allow country transfer after war completion" 
 ON public.game_countries 
 FOR UPDATE 

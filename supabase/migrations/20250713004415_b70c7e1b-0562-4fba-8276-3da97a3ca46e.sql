@@ -1,5 +1,5 @@
 -- Create table for player preselections
-CREATE TABLE public.player_preselections (
+CREATE TABLE IF NOT EXISTS public.player_preselections (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   player_id UUID NOT NULL,
   game_id UUID NOT NULL,
@@ -13,6 +13,7 @@ CREATE TABLE public.player_preselections (
 ALTER TABLE public.player_preselections ENABLE ROW LEVEL SECURITY;
 
 -- Create policies
+DROP POLICY IF EXISTS "Players can view their own preselections" ON public.player_preselections;
 CREATE POLICY "Players can view their own preselections" 
 ON public.player_preselections 
 FOR SELECT 
@@ -22,6 +23,7 @@ USING (EXISTS (
     AND game_players.user_id = auth.uid()
 ));
 
+DROP POLICY IF EXISTS "Players can create their own preselections" ON public.player_preselections;
 CREATE POLICY "Players can create their own preselections" 
 ON public.player_preselections 
 FOR INSERT 
@@ -31,6 +33,7 @@ WITH CHECK (EXISTS (
     AND game_players.user_id = auth.uid()
 ));
 
+DROP POLICY IF EXISTS "Players can update their own preselections" ON public.player_preselections;
 CREATE POLICY "Players can update their own preselections" 
 ON public.player_preselections 
 FOR UPDATE 
@@ -40,6 +43,7 @@ USING (EXISTS (
     AND game_players.user_id = auth.uid()
 ));
 
+DROP POLICY IF EXISTS "Players can delete their own preselections" ON public.player_preselections;
 CREATE POLICY "Players can delete their own preselections" 
 ON public.player_preselections 
 FOR DELETE 
@@ -50,10 +54,11 @@ USING (EXISTS (
 ));
 
 -- Add unique constraint to prevent duplicate positions per player
-CREATE UNIQUE INDEX idx_player_preselections_unique_position 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_player_preselections_unique_position 
 ON public.player_preselections (player_id, position);
 
 -- Add trigger for automatic timestamp updates
+DROP TRIGGER IF EXISTS update_player_preselections_updated_at ON public.player_preselections;
 CREATE TRIGGER update_player_preselections_updated_at
 BEFORE UPDATE ON public.player_preselections
 FOR EACH ROW

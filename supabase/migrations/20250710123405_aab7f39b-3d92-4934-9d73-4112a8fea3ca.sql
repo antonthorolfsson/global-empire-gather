@@ -1,7 +1,7 @@
 -- Update get_current_user_email function to remove SECURITY DEFINER
 -- This function can work without SECURITY DEFINER since it only accesses auth.users
 -- which is accessible to authenticated users for their own data
-DROP FUNCTION IF EXISTS public.get_current_user_email();
+DROP FUNCTION IF EXISTS public.get_current_user_email() CASCADE;
 
 CREATE OR REPLACE FUNCTION public.get_current_user_email()
 RETURNS text

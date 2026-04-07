@@ -130,7 +130,7 @@ const CountryPreselection = ({ onCountrySelect, selectedCountries, isPlayerTurn,
 
       {/* Preselection List */}
       {preselectionList.length > 0 && (
-        <Card className="p-3">
+        <Card className="p-3 flex-shrink-0">
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <h3 className="font-medium text-sm">Preselection Queue</h3>
@@ -138,7 +138,7 @@ const CountryPreselection = ({ onCountrySelect, selectedCountries, isPlayerTurn,
                 {preselectionList.length} queued
               </Badge>
             </div>
-            <div className="space-y-1">
+            <div className="space-y-1 max-h-40 overflow-y-auto">
               {preselectionList.map((countryId, index) => {
                 const country = GAME_COUNTRIES.find(c => c.id === countryId);
                 if (!country) return null;

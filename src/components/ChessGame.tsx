@@ -188,6 +188,7 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
   const chessRef = useRef(new Chess());
   const moveNumberRef = useRef(0);
   const timerIntervalRef = useRef<ReturnType<typeof window.setInterval> | null>(null);
+  const submitMoveRef = useRef<(from: Key, to: Key) => void>(() => {});
 
   const [fen, setFen] = useState(INITIAL_FEN);
   const [currentPlayer, setCurrentPlayer] = useState<PlayerColor>('white');
@@ -541,6 +542,10 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
     }
   }, [applyChessPosition, blackTimeRemaining, buildBoardState, checkRateLimit, chessGameId, currentPlayer, gameStatus, isMyTurn, onGameEnd, setGameResult, syncBoardUi, toast, warId, whiteTimeRemaining]);
 
+  useEffect(() => {
+    submitMoveRef.current = submitMove;
+  }, [submitMove]);
+
   const forfeitGame = useCallback(async () => {
     const losingColor = currentPlayer;
     const winningColor = losingColor === 'white' ? 'black' : 'white';
@@ -707,7 +712,7 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
         dests: buildMoveDests(chessRef.current),
         events: {
           after: (from, to) => {
-            void submitMove(from, to);
+            void submitMoveRef.current(from, to);
           },
         },
       },
@@ -724,7 +729,8 @@ const ChessGame: React.FC<ChessGameProps> = ({ warId, userPlayerSide, onGameEnd 
       chessgroundRef.current?.destroy();
       chessgroundRef.current = null;
     };
-  }, [buildMoveDests, currentPlayer, fen, isMyTurn, submitMove, userPlayerSide]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userPlayerSide]);
 
   useEffect(() => {
     syncBoardUi();

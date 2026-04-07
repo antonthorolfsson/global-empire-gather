@@ -1,6 +1,6 @@
 -- Remove all the cron jobs since they're not reliable
-SELECT cron.unschedule('auto-vote-preselections-v2');
-SELECT cron.unschedule('direct-auto-vote');
+DO $$ BEGIN PERFORM cron.unschedule('auto-vote-preselections-v2'); EXCEPTION WHEN OTHERS THEN NULL; END $$;
+DO $$ BEGIN PERFORM cron.unschedule('direct-auto-vote'); EXCEPTION WHEN OTHERS THEN NULL; END $$;
 
 -- Create a more reliable trigger-based approach that runs periodically
 -- This function will be called by the edge function every time someone loads the game

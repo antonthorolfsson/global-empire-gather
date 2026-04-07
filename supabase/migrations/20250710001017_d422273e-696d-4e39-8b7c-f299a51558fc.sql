@@ -1,5 +1,5 @@
 -- Create chat messages table
-CREATE TABLE public.chat_messages (
+CREATE TABLE IF NOT EXISTS public.chat_messages (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   game_id UUID NOT NULL,
   player_id UUID NOT NULL,
@@ -11,6 +11,7 @@ CREATE TABLE public.chat_messages (
 ALTER TABLE public.chat_messages ENABLE ROW LEVEL SECURITY;
 
 -- Create policies for chat messages
+DROP POLICY IF EXISTS "Game players can view chat messages" ON public.chat_messages;
 CREATE POLICY "Game players can view chat messages" 
 ON public.chat_messages 
 FOR SELECT 
@@ -20,6 +21,7 @@ USING (EXISTS (
   AND game_players.user_id = auth.uid()
 ));
 
+DROP POLICY IF EXISTS "Game players can send chat messages" ON public.chat_messages;
 CREATE POLICY "Game players can send chat messages" 
 ON public.chat_messages 
 FOR INSERT 
@@ -32,4 +34,7 @@ WITH CHECK (EXISTS (
 
 -- Enable realtime for chat messages
 ALTER TABLE public.chat_messages REPLICA IDENTITY FULL;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.chat_messages;
+DO $$ BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.chat_messages;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;

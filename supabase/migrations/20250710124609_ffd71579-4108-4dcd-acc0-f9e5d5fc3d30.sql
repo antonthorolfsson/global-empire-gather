@@ -15,16 +15,19 @@ CREATE TABLE IF NOT EXISTS public.rate_limits (
 ALTER TABLE public.rate_limits ENABLE ROW LEVEL SECURITY;
 
 -- RLS policies for rate_limits
+DROP POLICY IF EXISTS "Users can view their own rate limits" ON public.rate_limits;
 CREATE POLICY "Users can view their own rate limits" 
 ON public.rate_limits 
 FOR SELECT 
 USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert their own rate limits" ON public.rate_limits;
 CREATE POLICY "Users can insert their own rate limits" 
 ON public.rate_limits 
 FOR INSERT 
 WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update their own rate limits" ON public.rate_limits;
 CREATE POLICY "Users can update their own rate limits" 
 ON public.rate_limits 
 FOR UPDATE 
@@ -47,6 +50,7 @@ CREATE TABLE IF NOT EXISTS public.audit_logs (
 ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 
 -- RLS policies for audit_logs (admin-only viewing for now)
+DROP POLICY IF EXISTS "System can insert audit logs" ON public.audit_logs;
 CREATE POLICY "System can insert audit logs" 
 ON public.audit_logs 
 FOR INSERT 

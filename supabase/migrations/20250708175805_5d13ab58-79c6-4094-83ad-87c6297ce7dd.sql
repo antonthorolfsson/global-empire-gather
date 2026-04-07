@@ -15,6 +15,7 @@ ALTER TABLE public.games ADD COLUMN deleted_at TIMESTAMP WITH TIME ZONE DEFAULT 
 CREATE INDEX idx_games_deleted_at ON public.games(deleted_at);
 
 -- Create trigger to update the updated_at timestamp when games are updated
+DROP TRIGGER IF EXISTS update_games_updated_at ON public.games;
 CREATE TRIGGER update_games_updated_at
   BEFORE UPDATE ON public.games
   FOR EACH ROW

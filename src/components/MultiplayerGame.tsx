@@ -485,7 +485,7 @@ const MultiplayerGame = () => {
       const { error } = await supabase
         .from('games')
         .update({ 
-          status: 'completed',
+          status: 'finished',
           game_phase: 'finished'
         })
         .eq('id', gameId);

@@ -1,8 +1,8 @@
 -- Add privacy setting to games table
-ALTER TABLE public.games ADD COLUMN is_public boolean NOT NULL DEFAULT true;
+ALTER TABLE public.games ADD COLUMN IF NOT EXISTS is_public boolean NOT NULL DEFAULT true;
 
 -- Create game invitations table
-CREATE TABLE public.game_invitations (
+CREATE TABLE IF NOT EXISTS public.game_invitations (
   id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   game_id uuid NOT NULL REFERENCES public.games(id) ON DELETE CASCADE,
   inviter_id uuid NOT NULL,
@@ -17,6 +17,7 @@ CREATE TABLE public.game_invitations (
 ALTER TABLE public.game_invitations ENABLE ROW LEVEL SECURITY;
 
 -- RLS policies for game invitations
+DROP POLICY IF EXISTS "Game invitations are viewable by inviter and invitee" ON public.game_invitations;
 CREATE POLICY "Game invitations are viewable by inviter and invitee"
 ON public.game_invitations
 FOR SELECT
@@ -27,6 +28,7 @@ USING (
   )
 );
 
+DROP POLICY IF EXISTS "Game creators can invite players" ON public.game_invitations;
 CREATE POLICY "Game creators can invite players"
 ON public.game_invitations
 FOR INSERT
@@ -38,6 +40,7 @@ WITH CHECK (
   )
 );
 
+DROP POLICY IF EXISTS "Invitees can update invitation status" ON public.game_invitations;
 CREATE POLICY "Invitees can update invitation status"
 ON public.game_invitations
 FOR UPDATE
