@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useLayoutEffect, useState, useRef, useCallback } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ZoomIn, ZoomOut, RotateCcw, MapPin } from 'lucide-react';
@@ -28,36 +28,72 @@ const GameMap: React.FC<GameMapProps> = ({
   players
 }) => {
   const [svgContent, setSvgContent] = useState<string>('');
+  // State for React rendering (zoom indicator, reset)
   const [zoom, setZoom] = useState(1);
-  // viewCenter is in SVG coordinate space (the point at the center of the viewport)
   const [viewCenter, setViewCenter] = useState({ x: 504.836, y: 332.982 });
-  const [isDragging, setIsDragging] = useState(false);
-  const [lastMousePos, setLastMousePos] = useState({ x: 0, y: 0 });
-  
-  // Touch/pinch zoom states
-  const [isTouch, setIsTouch] = useState(false);
-  const [initialPinchDistance, setInitialPinchDistance] = useState(0);
-  const [initialZoom, setInitialZoom] = useState(1);
-  const [touchCount, setTouchCount] = useState(0);
-  const [initialPinchCenter, setInitialPinchCenter] = useState({ x: 0, y: 0 });
-  const [initialViewCenter, setInitialViewCenter] = useState({ x: 0, y: 0 });
-  const [isAnimating, setIsAnimating] = useState(false);
-  const [velocity, setVelocity] = useState({ x: 0, y: 0 });
+
+  // Refs for synchronous access in event handlers (avoids React batching issues on mobile)
+  const zoomRef = useRef(1);
+  const viewCenterRef = useRef({ x: 504.836, y: 332.982 });
+  const isDraggingRef = useRef(false);
+  const lastMousePosRef = useRef({ x: 0, y: 0 });
+  const isTouchRef = useRef(false);
+  const initialPinchDistanceRef = useRef(0);
+  const initialZoomRef = useRef(1);
+  const initialPinchCenterRef = useRef({ x: 0, y: 0 });
+  const initialViewCenterRef = useRef({ x: 0, y: 0 });
+  const touchCountRef = useRef(0);
+  const touchMovedRef = useRef(false);
+  const touchStartTimeRef = useRef(0);
+  const velocityRef = useRef({ x: 0, y: 0 });
+  const isAnimatingRef = useRef(false);
   const lastTouchTime = useRef(0);
   const lastTouchPos = useRef({ x: 0, y: 0 });
   const animationFrameRef = useRef<number>();
-  
+
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const svgDimsRef = useRef({ width: 1009.6727, height: 665.96301 });
 
+  // Imperative viewBox update for immediate visual feedback
+  const updateViewBox = useCallback((z?: number, vc?: { x: number; y: number }) => {
+    const svgElement = document.getElementById('world-map-svg');
+    if (!svgElement) return;
+    const { width: origW, height: origH } = svgDimsRef.current;
+    const curZ = z ?? zoomRef.current;
+    const curVC = vc ?? viewCenterRef.current;
+    const vbW = origW / curZ;
+    const vbH = origH / curZ;
+    const vbX = curVC.x - vbW / 2;
+    const vbY = curVC.y - vbH / 2;
+    svgElement.setAttribute('viewBox', `${vbX} ${vbY} ${vbW} ${vbH}`);
+  }, []);
+
+  // Update zoom ref + state + viewBox
+  const applyZoom = useCallback((newZoom: number, newVC?: { x: number; y: number }) => {
+    zoomRef.current = newZoom;
+    setZoom(newZoom);
+    if (newVC) {
+      viewCenterRef.current = newVC;
+      setViewCenter(newVC);
+    }
+    updateViewBox(newZoom, newVC);
+  }, [updateViewBox]);
+
+  // Update viewCenter ref + state + viewBox
+  const applyVC = useCallback((newVC: { x: number; y: number }) => {
+    viewCenterRef.current = newVC;
+    setViewCenter(newVC);
+    updateViewBox(undefined, newVC);
+  }, [updateViewBox]);
+
   // Helper: get base fit scale (how many pixels per SVG unit at zoom=1)
-  const getBaseFitScale = () => {
+  const getBaseFitScale = useCallback(() => {
     const container = mapContainerRef.current;
     if (!container) return 1;
     const rect = container.getBoundingClientRect();
     const { width: origW, height: origH } = svgDimsRef.current;
     return Math.min(rect.width / origW, rect.height / origH);
-  };
+  }, []);
 
   useEffect(() => {
     // Import the SVG content directly and normalize it for crisp rendering
@@ -81,7 +117,9 @@ const GameMap: React.FC<GameMapProps> = ({
         const originalHeight = parseFloat(svgElement.getAttribute('height') || '665.96301');
 
         svgDimsRef.current = { width: originalWidth, height: originalHeight };
-        setViewCenter({ x: originalWidth / 2, y: originalHeight / 2 });
+        const center = { x: originalWidth / 2, y: originalHeight / 2 };
+        viewCenterRef.current = center;
+        setViewCenter(center);
 
         svgElement.setAttribute('id', 'world-map-svg');
         svgElement.setAttribute('width', '100%');
@@ -126,17 +164,10 @@ const GameMap: React.FC<GameMapProps> = ({
     };
   }, []);
 
-  // Update SVG viewBox for crisp vector rendering at any zoom level
-  useEffect(() => {
-    const svgElement = document.getElementById('world-map-svg');
-    if (!svgElement) return;
-    const { width: origW, height: origH } = svgDimsRef.current;
-    const vbW = origW / zoom;
-    const vbH = origH / zoom;
-    const vbX = viewCenter.x - vbW / 2;
-    const vbY = viewCenter.y - vbH / 2;
-    svgElement.setAttribute('viewBox', `${vbX} ${vbY} ${vbW} ${vbH}`);
-  }, [zoom, viewCenter, svgContent]);
+  // Sync viewBox after React render (backup for state-driven changes like initial load)
+  useLayoutEffect(() => {
+    updateViewBox();
+  }, [zoom, viewCenter, svgContent, updateViewBox]);
 
 
 
@@ -181,7 +212,9 @@ const GameMap: React.FC<GameMapProps> = ({
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
     const zoomFactor = 1.2;
-    const newZoom = Math.max(0.5, Math.min(10, e.deltaY > 0 ? zoom / zoomFactor : zoom * zoomFactor));
+    const curZ = zoomRef.current;
+    const curVC = viewCenterRef.current;
+    const newZoom = Math.max(0.5, Math.min(10, e.deltaY > 0 ? curZ / zoomFactor : curZ * zoomFactor));
     
     const container = mapContainerRef.current;
     if (container) {
@@ -191,61 +224,60 @@ const GameMap: React.FC<GameMapProps> = ({
       const offsetX = (rect.width - origW * bfs) / 2;
       const offsetY = (rect.height - origH * bfs) / 2;
       
-      // Mouse position in base SVG coords (unzoomed)
       const msX = (e.clientX - rect.left - offsetX) / bfs;
       const msY = (e.clientY - rect.top - offsetY) / bfs;
       
-      // SVG world point under cursor at current zoom
-      const svgX = viewCenter.x - origW / (2 * zoom) + msX / zoom;
-      const svgY = viewCenter.y - origH / (2 * zoom) + msY / zoom;
+      const svgX = curVC.x - origW / (2 * curZ) + msX / curZ;
+      const svgY = curVC.y - origH / (2 * curZ) + msY / curZ;
       
-      // Keep that world point under cursor at new zoom
-      setViewCenter({
+      const newVC = {
         x: svgX + origW / (2 * newZoom) - msX / newZoom,
         y: svgY + origH / (2 * newZoom) - msY / newZoom,
-      });
+      };
+      applyZoom(newZoom, newVC);
+    } else {
+      applyZoom(newZoom);
     }
-    
-    setZoom(newZoom);
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
-    setIsDragging(true);
-    setLastMousePos({ x: e.clientX, y: e.clientY });
+    isDraggingRef.current = true;
+    lastMousePosRef.current = { x: e.clientX, y: e.clientY };
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging) return;
+    if (!isDraggingRef.current) return;
     
-    const deltaX = e.clientX - lastMousePos.x;
-    const deltaY = e.clientY - lastMousePos.y;
+    const deltaX = e.clientX - lastMousePosRef.current.x;
+    const deltaY = e.clientY - lastMousePosRef.current.y;
     const bfs = getBaseFitScale();
+    const curZ = zoomRef.current;
     
-    // Dragging right means moving the view left (negative delta in SVG space)
-    setViewCenter(prev => ({
-      x: prev.x - deltaX / (bfs * zoom),
-      y: prev.y - deltaY / (bfs * zoom),
-    }));
+    const newVC = {
+      x: viewCenterRef.current.x - deltaX / (bfs * curZ),
+      y: viewCenterRef.current.y - deltaY / (bfs * curZ),
+    };
+    applyVC(newVC);
     
-    setLastMousePos({ x: e.clientX, y: e.clientY });
+    lastMousePosRef.current = { x: e.clientX, y: e.clientY };
   };
 
   const handleMouseUp = () => {
-    setIsDragging(false);
+    isDraggingRef.current = false;
   };
 
   const handleZoomIn = () => {
-    setZoom(prev => Math.min(10, prev + 0.5));
+    applyZoom(Math.min(10, zoomRef.current + 0.5));
   };
 
   const handleZoomOut = () => {
-    setZoom(prev => Math.max(0.5, prev - 0.5));
+    applyZoom(Math.max(0.5, zoomRef.current - 0.5));
   };
 
   const handleResetView = () => {
-    setZoom(1);
     const { width, height } = svgDimsRef.current;
-    setViewCenter({ x: width / 2, y: height / 2 });
+    const newVC = { x: width / 2, y: height / 2 };
+    applyZoom(1, newVC);
   };
 
   // Helper function to calculate center between two touch points
@@ -264,85 +296,87 @@ const GameMap: React.FC<GameMapProps> = ({
   };
 
   // Touch event handlers for pinch zoom
-  const [touchStartTime, setTouchStartTime] = useState(0);
-  const [touchMoved, setTouchMoved] = useState(false);
   
-  // Momentum and smoothness for mobile
-  useEffect(() => {
-    if (!isAnimating) return;
-    
-    let animationId: number;
+  // Momentum animation driven entirely by refs + rAF
+  const startMomentum = useCallback(() => {
+    if (isAnimatingRef.current) return;
+    isAnimatingRef.current = true;
+
     const deceleration = 0.95;
     const minVelocity = 0.0001;
-    
+
     const animate = () => {
-      setVelocity(prev => {
-        const newVelocity = {
-          x: prev.x * deceleration,
-          y: prev.y * deceleration
-        };
-        
-        if (Math.abs(newVelocity.x) < minVelocity && Math.abs(newVelocity.y) < minVelocity) {
-          setIsAnimating(false);
-          return { x: 0, y: 0 };
-        }
-        
-        setViewCenter(prevCenter => ({
-          x: prevCenter.x + newVelocity.x,
-          y: prevCenter.y + newVelocity.y
-        }));
-        
-        return newVelocity;
-      });
-      
-      animationId = requestAnimationFrame(animate);
-    };
-    
-    animationId = requestAnimationFrame(animate);
-    
-    return () => {
-      if (animationId) {
-        cancelAnimationFrame(animationId);
+      const vel = velocityRef.current;
+      const newVel = {
+        x: vel.x * deceleration,
+        y: vel.y * deceleration,
+      };
+
+      if (Math.abs(newVel.x) < minVelocity && Math.abs(newVel.y) < minVelocity) {
+        isAnimatingRef.current = false;
+        velocityRef.current = { x: 0, y: 0 };
+        return;
       }
+
+      velocityRef.current = newVel;
+      const newVC = {
+        x: viewCenterRef.current.x + newVel.x,
+        y: viewCenterRef.current.y + newVel.y,
+      };
+      viewCenterRef.current = newVC;
+      setViewCenter(newVC);
+      updateViewBox(undefined, newVC);
+
+      animationFrameRef.current = requestAnimationFrame(animate);
     };
-  }, [isAnimating]);
+
+    animationFrameRef.current = requestAnimationFrame(animate);
+  }, [updateViewBox]);
+
+  const stopMomentum = useCallback(() => {
+    isAnimatingRef.current = false;
+    velocityRef.current = { x: 0, y: 0 };
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+    }
+  }, []);
 
   const handleTouchStart = (e: React.TouchEvent) => {
-    setIsTouch(true);
-    setTouchCount(e.touches.length);
-    setTouchStartTime(Date.now());
-    setTouchMoved(false);
-    setIsAnimating(false);
-    setVelocity({ x: 0, y: 0 });
+    isTouchRef.current = true;
+    touchCountRef.current = e.touches.length;
+    touchStartTimeRef.current = Date.now();
+    touchMovedRef.current = false;
+    stopMomentum();
     
     if (e.touches.length === 2) {
       const distance = getDistance(e.touches[0], e.touches[1]);
       const center = getTouchCenter(e.touches[0], e.touches[1]);
       
-      setInitialPinchDistance(distance);
-      setInitialZoom(zoom);
-      setInitialPinchCenter(center);
-      setInitialViewCenter({ ...viewCenter });
+      initialPinchDistanceRef.current = distance;
+      initialZoomRef.current = zoomRef.current;
+      initialPinchCenterRef.current = center;
+      initialViewCenterRef.current = { ...viewCenterRef.current };
       e.preventDefault();
     } else if (e.touches.length === 1) {
       const touch = e.touches[0];
-      setLastMousePos({ x: touch.clientX, y: touch.clientY });
+      lastMousePosRef.current = { x: touch.clientX, y: touch.clientY };
       lastTouchTime.current = Date.now();
       lastTouchPos.current = { x: touch.clientX, y: touch.clientY };
     }
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (e.touches.length === 2 && initialPinchDistance > 0) {
-      // Two fingers - pinch zoom via viewBox
+    if (e.touches.length === 2 && initialPinchDistanceRef.current > 0) {
+      // Pinch zoom
       e.preventDefault();
       const currentDistance = getDistance(e.touches[0], e.touches[1]);
       const currentCenter = getTouchCenter(e.touches[0], e.touches[1]);
-      
-      const rawScale = currentDistance / initialPinchDistance;
+
+      const rawScale = currentDistance / initialPinchDistanceRef.current;
       const scale = Math.pow(rawScale, 0.9);
-      const newZoom = Math.max(0.5, Math.min(10, initialZoom * scale));
-      
+      const iZoom = initialZoomRef.current;
+      const newZoom = Math.max(0.5, Math.min(10, iZoom * scale));
+
       const container = mapContainerRef.current;
       if (container) {
         const rect = container.getBoundingClientRect();
@@ -350,60 +384,61 @@ const GameMap: React.FC<GameMapProps> = ({
         const bfs = Math.min(rect.width / origW, rect.height / origH);
         const offsetX = (rect.width - origW * bfs) / 2;
         const offsetY = (rect.height - origH * bfs) / 2;
-        
-        // Initial pinch center in base SVG coords
-        const pcX = (initialPinchCenter.x - rect.left - offsetX) / bfs;
-        const pcY = (initialPinchCenter.y - rect.top - offsetY) / bfs;
-        
-        // SVG world point that was at the initial pinch center
-        const svgX = initialViewCenter.x - origW / (2 * initialZoom) + pcX / initialZoom;
-        const svgY = initialViewCenter.y - origH / (2 * initialZoom) + pcY / initialZoom;
-        
-        // Current pinch center in base SVG coords
+        const iVC = initialViewCenterRef.current;
+        const iPC = initialPinchCenterRef.current;
+
+        const pcX = (iPC.x - rect.left - offsetX) / bfs;
+        const pcY = (iPC.y - rect.top - offsetY) / bfs;
+
+        const svgX = iVC.x - origW / (2 * iZoom) + pcX / iZoom;
+        const svgY = iVC.y - origH / (2 * iZoom) + pcY / iZoom;
+
         const curPcX = (currentCenter.x - rect.left - offsetX) / bfs;
         const curPcY = (currentCenter.y - rect.top - offsetY) / bfs;
-        
-        // Keep the SVG point under the current pinch center at new zoom
-        setViewCenter({
+
+        const newVC = {
           x: svgX + origW / (2 * newZoom) - curPcX / newZoom,
           y: svgY + origH / (2 * newZoom) - curPcY / newZoom,
-        });
+        };
+        applyZoom(newZoom, newVC);
+      } else {
+        applyZoom(newZoom);
       }
-      
-      setZoom(newZoom);
-      if (!touchMoved) setTouchMoved(true);
-    } else if (e.touches.length === 1 && initialPinchDistance === 0 && !isAnimating) {
-      // Single finger - pan
+
+      touchMovedRef.current = true;
+    } else if (e.touches.length === 1 && initialPinchDistanceRef.current === 0 && !isAnimatingRef.current) {
+      // Single finger pan
       const touch = e.touches[0];
-      const deltaX = touch.clientX - lastMousePos.x;
-      const deltaY = touch.clientY - lastMousePos.y;
+      const deltaX = touch.clientX - lastMousePosRef.current.x;
+      const deltaY = touch.clientY - lastMousePosRef.current.y;
       const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-      
+
       if (distance > 3) {
-        if (!touchMoved) {
-          setTouchMoved(true);
-          setIsDragging(true);
+        if (!touchMovedRef.current) {
+          touchMovedRef.current = true;
+          isDraggingRef.current = true;
         }
         e.preventDefault();
-        
+
         const now = Date.now();
         if (now - lastTouchTime.current > 16) {
           const bfs = getBaseFitScale();
-          const svgDeltaX = deltaX / (bfs * zoom);
-          const svgDeltaY = deltaY / (bfs * zoom);
-          
-          setViewCenter(prev => ({
-            x: prev.x - svgDeltaX,
-            y: prev.y - svgDeltaY,
-          }));
-          
-          // Velocity in SVG units for momentum
-          setVelocity({
+          const curZ = zoomRef.current;
+          const svgDeltaX = deltaX / (bfs * curZ);
+          const svgDeltaY = deltaY / (bfs * curZ);
+
+          const newVC = {
+            x: viewCenterRef.current.x - svgDeltaX,
+            y: viewCenterRef.current.y - svgDeltaY,
+          };
+          applyVC(newVC);
+
+          velocityRef.current = {
             x: -svgDeltaX * 0.8,
             y: -svgDeltaY * 0.8,
-          });
-          
-          setLastMousePos({ x: touch.clientX, y: touch.clientY });
+          };
+
+          lastMousePosRef.current = { x: touch.clientX, y: touch.clientY };
           lastTouchTime.current = now;
         }
       }
@@ -412,35 +447,34 @@ const GameMap: React.FC<GameMapProps> = ({
 
   const handleTouchEnd = (e: React.TouchEvent) => {
     if (e.touches.length === 0) {
-      const touchDuration = Date.now() - touchStartTime;
+      const touchDuration = Date.now() - touchStartTimeRef.current;
       
-      if (!touchMoved && touchDuration < 300 && touchCount === 1) {
+      if (!touchMovedRef.current && touchDuration < 300 && touchCountRef.current === 1) {
         const target = e.target as Element;
         if (target && target.tagName === 'path' && target.id) {
           const countryId = target.id.toLowerCase();
           handleCountryClick(countryId);
         }
-      } else if (touchMoved && touchCount === 1) {
-        const currentVelocity = velocity;
-        const velocityMagnitude = Math.sqrt(currentVelocity.x * currentVelocity.x + currentVelocity.y * currentVelocity.y);
-        
-        if (velocityMagnitude > 0.01) {
-          setIsAnimating(true);
+      } else if (touchMovedRef.current && touchCountRef.current === 1) {
+        const vel = velocityRef.current;
+        const mag = Math.sqrt(vel.x * vel.x + vel.y * vel.y);
+        if (mag > 0.01) {
+          startMomentum();
         }
       }
       
-      setIsDragging(false);
-      setIsTouch(false);
-      setInitialPinchDistance(0);
-      setTouchCount(0);
-      setTouchMoved(false);
-    } else if (e.touches.length === 1 && touchCount === 2) {
-      setInitialPinchDistance(0);
-      setTouchCount(1);
-      setLastMousePos({ 
+      isDraggingRef.current = false;
+      isTouchRef.current = false;
+      initialPinchDistanceRef.current = 0;
+      touchCountRef.current = 0;
+      touchMovedRef.current = false;
+    } else if (e.touches.length === 1 && touchCountRef.current === 2) {
+      initialPinchDistanceRef.current = 0;
+      touchCountRef.current = 1;
+      lastMousePosRef.current = { 
         x: e.touches[0].clientX, 
         y: e.touches[0].clientY 
-      });
+      };
       lastTouchTime.current = Date.now();
       lastTouchPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
     }
@@ -480,7 +514,7 @@ const GameMap: React.FC<GameMapProps> = ({
         stroke: #ffffff !important;
         stroke-width: 0.5px !important;
         cursor: pointer !important;
-        transition: ${isDragging || isTouch ? 'none !important' : 'all 0.2s ease !important'};
+        transition: ${isDraggingRef.current || isTouchRef.current ? 'none !important' : 'all 0.2s ease !important'};
         opacity: 1 !important;
       }
     `;
