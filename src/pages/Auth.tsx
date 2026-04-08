@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,20 +10,24 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 
 const Auth = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const { toast } = useToast();
+  const requestedRedirect = new URLSearchParams(location.search).get('redirect') || '/';
+  const redirectTarget = requestedRedirect.startsWith('/') ? requestedRedirect : '/';
 
   useEffect(() => {
     // Check if user is already logged in
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
-        window.location.href = '/';
+        navigate(redirectTarget, { replace: true });
       }
     });
-  }, []);
+  }, [navigate, redirectTarget]);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,7 +38,7 @@ const Auth = () => {
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/`,
+          emailRedirectTo: `${window.location.origin}${redirectTarget}`,
           data: {
             display_name: displayName
           }
@@ -69,7 +74,7 @@ const Auth = () => {
 
       if (error) throw error;
 
-      window.location.href = '/';
+      navigate(redirectTarget, { replace: true });
     } catch (error: any) {
       toast({
         title: "Error",

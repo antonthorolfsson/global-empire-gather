@@ -1,7 +1,7 @@
 import React, { useState, useEffect, createContext, useContext } from 'react';
+import { Navigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
-import Auth from '@/pages/Auth';
 import { Loader2 } from 'lucide-react';
 
 interface AuthContextType {
@@ -31,34 +31,67 @@ interface AuthWrapperProps {
 }
 
 const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
+  const location = useLocation();
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let isMounted = true;
+
+    const applySession = (nextSession: Session | null) => {
+      if (!isMounted) {
+        return;
+      }
+
+      setSession(nextSession);
+      setUser(nextSession?.user ?? null);
+      setLoading(false);
+    };
+
+    const refreshSession = async () => {
+      const { data, error } = await supabase.auth.getSession();
+
+      if (error) {
+        applySession(null);
+        return;
+      }
+
+      applySession(data.session);
+    };
+
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
+      async (event, nextSession) => {
+        if (nextSession) {
+          applySession(nextSession);
+          return;
+        }
+
+        if (event === 'SIGNED_OUT') {
+          applySession(null);
+          return;
+        }
+
+        await refreshSession();
       }
     );
 
     // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
+    void refreshSession();
 
-    return () => subscription.unsubscribe();
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signOut = async () => {
     await supabase.auth.signOut();
     window.location.href = '/auth';
   };
+
+  const redirectTarget = `${location.pathname}${location.search}${location.hash}`;
 
   if (loading) {
     return (
@@ -69,7 +102,7 @@ const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
   }
 
   if (!user) {
-    return <Auth />;
+    return <Navigate to={`/auth?redirect=${encodeURIComponent(redirectTarget)}`} replace />;
   }
 
   return (
