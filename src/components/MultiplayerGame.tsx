@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, Component, type ErrorInfo, type ReactNode } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/AuthWrapper';
@@ -10,6 +10,24 @@ import { GameChat } from './GameChat';
 import CountryPreselection from './CountryPreselection';
 import CountrySelectionPane from './CountrySelectionPane';
 import { Button } from '@/components/ui/button';
+
+class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
+  state = { error: null as Error | null };
+  static getDerivedStateFromError(error: Error) { return { error }; }
+  componentDidCatch(error: Error, info: ErrorInfo) { console.error('ErrorBoundary caught:', error, info); }
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="p-4 text-red-500">
+          <h3 className="font-bold">Error in Wars tab:</h3>
+          <pre className="text-xs mt-2 whitespace-pre-wrap">{this.state.error.message}</pre>
+          <pre className="text-xs mt-1 whitespace-pre-wrap">{this.state.error.stack}</pre>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 import { Card } from '@/components/ui/card';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { useToast } from '@/hooks/use-toast';
@@ -1010,23 +1028,27 @@ const MultiplayerGame = () => {
           )}
 
           {mobileTab === 'wars' && (
-            <div className="h-full overflow-y-auto p-4">
-              <div className="space-y-3">
-                <h3 className="font-semibold">War Declaration</h3>
-                <p className="text-xs text-muted-foreground">
-                  Phase: {game.game_phase} | Player: {userPlayer?.player_name ?? 'none'} | Countries: {gameCountries.length}
-                </p>
-                {userPlayer ? (
-                  <WarDeclaration
-                    gameId={gameId!}
-                    currentPlayer={userPlayer}
-                    players={players}
-                    gameCountries={gameCountries}
-                    isPlayerTurn={true}
-                  />
-                ) : (
-                  <p className="text-muted-foreground text-sm">Loading player data...</p>
-                )}
+            <ErrorBoundary>
+              <div className="h-full overflow-y-auto p-4">
+                <div className="space-y-3">
+                  <h3 className="font-semibold">War Declaration</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Phase: {game.game_phase} | Player: {userPlayer?.player_name ?? 'none'} | Countries: {gameCountries.length}
+                  </p>
+                  {userPlayer ? (
+                    <WarDeclaration
+                      gameId={gameId!}
+                      currentPlayer={userPlayer}
+                      players={players}
+                      gameCountries={gameCountries}
+                      isPlayerTurn={true}
+                    />
+                  ) : (
+                    <p className="text-muted-foreground text-sm">Loading player data...</p>
+                  )}
+                </div>
+              </div>
+            </ErrorBoundary>
               </div>
             </div>
           )}
