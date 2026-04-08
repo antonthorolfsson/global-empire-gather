@@ -1013,6 +1013,9 @@ const MultiplayerGame = () => {
             <div className="h-full overflow-y-auto p-4">
               <div className="space-y-3">
                 <h3 className="font-semibold">War Declaration</h3>
+                <p className="text-xs text-muted-foreground">
+                  Phase: {game.game_phase} | Player: {userPlayer?.player_name ?? 'none'} | Countries: {gameCountries.length}
+                </p>
                 {userPlayer ? (
                   <WarDeclaration
                     gameId={gameId!}
