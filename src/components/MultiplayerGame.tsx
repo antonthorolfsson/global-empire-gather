@@ -11,7 +11,6 @@ import CountryPreselection from './CountryPreselection';
 import CountrySelectionPane from './CountrySelectionPane';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { useToast } from '@/hooks/use-toast';
 import { GAME_COUNTRIES } from '@/data/gameCountries';
@@ -63,6 +62,7 @@ const MultiplayerGame = () => {
   const [preselectionList, setPreselectionList] = useState<string[]>([]);
   const [autoSelectTimer, setAutoSelectTimer] = useState<NodeJS.Timeout | null>(null);
   const [isSavingPreselections, setIsSavingPreselections] = useState<boolean>(false);
+  const [mobileTab, setMobileTab] = useState<string>('map');
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const autoVoteIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -915,32 +915,46 @@ const MultiplayerGame = () => {
       </div>
 
       {/* Mobile Tabbed Layout */}
-      <div className="lg:hidden h-[calc(100vh-4rem)]">
-        <Tabs defaultValue="map" className="flex flex-col h-full">
-          <TabsList className="flex w-full mx-2 my-2">
-            <TabsTrigger value="map" className="flex-1 gap-1 px-2 py-1.5">
-              <Map className="w-4 h-4" />
-              <span className="text-xs">Map</span>
-            </TabsTrigger>
-            {game.game_phase === 'playing' && (
-              <TabsTrigger value="preselection" className="flex-1 gap-1 px-2 py-1.5">
-                <List className="w-4 h-4" />
-                <span className="text-xs">Countries</span>
-              </TabsTrigger>
-            )}
-            <TabsTrigger value="stats" className="flex-1 gap-1 px-2 py-1.5">
-              <BarChart3 className="w-4 h-4" />
-              <span className="text-xs">Stats</span>
-            </TabsTrigger>
-            {game.game_phase === 'finished' && (
-              <TabsTrigger value="wars" className="flex-1 gap-1 px-2 py-1.5">
-                <Swords className="w-4 h-4" />
-                <span className="text-xs">Wars</span>
-              </TabsTrigger>
-            )}
-          </TabsList>
-          
-          <TabsContent value="map" className="flex-1 m-0 p-0">
+      <div className="lg:hidden h-[calc(100vh-4rem)] flex flex-col">
+        {/* Custom tab bar */}
+        <div className="flex mx-2 my-2 h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground">
+          <button
+            onClick={() => setMobileTab('map')}
+            className={`inline-flex flex-1 items-center justify-center gap-1 whitespace-nowrap rounded-sm px-2 py-1.5 text-sm font-medium transition-all ${mobileTab === 'map' ? 'bg-background text-foreground shadow-sm' : ''}`}
+          >
+            <Map className="w-4 h-4" />
+            <span className="text-xs">Map</span>
+          </button>
+          {game.game_phase === 'playing' && (
+            <button
+              onClick={() => setMobileTab('preselection')}
+              className={`inline-flex flex-1 items-center justify-center gap-1 whitespace-nowrap rounded-sm px-2 py-1.5 text-sm font-medium transition-all ${mobileTab === 'preselection' ? 'bg-background text-foreground shadow-sm' : ''}`}
+            >
+              <List className="w-4 h-4" />
+              <span className="text-xs">Countries</span>
+            </button>
+          )}
+          <button
+            onClick={() => setMobileTab('stats')}
+            className={`inline-flex flex-1 items-center justify-center gap-1 whitespace-nowrap rounded-sm px-2 py-1.5 text-sm font-medium transition-all ${mobileTab === 'stats' ? 'bg-background text-foreground shadow-sm' : ''}`}
+          >
+            <BarChart3 className="w-4 h-4" />
+            <span className="text-xs">Stats</span>
+          </button>
+          {game.game_phase === 'finished' && (
+            <button
+              onClick={() => setMobileTab('wars')}
+              className={`inline-flex flex-1 items-center justify-center gap-1 whitespace-nowrap rounded-sm px-2 py-1.5 text-sm font-medium transition-all ${mobileTab === 'wars' ? 'bg-background text-foreground shadow-sm' : ''}`}
+            >
+              <Swords className="w-4 h-4" />
+              <span className="text-xs">Wars</span>
+            </button>
+          )}
+        </div>
+
+        {/* Tab content */}
+        <div className="flex-1 min-h-0 overflow-hidden">
+          {mobileTab === 'map' && (
             <GameMap
               countries={GAME_COUNTRIES}
               onCountrySelect={selectCountry}
@@ -957,61 +971,63 @@ const MultiplayerGame = () => {
                 isActive: p.player_order === game?.current_player_turn
               }))}
             />
-          </TabsContent>
-          
-          {game.game_phase === 'playing' && (
-            <TabsContent value="preselection" className="flex-1 m-0 p-0 bg-background">
-                <CountryPreselection
-                  onCountrySelect={selectCountry}
-                  selectedCountries={selectedCountriesArray}
-                  isPlayerTurn={game.current_player_turn === userPlayer?.player_order}
-                  gameId={game.id}
-                  playerId={userPlayer?.id || ''}
-                  preselectionList={preselectionList}
-                  setPreselectionList={setPreselectionList}
-                  autoSelectTimer={autoSelectTimer}
-                />
-            </TabsContent>
           )}
-          
-          <TabsContent value="stats" className="flex-1 m-0 p-0 overflow-y-auto">
-            <EmpireStats
-              players={players.map(p => ({ 
-                id: p.id, 
-                name: p.player_name, 
-                color: p.color,
-                countries: gameStatsCountries.filter(c => c.selectedBy === p.player_name).map(c => c.id),
-                isActive: p.player_order === game?.current_player_turn
-              }))}
-              countries={gameStatsCountries}
-              currentPlayer={userPlayer ? { 
-                id: userPlayer.id, 
-                name: userPlayer.player_name, 
-                color: userPlayer.color,
-                countries: gameStatsCountries.filter(c => c.selectedBy === userPlayer.player_name).map(c => c.id),
-                isActive: false
-              } : undefined}
-              gamePhase={game.game_phase as 'setup' | 'selection' | 'finished'}
+
+          {mobileTab === 'preselection' && game.game_phase === 'playing' && (
+            <CountryPreselection
+              onCountrySelect={selectCountry}
+              selectedCountries={selectedCountriesArray}
+              isPlayerTurn={game.current_player_turn === userPlayer?.player_order}
+              gameId={game.id}
+              playerId={userPlayer?.id || ''}
+              preselectionList={preselectionList}
+              setPreselectionList={setPreselectionList}
+              autoSelectTimer={autoSelectTimer}
             />
-          </TabsContent>
-          
-          <TabsContent value="wars" forceMount className="m-0 p-4 overflow-y-auto data-[state=inactive]:hidden" style={{ maxHeight: 'calc(100vh - 8rem)' }}>
-            {game.game_phase === 'finished' && userPlayer ? (
+          )}
+
+          {mobileTab === 'stats' && (
+            <div className="h-full overflow-y-auto">
+              <EmpireStats
+                players={players.map(p => ({ 
+                  id: p.id, 
+                  name: p.player_name, 
+                  color: p.color,
+                  countries: gameStatsCountries.filter(c => c.selectedBy === p.player_name).map(c => c.id),
+                  isActive: p.player_order === game?.current_player_turn
+                }))}
+                countries={gameStatsCountries}
+                currentPlayer={userPlayer ? { 
+                  id: userPlayer.id, 
+                  name: userPlayer.player_name, 
+                  color: userPlayer.color,
+                  countries: gameStatsCountries.filter(c => c.selectedBy === userPlayer.player_name).map(c => c.id),
+                  isActive: false
+                } : undefined}
+                gamePhase={game.game_phase as 'setup' | 'selection' | 'finished'}
+              />
+            </div>
+          )}
+
+          {mobileTab === 'wars' && (
+            <div className="h-full overflow-y-auto p-4">
               <div className="space-y-3">
                 <h3 className="font-semibold">War Declaration</h3>
-                <WarDeclaration
-                  gameId={gameId!}
-                  currentPlayer={userPlayer}
-                  players={players}
-                  gameCountries={gameCountries}
-                  isPlayerTurn={true}
-                />
+                {userPlayer ? (
+                  <WarDeclaration
+                    gameId={gameId!}
+                    currentPlayer={userPlayer}
+                    players={players}
+                    gameCountries={gameCountries}
+                    isPlayerTurn={true}
+                  />
+                ) : (
+                  <p className="text-muted-foreground text-sm">Loading player data...</p>
+                )}
               </div>
-            ) : (
-              <p className="text-muted-foreground text-sm">Loading...</p>
-            )}
-          </TabsContent>
-        </Tabs>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Chat Component */}
