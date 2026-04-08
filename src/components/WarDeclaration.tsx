@@ -77,8 +77,9 @@ const WarDeclaration: React.FC<WarDeclarationProps> = ({
   };
 
   const setupWarDeclarationSubscription = () => {
+    const channelId = `war-declarations-${gameId}-${Math.random().toString(36).slice(2)}`;
     const channel = supabase
-      .channel(`war-declarations-${gameId}`)
+      .channel(channelId)
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
