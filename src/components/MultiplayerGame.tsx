@@ -63,6 +63,7 @@ const MultiplayerGame = () => {
   const [preselectionList, setPreselectionList] = useState<string[]>([]);
   const [autoSelectTimer, setAutoSelectTimer] = useState<NodeJS.Timeout | null>(null);
   const [isSavingPreselections, setIsSavingPreselections] = useState<boolean>(false);
+  const [mobileTab, setMobileTab] = useState<string>('map');
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const autoVoteIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -855,7 +856,7 @@ const MultiplayerGame = () => {
                     currentPlayer={userPlayer!}
                     players={players}
                     gameCountries={gameCountries}
-                    isPlayerTurn={game.current_player_turn === userPlayer?.player_order}
+                    isPlayerTurn={true}
                   />
                 </div>
               )}
@@ -916,7 +917,7 @@ const MultiplayerGame = () => {
 
       {/* Mobile Tabbed Layout */}
       <div className="lg:hidden h-[calc(100vh-4rem)]">
-        <Tabs defaultValue="map" className="flex flex-col h-full">
+        <Tabs value={mobileTab} onValueChange={setMobileTab} className="flex flex-col h-full">
           <TabsList className="flex w-full mx-2 my-2">
             <TabsTrigger value="map" className="flex-1 gap-1 px-2 py-1.5">
               <Map className="w-4 h-4" />
@@ -996,7 +997,7 @@ const MultiplayerGame = () => {
           </TabsContent>
           
           {game.game_phase === 'finished' && (
-            <TabsContent value="wars" className="flex-1 m-0 p-4 overflow-y-auto">
+            <TabsContent value="wars" className="flex-1 min-h-0 m-0 p-4 overflow-y-auto">
               <div className="space-y-3">
                 <h3 className="font-semibold">War Declaration</h3>
                 <WarDeclaration
@@ -1004,7 +1005,7 @@ const MultiplayerGame = () => {
                   currentPlayer={userPlayer!}
                   players={players}
                   gameCountries={gameCountries}
-                  isPlayerTurn={game.current_player_turn === userPlayer?.player_order}
+                  isPlayerTurn={true}
                 />
               </div>
             </TabsContent>
