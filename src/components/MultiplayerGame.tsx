@@ -847,12 +847,12 @@ const MultiplayerGame = () => {
                 </div>
               )}
               
-              {game.game_phase === 'finished' && (
+              {game.game_phase === 'finished' && userPlayer && (
                 <div className="p-4 space-y-3 overflow-y-auto">
                   <h3 className="font-semibold">War Declaration</h3>
                   <WarDeclaration
                     gameId={gameId!}
-                    currentPlayer={userPlayer!}
+                    currentPlayer={userPlayer}
                     players={players}
                     gameCountries={gameCountries}
                     isPlayerTurn={true}
@@ -1011,20 +1011,7 @@ const MultiplayerGame = () => {
 
           {mobileTab === 'wars' && (
             <div className="h-full overflow-y-auto p-4">
-              <div className="space-y-3">
-                <h3 className="font-semibold">War Declaration</h3>
-                {userPlayer ? (
-                  <WarDeclaration
-                    gameId={gameId!}
-                    currentPlayer={userPlayer}
-                    players={players}
-                    gameCountries={gameCountries}
-                    isPlayerTurn={true}
-                  />
-                ) : (
-                  <p className="text-muted-foreground text-sm">Loading player data...</p>
-                )}
-              </div>
+              <p>Wars tab is active. Game phase: {game.game_phase}</p>
             </div>
           )}
         </div>
