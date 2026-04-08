@@ -996,20 +996,22 @@ const MultiplayerGame = () => {
             />
           </TabsContent>
           
-          {game.game_phase === 'finished' && (
-            <TabsContent value="wars" className="flex-1 min-h-0 m-0 p-4 overflow-y-auto">
+          <TabsContent value="wars" className="m-0 p-4 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 8rem)' }}>
+            {game.game_phase === 'finished' && userPlayer ? (
               <div className="space-y-3">
                 <h3 className="font-semibold">War Declaration</h3>
                 <WarDeclaration
                   gameId={gameId!}
-                  currentPlayer={userPlayer!}
+                  currentPlayer={userPlayer}
                   players={players}
                   gameCountries={gameCountries}
                   isPlayerTurn={true}
                 />
               </div>
-            </TabsContent>
-          )}
+            ) : (
+              <p className="text-muted-foreground text-sm">Loading...</p>
+            )}
+          </TabsContent>
         </Tabs>
       </div>
 

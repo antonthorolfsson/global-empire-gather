@@ -57,7 +57,8 @@ const WarDeclaration: React.FC<WarDeclarationProps> = ({
 
   useEffect(() => {
     loadWarDeclarations();
-    setupWarDeclarationSubscription();
+    const cleanup = setupWarDeclarationSubscription();
+    return cleanup;
   }, [gameId]);
 
   const loadWarDeclarations = async () => {
