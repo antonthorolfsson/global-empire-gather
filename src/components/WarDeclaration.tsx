@@ -95,11 +95,40 @@ const WarDeclaration: React.FC<WarDeclarationProps> = ({
     };
   };
 
+  const pendingWarFromMe = warDeclarations.find(wd =>
+    wd.attacking_player_id === currentPlayer.id && wd.status === 'pending'
+  );
+
   const declareWar = async () => {
     if (!selectedOwnCountry || !selectedEnemyCountry) {
       toast({
         title: "Select countries",
         description: "You must select both your country and an enemy country.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Prevent duplicate: already have a pending outgoing war
+    if (pendingWarFromMe) {
+      toast({
+        title: "War already pending",
+        description: "You already have an unanswered war declaration. Wait for a response first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Prevent duplicate: same country pair already has a pending or active war
+    const duplicateWar = warDeclarations.find(wd =>
+      (wd.status === 'pending' || wd.status === 'accepted') &&
+      ((wd.attacking_country_id === selectedOwnCountry && wd.defending_country_id === selectedEnemyCountry) ||
+       (wd.attacking_country_id === selectedEnemyCountry && wd.defending_country_id === selectedOwnCountry))
+    );
+    if (duplicateWar) {
+      toast({
+        title: "War already exists",
+        description: "There is already a pending or active war between these countries.",
         variant: "destructive",
       });
       return;
@@ -243,8 +272,21 @@ const WarDeclaration: React.FC<WarDeclarationProps> = ({
         </Card>
       )}
 
+      {/* Pending outgoing war notice */}
+      {pendingWarFromMe && !pendingWarAgainstMe && (
+        <Card className="p-4 border-yellow-500 bg-yellow-500/5">
+          <div className="flex items-center gap-3 mb-2">
+            <Target className="w-5 h-5 text-yellow-600" />
+            <h3 className="font-semibold text-yellow-700">War Pending</h3>
+          </div>
+          <p className="text-sm">
+            Your war declaration (<strong>{getCountryName(pendingWarFromMe.attacking_country_id)}</strong> vs <strong>{getCountryName(pendingWarFromMe.defending_country_id)}</strong>) is awaiting a response from <strong>{getPlayerName(pendingWarFromMe.defending_player_id)}</strong>.
+          </p>
+        </Card>
+      )}
+
       {/* War declaration interface */}
-      {isPlayerTurn && !pendingWarAgainstMe && (
+      {isPlayerTurn && !pendingWarAgainstMe && !pendingWarFromMe && (
         <Card className="p-4">
           <div className="flex items-center gap-3 mb-4">
             <Sword className="w-5 h-5 text-primary" />
