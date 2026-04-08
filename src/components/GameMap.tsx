@@ -112,19 +112,7 @@ const GameMap: React.FC<GameMapProps> = ({
     };
   }, []);
 
-  useEffect(() => {
-    const svgElement = document.getElementById('world-map-svg') as SVGSVGElement | null;
 
-    if (svgElement) {
-      svgElement.style.transform = `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`;
-      svgElement.style.transformOrigin = 'center center';
-      svgElement.style.transformBox = 'fill-box';
-      svgElement.style.transition = 'none';
-      svgElement.style.willChange = 'transform';
-      svgElement.style.width = '100%';
-      svgElement.style.height = '100%';
-    }
-  }, [pan, zoom, svgContent]);
 
   const getCountryOwner = (countryId: string) => {
     return players.find(player => 
@@ -592,6 +580,11 @@ const GameMap: React.FC<GameMapProps> = ({
             <div
               id="world-map-container"
               className="w-full h-full"
+              style={{
+                transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+                transformOrigin: 'center center',
+                willChange: 'transform',
+              }}
               dangerouslySetInnerHTML={{
                 __html: svgContent
               }}
