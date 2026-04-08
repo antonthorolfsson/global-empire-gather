@@ -29,7 +29,8 @@ const GameMap: React.FC<GameMapProps> = ({
 }) => {
   const [svgContent, setSvgContent] = useState<string>('');
   const [zoom, setZoom] = useState(1);
-  const [pan, setPan] = useState({ x: 0, y: 0 });
+  // viewCenter is in SVG coordinate space (the point at the center of the viewport)
+  const [viewCenter, setViewCenter] = useState({ x: 504.836, y: 332.982 });
   const [isDragging, setIsDragging] = useState(false);
   const [lastMousePos, setLastMousePos] = useState({ x: 0, y: 0 });
   
@@ -39,7 +40,7 @@ const GameMap: React.FC<GameMapProps> = ({
   const [initialZoom, setInitialZoom] = useState(1);
   const [touchCount, setTouchCount] = useState(0);
   const [initialPinchCenter, setInitialPinchCenter] = useState({ x: 0, y: 0 });
-  const [initialPan, setInitialPan] = useState({ x: 0, y: 0 });
+  const [initialViewCenter, setInitialViewCenter] = useState({ x: 0, y: 0 });
   const [isAnimating, setIsAnimating] = useState(false);
   const [velocity, setVelocity] = useState({ x: 0, y: 0 });
   const lastTouchTime = useRef(0);
@@ -47,6 +48,16 @@ const GameMap: React.FC<GameMapProps> = ({
   const animationFrameRef = useRef<number>();
   
   const mapContainerRef = useRef<HTMLDivElement>(null);
+  const svgDimsRef = useRef({ width: 1009.6727, height: 665.96301 });
+
+  // Helper: get base fit scale (how many pixels per SVG unit at zoom=1)
+  const getBaseFitScale = () => {
+    const container = mapContainerRef.current;
+    if (!container) return 1;
+    const rect = container.getBoundingClientRect();
+    const { width: origW, height: origH } = svgDimsRef.current;
+    return Math.min(rect.width / origW, rect.height / origH);
+  };
 
   useEffect(() => {
     // Import the SVG content directly and normalize it for crisp rendering
@@ -68,6 +79,9 @@ const GameMap: React.FC<GameMapProps> = ({
 
         const originalWidth = parseFloat(svgElement.getAttribute('width') || '1009.6727');
         const originalHeight = parseFloat(svgElement.getAttribute('height') || '665.96301');
+
+        svgDimsRef.current = { width: originalWidth, height: originalHeight };
+        setViewCenter({ x: originalWidth / 2, y: originalHeight / 2 });
 
         svgElement.setAttribute('id', 'world-map-svg');
         svgElement.setAttribute('width', '100%');
@@ -112,6 +126,18 @@ const GameMap: React.FC<GameMapProps> = ({
     };
   }, []);
 
+  // Update SVG viewBox for crisp vector rendering at any zoom level
+  useEffect(() => {
+    const svgElement = document.getElementById('world-map-svg');
+    if (!svgElement) return;
+    const { width: origW, height: origH } = svgDimsRef.current;
+    const vbW = origW / zoom;
+    const vbH = origH / zoom;
+    const vbX = viewCenter.x - vbW / 2;
+    const vbY = viewCenter.y - vbH / 2;
+    svgElement.setAttribute('viewBox', `${vbX} ${vbY} ${vbW} ${vbH}`);
+  }, [zoom, viewCenter, svgContent]);
+
 
 
   const getCountryOwner = (countryId: string) => {
@@ -154,35 +180,33 @@ const GameMap: React.FC<GameMapProps> = ({
   // Zoom and pan handlers
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
-    const zoomFactor = 1.2; // 20% increase/decrease per scroll step
+    const zoomFactor = 1.2;
     const newZoom = Math.max(0.5, Math.min(10, e.deltaY > 0 ? zoom / zoomFactor : zoom * zoomFactor));
     
-    // Get container bounds for relative positioning
     const container = mapContainerRef.current;
     if (container) {
       const rect = container.getBoundingClientRect();
+      const { width: origW, height: origH } = svgDimsRef.current;
+      const bfs = Math.min(rect.width / origW, rect.height / origH);
+      const offsetX = (rect.width - origW * bfs) / 2;
+      const offsetY = (rect.height - origH * bfs) / 2;
       
-      // Calculate mouse position relative to container
-      const mouseX = e.clientX - rect.left;
-      const mouseY = e.clientY - rect.top;
+      // Mouse position in base SVG coords (unzoomed)
+      const msX = (e.clientX - rect.left - offsetX) / bfs;
+      const msY = (e.clientY - rect.top - offsetY) / bfs;
       
-      // Calculate world position under mouse cursor at current zoom
-      const worldX = (mouseX - rect.width / 2 - pan.x) / zoom;
-      const worldY = (mouseY - rect.height / 2 - pan.y) / zoom;
+      // SVG world point under cursor at current zoom
+      const svgX = viewCenter.x - origW / (2 * zoom) + msX / zoom;
+      const svgY = viewCenter.y - origH / (2 * zoom) + msY / zoom;
       
-      // Calculate new pan to keep the world position under the same screen position
-      const newPanX = mouseX - rect.width / 2 - worldX * newZoom;
-      const newPanY = mouseY - rect.height / 2 - worldY * newZoom;
-      
-      setZoom(newZoom);
-      setPan({
-        x: newPanX,
-        y: newPanY
+      // Keep that world point under cursor at new zoom
+      setViewCenter({
+        x: svgX + origW / (2 * newZoom) - msX / newZoom,
+        y: svgY + origH / (2 * newZoom) - msY / newZoom,
       });
-    } else {
-      // Fallback to simple zoom if container ref is not available
-      setZoom(newZoom);
     }
+    
+    setZoom(newZoom);
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -195,10 +219,12 @@ const GameMap: React.FC<GameMapProps> = ({
     
     const deltaX = e.clientX - lastMousePos.x;
     const deltaY = e.clientY - lastMousePos.y;
+    const bfs = getBaseFitScale();
     
-    setPan(prev => ({
-      x: prev.x + deltaX,
-      y: prev.y + deltaY
+    // Dragging right means moving the view left (negative delta in SVG space)
+    setViewCenter(prev => ({
+      x: prev.x - deltaX / (bfs * zoom),
+      y: prev.y - deltaY / (bfs * zoom),
     }));
     
     setLastMousePos({ x: e.clientX, y: e.clientY });
@@ -218,7 +244,8 @@ const GameMap: React.FC<GameMapProps> = ({
 
   const handleResetView = () => {
     setZoom(1);
-    setPan({ x: 0, y: 0 });
+    const { width, height } = svgDimsRef.current;
+    setViewCenter({ x: width / 2, y: height / 2 });
   };
 
   // Helper function to calculate center between two touch points
@@ -246,7 +273,7 @@ const GameMap: React.FC<GameMapProps> = ({
     
     let animationId: number;
     const deceleration = 0.95;
-    const minVelocity = 0.1;
+    const minVelocity = 0.0001;
     
     const animate = () => {
       setVelocity(prev => {
@@ -260,9 +287,9 @@ const GameMap: React.FC<GameMapProps> = ({
           return { x: 0, y: 0 };
         }
         
-        setPan(prevPan => ({
-          x: prevPan.x + newVelocity.x,
-          y: prevPan.y + newVelocity.y
+        setViewCenter(prevCenter => ({
+          x: prevCenter.x + newVelocity.x,
+          y: prevCenter.y + newVelocity.y
         }));
         
         return newVelocity;
@@ -281,26 +308,23 @@ const GameMap: React.FC<GameMapProps> = ({
   }, [isAnimating]);
 
   const handleTouchStart = (e: React.TouchEvent) => {
-    console.log('Touch start - fingers:', e.touches.length);
     setIsTouch(true);
     setTouchCount(e.touches.length);
     setTouchStartTime(Date.now());
     setTouchMoved(false);
-    setIsAnimating(false); // Stop any ongoing momentum
+    setIsAnimating(false);
     setVelocity({ x: 0, y: 0 });
     
     if (e.touches.length === 2) {
-      // Two fingers - start pinch zoom
       const distance = getDistance(e.touches[0], e.touches[1]);
       const center = getTouchCenter(e.touches[0], e.touches[1]);
       
       setInitialPinchDistance(distance);
       setInitialZoom(zoom);
       setInitialPinchCenter(center);
-      setInitialPan({ ...pan });
+      setInitialViewCenter({ ...viewCenter });
       e.preventDefault();
     } else if (e.touches.length === 1) {
-      // Single finger - prepare for drag
       const touch = e.touches[0];
       setLastMousePos({ x: touch.clientX, y: touch.clientY });
       lastTouchTime.current = Date.now();
@@ -310,51 +334,51 @@ const GameMap: React.FC<GameMapProps> = ({
 
   const handleTouchMove = (e: React.TouchEvent) => {
     if (e.touches.length === 2 && initialPinchDistance > 0) {
-      // Two fingers - ultra-smooth pinch zoom
+      // Two fingers - pinch zoom via viewBox
       e.preventDefault();
       const currentDistance = getDistance(e.touches[0], e.touches[1]);
       const currentCenter = getTouchCenter(e.touches[0], e.touches[1]);
       
-      // Smoother zoom scaling with better curve
       const rawScale = currentDistance / initialPinchDistance;
-      const scale = Math.pow(rawScale, 0.9); // More linear feel
+      const scale = Math.pow(rawScale, 0.9);
       const newZoom = Math.max(0.5, Math.min(10, initialZoom * scale));
       
-      // Get container bounds for relative positioning
       const container = mapContainerRef.current;
       if (container) {
         const rect = container.getBoundingClientRect();
+        const { width: origW, height: origH } = svgDimsRef.current;
+        const bfs = Math.min(rect.width / origW, rect.height / origH);
+        const offsetX = (rect.width - origW * bfs) / 2;
+        const offsetY = (rect.height - origH * bfs) / 2;
         
-        // Calculate the center point relative to the container
-        const centerX = currentCenter.x - rect.left;
-        const centerY = currentCenter.y - rect.top;
+        // Initial pinch center in base SVG coords
+        const pcX = (initialPinchCenter.x - rect.left - offsetX) / bfs;
+        const pcY = (initialPinchCenter.y - rect.top - offsetY) / bfs;
         
-        // Calculate world position under the pinch center at initial zoom
-        const worldX = (centerX - rect.width / 2 - initialPan.x) / initialZoom;
-        const worldY = (centerY - rect.height / 2 - initialPan.y) / initialZoom;
+        // SVG world point that was at the initial pinch center
+        const svgX = initialViewCenter.x - origW / (2 * initialZoom) + pcX / initialZoom;
+        const svgY = initialViewCenter.y - origH / (2 * initialZoom) + pcY / initialZoom;
         
-        // Calculate new pan to keep the world position under the same screen position
-        const newPanX = centerX - rect.width / 2 - worldX * newZoom;
-        const newPanY = centerY - rect.height / 2 - worldY * newZoom;
+        // Current pinch center in base SVG coords
+        const curPcX = (currentCenter.x - rect.left - offsetX) / bfs;
+        const curPcY = (currentCenter.y - rect.top - offsetY) / bfs;
         
-        setZoom(newZoom);
-        setPan({
-          x: newPanX,
-          y: newPanY
+        // Keep the SVG point under the current pinch center at new zoom
+        setViewCenter({
+          x: svgX + origW / (2 * newZoom) - curPcX / newZoom,
+          y: svgY + origH / (2 * newZoom) - curPcY / newZoom,
         });
-      } else {
-        setZoom(newZoom);
       }
       
+      setZoom(newZoom);
       if (!touchMoved) setTouchMoved(true);
     } else if (e.touches.length === 1 && initialPinchDistance === 0 && !isAnimating) {
-      // Single finger - only pan if not in momentum animation
+      // Single finger - pan
       const touch = e.touches[0];
       const deltaX = touch.clientX - lastMousePos.x;
       const deltaY = touch.clientY - lastMousePos.y;
       const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
       
-      // Require minimum movement to start panning (reduces jitter)
       if (distance > 3) {
         if (!touchMoved) {
           setTouchMoved(true);
@@ -362,23 +386,21 @@ const GameMap: React.FC<GameMapProps> = ({
         }
         e.preventDefault();
         
-        // Throttle updates for smoother performance
         const now = Date.now();
-        if (now - lastTouchTime.current > 16) { // ~60fps
-          // Improved pan calculation for better mobile experience at high zoom
-          const zoomFactor = Math.max(0.3, 1 / Math.sqrt(zoom)); // Less aggressive scaling
-          const panDeltaX = deltaX * zoomFactor;
-          const panDeltaY = deltaY * zoomFactor;
+        if (now - lastTouchTime.current > 16) {
+          const bfs = getBaseFitScale();
+          const svgDeltaX = deltaX / (bfs * zoom);
+          const svgDeltaY = deltaY / (bfs * zoom);
           
-          setPan(prev => ({
-            x: prev.x + panDeltaX,
-            y: prev.y + panDeltaY
+          setViewCenter(prev => ({
+            x: prev.x - svgDeltaX,
+            y: prev.y - svgDeltaY,
           }));
           
-          // Simple velocity for momentum
+          // Velocity in SVG units for momentum
           setVelocity({
-            x: panDeltaX * 0.8,
-            y: panDeltaY * 0.8
+            x: -svgDeltaX * 0.8,
+            y: -svgDeltaY * 0.8,
           });
           
           setLastMousePos({ x: touch.clientX, y: touch.clientY });
@@ -389,41 +411,30 @@ const GameMap: React.FC<GameMapProps> = ({
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
-    console.log('Touch end - touchMoved:', touchMoved, 'touchCount:', touchCount, 'touches:', e.touches.length);
-    
     if (e.touches.length === 0) {
-      // All fingers lifted
       const touchDuration = Date.now() - touchStartTime;
-      console.log('Touch duration:', touchDuration, 'touchMoved:', touchMoved);
       
-      // If it was a quick tap without movement, trigger country selection
       if (!touchMoved && touchDuration < 300 && touchCount === 1) {
-        console.log('Quick tap detected, checking for country under touch');
-        // Get the element under the original touch point
         const target = e.target as Element;
         if (target && target.tagName === 'path' && target.id) {
           const countryId = target.id.toLowerCase();
-          console.log('Country tapped:', countryId);
           handleCountryClick(countryId);
         }
       } else if (touchMoved && touchCount === 1) {
-        // Enable momentum for smooth deceleration
         const currentVelocity = velocity;
         const velocityMagnitude = Math.sqrt(currentVelocity.x * currentVelocity.x + currentVelocity.y * currentVelocity.y);
         
-        if (velocityMagnitude > 1) { // Only start momentum if there's significant velocity
+        if (velocityMagnitude > 0.01) {
           setIsAnimating(true);
         }
       }
       
-      // Reset all touch states
       setIsDragging(false);
       setIsTouch(false);
       setInitialPinchDistance(0);
       setTouchCount(0);
       setTouchMoved(false);
     } else if (e.touches.length === 1 && touchCount === 2) {
-      // Went from 2 fingers to 1 finger
       setInitialPinchDistance(0);
       setTouchCount(1);
       setLastMousePos({ 
@@ -580,11 +591,6 @@ const GameMap: React.FC<GameMapProps> = ({
             <div
               id="world-map-container"
               className="w-full h-full"
-              style={{
-                transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
-                transformOrigin: 'center center',
-                willChange: 'transform',
-              }}
               dangerouslySetInnerHTML={{
                 __html: svgContent
               }}
