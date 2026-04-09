@@ -29,11 +29,6 @@ const GameMap: React.FC<GameMapProps> = ({
 }) => {
   const [svgContent, setSvgContent] = useState('');
   const [zoomDisplay, setZoomDisplay] = useState(1);
-  const [debugLog, setDebugLog] = useState<string[]>([]);
-
-  const addDebug = (msg: string) => {
-    setDebugLog((prev) => [...prev.slice(-4), msg]);
-  };
 
   // All mutable interaction state lives in a single ref — no useCallback chains needed
   const stateRef = useRef({
@@ -286,7 +281,6 @@ const GameMap: React.FC<GameMapProps> = ({
       s.touchCount = e.touches.length;
       s.touchStartTime = Date.now();
       s.touchMoved = false;
-      setDebugLog((prev) => [...prev.slice(-4), `tS:${e.touches.length}`]);
 
       if (e.touches.length === 2) {
         s.pinchDist0 = dist(e.touches[0], e.touches[1]);
@@ -503,22 +497,13 @@ const GameMap: React.FC<GameMapProps> = ({
   // ─── Zoom button handlers ────────────────────────────────
 
   const handleZoomIn = () => {
-    const newZ = Math.min(10, stateRef.current.zoom + 0.5);
-    setZoomAndVC(newZ);
-    const svgEl = svgContainerRef.current?.querySelector('svg');
-    const vb = svgEl?.getAttribute('viewBox') || 'null';
-    addDebug(`+z=${newZ.toFixed(1)} vb=${vb}`);
+    setZoomAndVC(Math.min(10, stateRef.current.zoom + 0.5));
   };
   const handleZoomOut = () => {
-    const newZ = Math.max(0.5, stateRef.current.zoom - 0.5);
-    setZoomAndVC(newZ);
-    const svgEl = svgContainerRef.current?.querySelector('svg');
-    const vb = svgEl?.getAttribute('viewBox') || 'null';
-    addDebug(`-z=${newZ.toFixed(1)} vb=${vb}`);
+    setZoomAndVC(Math.max(0.5, stateRef.current.zoom - 0.5));
   };
   const handleResetView = () => {
     const s = stateRef.current;
-    addDebug('reset');
     setZoomAndVC(1, s.origW / 2, s.origH / 2);
   };
 
@@ -593,13 +578,7 @@ const GameMap: React.FC<GameMapProps> = ({
           <p className="text-xs text-card-foreground">Zoom: {Math.round(zoomDisplay * 100)}%</p>
         </div>
 
-        {/* Debug overlay - remove when fixed */}
-        <div className="absolute top-12 left-4 bg-black/80 text-green-400 rounded p-2 pointer-events-none" style={{ zIndex: 100, fontSize: '10px', fontFamily: 'monospace', maxWidth: '60%' }}>
-          {debugLog.map((msg, i) => (
-            <div key={i}>{msg}</div>
-          ))}
-          {debugLog.length === 0 && <div>no events yet</div>}
-        </div>
+
       </div>
     </Card>
   );
