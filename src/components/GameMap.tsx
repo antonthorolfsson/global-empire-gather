@@ -71,28 +71,23 @@ const GameMap: React.FC<GameMapProps> = ({
 
   // ─── Helpers ──────────────────────────────────────────────
 
+  const svgContainerRef = useRef<HTMLDivElement>(null);
+
   const updateViewBox = () => {
-    let svg: Element | null = document.getElementById('world-map-svg');
-    if (!svg && containerRef.current) {
-      svg = containerRef.current.querySelector('svg');
-    }
+    const svg = svgContainerRef.current?.querySelector('svg') || document.getElementById('world-map-svg');
     if (!svg) return;
     const s = stateRef.current;
     const vbW = s.origW / s.zoom;
     const vbH = s.origH / s.zoom;
     const x = s.vcX - vbW / 2;
     const y = s.vcY - vbH / 2;
-
-    // Use SVG DOM API (works better on mobile Safari than setAttribute)
-    const svgEl = svg as unknown as SVGSVGElement;
-    if (svgEl.viewBox?.baseVal) {
-      svgEl.viewBox.baseVal.x = x;
-      svgEl.viewBox.baseVal.y = y;
-      svgEl.viewBox.baseVal.width = vbW;
-      svgEl.viewBox.baseVal.height = vbH;
-    } else {
-      svg.setAttribute('viewBox', `${x} ${y} ${vbW} ${vbH}`);
-    }
+    const vbStr = `${x} ${y} ${vbW} ${vbH}`;
+    svg.setAttribute('viewBox', vbStr);
+    // Force mobile browser repaint
+    (svg as HTMLElement).style.transform = 'translateZ(0)';
+    requestAnimationFrame(() => {
+      (svg as HTMLElement).style.transform = '';
+    });
   };
 
   const getBFS = () => {
@@ -191,6 +186,13 @@ const GameMap: React.FC<GameMapProps> = ({
       })
       .catch((err) => console.error('Error loading world map:', err));
   }, []);
+
+  // Inject SVG into DOM outside React's ownership so we can freely mutate it
+  useEffect(() => {
+    if (!svgContent || !svgContainerRef.current) return;
+    svgContainerRef.current.innerHTML = svgContent;
+    updateViewBox();
+  }, [svgContent]);
 
   // Sync viewBox after initial load + whenever zoomDisplay changes (for button clicks)
   useLayoutEffect(() => {
@@ -476,7 +478,7 @@ const GameMap: React.FC<GameMapProps> = ({
     }
 
     // Click handlers for country paths
-    const svgEl = document.getElementById('world-map-svg');
+    const svgEl = svgContainerRef.current?.querySelector('svg') || document.getElementById('world-map-svg');
     if (!svgEl) return;
 
     const paths = svgEl.querySelectorAll('path[id]') as NodeListOf<SVGPathElement>;
@@ -503,16 +505,16 @@ const GameMap: React.FC<GameMapProps> = ({
   const handleZoomIn = () => {
     const newZ = Math.min(10, stateRef.current.zoom + 0.5);
     setZoomAndVC(newZ);
-    const svgEl = document.getElementById('world-map-svg') as unknown as SVGSVGElement | null;
-    const vb = svgEl?.viewBox?.baseVal;
-    addDebug(`+z=${newZ.toFixed(1)} vb=${vb ? `${vb.width.toFixed(0)}x${vb.height.toFixed(0)}` : 'null'}`);
+    const svgEl = svgContainerRef.current?.querySelector('svg');
+    const vb = svgEl?.getAttribute('viewBox') || 'null';
+    addDebug(`+z=${newZ.toFixed(1)} vb=${vb}`);
   };
   const handleZoomOut = () => {
     const newZ = Math.max(0.5, stateRef.current.zoom - 0.5);
     setZoomAndVC(newZ);
-    const svgEl = document.getElementById('world-map-svg') as unknown as SVGSVGElement | null;
-    const vb = svgEl?.viewBox?.baseVal;
-    addDebug(`-z=${newZ.toFixed(1)} vb=${vb ? `${vb.width.toFixed(0)}x${vb.height.toFixed(0)}` : 'null'}`);
+    const svgEl = svgContainerRef.current?.querySelector('svg');
+    const vb = svgEl?.getAttribute('viewBox') || 'null';
+    addDebug(`-z=${newZ.toFixed(1)} vb=${vb}`);
   };
   const handleResetView = () => {
     const s = stateRef.current;
@@ -532,9 +534,9 @@ const GameMap: React.FC<GameMapProps> = ({
             style={{ userSelect: 'none', touchAction: 'none' }}
           >
             <div
+              ref={svgContainerRef}
               id="world-map-container"
               className="w-full h-full"
-              dangerouslySetInnerHTML={{ __html: svgContent }}
             />
           </div>
         ) : (
