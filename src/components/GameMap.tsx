@@ -29,6 +29,11 @@ const GameMap: React.FC<GameMapProps> = ({
 }) => {
   const [svgContent, setSvgContent] = useState('');
   const [zoomDisplay, setZoomDisplay] = useState(1);
+  const [debugLog, setDebugLog] = useState<string[]>([]);
+
+  const addDebug = (msg: string) => {
+    setDebugLog((prev) => [...prev.slice(-4), msg]);
+  };
 
   // All mutable interaction state lives in a single ref — no useCallback chains needed
   const stateRef = useRef({
@@ -67,7 +72,10 @@ const GameMap: React.FC<GameMapProps> = ({
   // ─── Helpers ──────────────────────────────────────────────
 
   const updateViewBox = () => {
-    const svg = document.getElementById('world-map-svg');
+    let svg: Element | null = document.getElementById('world-map-svg');
+    if (!svg && containerRef.current) {
+      svg = containerRef.current.querySelector('svg');
+    }
     if (!svg) return;
     const s = stateRef.current;
     const vbW = s.origW / s.zoom;
@@ -256,6 +264,7 @@ const GameMap: React.FC<GameMapProps> = ({
       s.touchCount = e.touches.length;
       s.touchStartTime = Date.now();
       s.touchMoved = false;
+      setDebugLog((prev) => [...prev.slice(-4), `tS:${e.touches.length}`]);
 
       if (e.touches.length === 2) {
         s.pinchDist0 = dist(e.touches[0], e.touches[1]);
@@ -472,13 +481,18 @@ const GameMap: React.FC<GameMapProps> = ({
   // ─── Zoom button handlers ────────────────────────────────
 
   const handleZoomIn = () => {
-    setZoomAndVC(Math.min(10, stateRef.current.zoom + 0.5));
+    const newZ = Math.min(10, stateRef.current.zoom + 0.5);
+    addDebug(`+btn z=${newZ} svg=${!!document.getElementById('world-map-svg')}`);
+    setZoomAndVC(newZ);
   };
   const handleZoomOut = () => {
-    setZoomAndVC(Math.max(0.5, stateRef.current.zoom - 0.5));
+    const newZ = Math.max(0.5, stateRef.current.zoom - 0.5);
+    addDebug(`-btn z=${newZ}`);
+    setZoomAndVC(newZ);
   };
   const handleResetView = () => {
     const s = stateRef.current;
+    addDebug('reset');
     setZoomAndVC(1, s.origW / 2, s.origH / 2);
   };
 
@@ -506,7 +520,7 @@ const GameMap: React.FC<GameMapProps> = ({
         )}
 
         {/* Zoom Controls */}
-        <div className="absolute bottom-4 right-4 flex flex-col gap-2 pointer-events-auto">
+        <div className="absolute bottom-4 right-4 flex flex-col gap-2" style={{ zIndex: 50, pointerEvents: 'auto' }}>
           <Button variant="secondary" size="sm" onClick={handleZoomIn} className="w-10 h-10 p-0">
             <ZoomIn className="w-4 h-4" />
           </Button>
@@ -551,6 +565,14 @@ const GameMap: React.FC<GameMapProps> = ({
         {/* Zoom indicator */}
         <div className="absolute bottom-16 left-4 bg-card/90 backdrop-blur-sm rounded-lg p-2 pointer-events-none">
           <p className="text-xs text-card-foreground">Zoom: {Math.round(zoomDisplay * 100)}%</p>
+        </div>
+
+        {/* Debug overlay - remove when fixed */}
+        <div className="absolute top-12 left-4 bg-black/80 text-green-400 rounded p-2 pointer-events-none" style={{ zIndex: 100, fontSize: '10px', fontFamily: 'monospace', maxWidth: '60%' }}>
+          {debugLog.map((msg, i) => (
+            <div key={i}>{msg}</div>
+          ))}
+          {debugLog.length === 0 && <div>no events yet</div>}
         </div>
       </div>
     </Card>
