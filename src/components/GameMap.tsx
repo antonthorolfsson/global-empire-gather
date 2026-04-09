@@ -1,15 +1,15 @@
-import React, { useEffect, useLayoutEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useLayoutEffect, useState, useRef } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ZoomIn, ZoomOut, RotateCcw, MapPin } from 'lucide-react';
+import { ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 
 interface Country {
   id: string;
   name: string;
   owner?: string;
   population: number;
-  area: number; // in sq km
-  gdp: number; // in billions USD
+  area: number;
+  gdp: number;
 }
 
 interface GameMapProps {
@@ -20,527 +20,392 @@ interface GameMapProps {
   players: Array<{ id: string; name: string; countries: string[]; color: string }>;
 }
 
-const GameMap: React.FC<GameMapProps> = ({ 
-  countries, 
-  onCountrySelect, 
-  currentPlayer, 
+const GameMap: React.FC<GameMapProps> = ({
+  countries,
+  onCountrySelect,
+  currentPlayer,
   selectedCountries,
-  players
+  players,
 }) => {
-  const [svgContent, setSvgContent] = useState<string>('');
-  // State for React rendering (zoom indicator, reset)
-  const [zoom, setZoom] = useState(1);
-  const [viewCenter, setViewCenter] = useState({ x: 504.836, y: 332.982 });
+  const [svgContent, setSvgContent] = useState('');
+  const [zoomDisplay, setZoomDisplay] = useState(1);
 
-  // Refs for synchronous access in event handlers (avoids React batching issues on mobile)
-  const zoomRef = useRef(1);
-  const viewCenterRef = useRef({ x: 504.836, y: 332.982 });
-  const isDraggingRef = useRef(false);
-  const lastMousePosRef = useRef({ x: 0, y: 0 });
-  const isTouchRef = useRef(false);
-  const initialPinchDistanceRef = useRef(0);
-  const initialZoomRef = useRef(1);
-  const initialPinchCenterRef = useRef({ x: 0, y: 0 });
-  const initialViewCenterRef = useRef({ x: 0, y: 0 });
-  const touchCountRef = useRef(0);
-  const touchMovedRef = useRef(false);
-  const touchStartTimeRef = useRef(0);
-  const velocityRef = useRef({ x: 0, y: 0 });
-  const isAnimatingRef = useRef(false);
-  const lastTouchTime = useRef(0);
-  const lastTouchPos = useRef({ x: 0, y: 0 });
-  const animationFrameRef = useRef<number>();
+  // All mutable interaction state lives in a single ref — no useCallback chains needed
+  const stateRef = useRef({
+    zoom: 1,
+    vcX: 504.836,
+    vcY: 332.982,
+    origW: 1009.6727,
+    origH: 665.96301,
+    isDragging: false,
+    lastX: 0,
+    lastY: 0,
+    // touch
+    touchCount: 0,
+    touchMoved: false,
+    touchStartTime: 0,
+    pinchDist0: 0,
+    pinchZoom0: 1,
+    pinchCenterX0: 0,
+    pinchCenterY0: 0,
+    pinchVcX0: 0,
+    pinchVcY0: 0,
+    // momentum
+    velX: 0,
+    velY: 0,
+    animating: false,
+    animFrame: 0 as number,
+    lastMoveTime: 0,
+  });
 
-  const mapContainerRef = useRef<HTMLDivElement>(null);
-  const svgDimsRef = useRef({ width: 1009.6727, height: 665.96301 });
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  // Imperative viewBox update for immediate visual feedback
-  const updateViewBox = useCallback((z?: number, vc?: { x: number; y: number }) => {
-    const svgElement = document.getElementById('world-map-svg');
-    if (!svgElement) return;
-    const { width: origW, height: origH } = svgDimsRef.current;
-    const curZ = z ?? zoomRef.current;
-    const curVC = vc ?? viewCenterRef.current;
-    const vbW = origW / curZ;
-    const vbH = origH / curZ;
-    const vbX = curVC.x - vbW / 2;
-    const vbY = curVC.y - vbH / 2;
-    svgElement.setAttribute('viewBox', `${vbX} ${vbY} ${vbW} ${vbH}`);
-  }, []);
+  // Keep latest props in a ref so native listeners can access them without re-registration
+  const propsRef = useRef({ onCountrySelect, players });
+  propsRef.current = { onCountrySelect, players };
 
-  // Update zoom ref + state + viewBox
-  const applyZoom = useCallback((newZoom: number, newVC?: { x: number; y: number }) => {
-    zoomRef.current = newZoom;
-    setZoom(newZoom);
-    if (newVC) {
-      viewCenterRef.current = newVC;
-      setViewCenter(newVC);
+  // ─── Helpers ──────────────────────────────────────────────
+
+  const updateViewBox = () => {
+    const svg = document.getElementById('world-map-svg');
+    if (!svg) return;
+    const s = stateRef.current;
+    const vbW = s.origW / s.zoom;
+    const vbH = s.origH / s.zoom;
+    svg.setAttribute('viewBox', `${s.vcX - vbW / 2} ${s.vcY - vbH / 2} ${vbW} ${vbH}`);
+  };
+
+  const getBFS = () => {
+    const c = containerRef.current;
+    if (!c) return 1;
+    const r = c.getBoundingClientRect();
+    const s = stateRef.current;
+    return Math.min(r.width / s.origW, r.height / s.origH);
+  };
+
+  const setZoomAndVC = (z: number, vcX?: number, vcY?: number) => {
+    const s = stateRef.current;
+    s.zoom = z;
+    if (vcX !== undefined && vcY !== undefined) {
+      s.vcX = vcX;
+      s.vcY = vcY;
     }
-    updateViewBox(newZoom, newVC);
-  }, [updateViewBox]);
+    updateViewBox();
+    setZoomDisplay(z);
+  };
 
-  // Update viewCenter ref + state + viewBox
-  const applyVC = useCallback((newVC: { x: number; y: number }) => {
-    viewCenterRef.current = newVC;
-    setViewCenter(newVC);
-    updateViewBox(undefined, newVC);
-  }, [updateViewBox]);
+  const setVC = (vcX: number, vcY: number) => {
+    const s = stateRef.current;
+    s.vcX = vcX;
+    s.vcY = vcY;
+    updateViewBox();
+  };
 
-  // Helper: get base fit scale (how many pixels per SVG unit at zoom=1)
-  const getBaseFitScale = useCallback(() => {
-    const container = mapContainerRef.current;
-    if (!container) return 1;
-    const rect = container.getBoundingClientRect();
-    const { width: origW, height: origH } = svgDimsRef.current;
-    return Math.min(rect.width / origW, rect.height / origH);
-  }, []);
+  const getCountryOwner = (countryId: string) => {
+    return propsRef.current.players.find(
+      (p) => p.countries && Array.isArray(p.countries) && p.countries.includes(countryId)
+    );
+  };
+
+  const handleCountryClick = (countryId: string) => {
+    if (!getCountryOwner(countryId)) {
+      propsRef.current.onCountrySelect(countryId);
+    }
+  };
+
+  // ─── SVG Loading ──────────────────────────────────────────
 
   useEffect(() => {
-    // Import the SVG content directly and normalize it for crisp rendering
     import('/src/assets/world-map.svg?raw')
-      .then(module => {
+      .then((module) => {
         if (typeof window === 'undefined' || typeof DOMParser === 'undefined') {
           setSvgContent(module.default);
           return;
         }
 
         const parser = new DOMParser();
-        const documentFragment = parser.parseFromString(module.default, 'image/svg+xml');
-        const svgElement = documentFragment.documentElement as SVGSVGElement | null;
-
-        if (!svgElement || svgElement.tagName.toLowerCase() !== 'svg') {
+        const doc = parser.parseFromString(module.default, 'image/svg+xml');
+        const el = doc.documentElement as unknown as SVGSVGElement | null;
+        if (!el || el.tagName.toLowerCase() !== 'svg') {
           setSvgContent(module.default);
           return;
         }
 
-        const originalWidth = parseFloat(svgElement.getAttribute('width') || '1009.6727');
-        const originalHeight = parseFloat(svgElement.getAttribute('height') || '665.96301');
+        const w = parseFloat(el.getAttribute('width') || '1009.6727');
+        const h = parseFloat(el.getAttribute('height') || '665.96301');
 
-        svgDimsRef.current = { width: originalWidth, height: originalHeight };
-        const center = { x: originalWidth / 2, y: originalHeight / 2 };
-        viewCenterRef.current = center;
-        setViewCenter(center);
+        const s = stateRef.current;
+        s.origW = w;
+        s.origH = h;
+        s.vcX = w / 2;
+        s.vcY = h / 2;
 
-        svgElement.setAttribute('id', 'world-map-svg');
-        svgElement.setAttribute('width', '100%');
-        svgElement.setAttribute('height', '100%');
-        svgElement.setAttribute('preserveAspectRatio', 'xMidYMid meet');
-
-        if (!svgElement.getAttribute('viewBox')) {
-          svgElement.setAttribute('viewBox', `0 0 ${originalWidth} ${originalHeight}`);
+        el.setAttribute('id', 'world-map-svg');
+        el.setAttribute('width', '100%');
+        el.setAttribute('height', '100%');
+        el.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+        if (!el.getAttribute('viewBox')) {
+          el.setAttribute('viewBox', `0 0 ${w} ${h}`);
         }
-
-        svgElement.setAttribute('shape-rendering', 'geometricPrecision');
-        svgElement.setAttribute('text-rendering', 'geometricPrecision');
-        svgElement.setAttribute('image-rendering', 'crisp-edges');
-        svgElement.setAttribute(
+        el.setAttribute('shape-rendering', 'geometricPrecision');
+        el.setAttribute('text-rendering', 'geometricPrecision');
+        el.setAttribute(
           'style',
-          'image-rendering: -webkit-optimize-contrast; image-rendering: crisp-edges; shape-rendering: geometricPrecision; text-rendering: geometricPrecision;'
+          'shape-rendering:geometricPrecision;text-rendering:geometricPrecision;'
         );
-
-        const paths = svgElement.querySelectorAll<SVGPathElement>('path');
-        paths.forEach(path => {
-          path.setAttribute('vector-effect', 'non-scaling-stroke');
-          path.setAttribute('shape-rendering', 'geometricPrecision');
+        el.querySelectorAll<SVGPathElement>('path').forEach((p) => {
+          p.setAttribute('vector-effect', 'non-scaling-stroke');
+          p.setAttribute('shape-rendering', 'geometricPrecision');
         });
 
-        if (typeof XMLSerializer === 'undefined') {
-          setSvgContent(svgElement.outerHTML);
-          return;
-        }
-
         const serializer = new XMLSerializer();
-        setSvgContent(serializer.serializeToString(svgElement));
+        setSvgContent(serializer.serializeToString(el));
       })
-      .catch(error => console.error('Error loading world map:', error));
+      .catch((err) => console.error('Error loading world map:', err));
   }, []);
 
-  useEffect(() => {
-    // Cleanup animation frame on unmount
-    return () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
-    };
-  }, []);
-
-  // Sync viewBox after React render (backup for state-driven changes like initial load)
+  // Sync viewBox after initial load + whenever zoomDisplay changes (for button clicks)
   useLayoutEffect(() => {
     updateViewBox();
-  }, [zoom, viewCenter, svgContent, updateViewBox]);
+  }, [svgContent, zoomDisplay]);
 
+  // ─── Pointer / Touch Listeners (native, passive:false) ───
 
-
-  const getCountryOwner = (countryId: string) => {
-    return players.find(player => 
-      player.countries && 
-      Array.isArray(player.countries) && 
-      player.countries.includes(countryId)
-    );
-  };
-
-  const getCountryStyle = (countryId: string) => {
-    const owner = getCountryOwner(countryId);
-    
-    if (owner) {
-      return {
-        fill: owner.color,
-        stroke: 'hsl(var(--border))',
-        strokeWidth: '1',
-        filter: `drop-shadow(0 0 4px ${owner.color})`,
-        cursor: 'default'
-      };
-    }
-    
-    return {
-      fill: 'hsl(var(--land))',
-      stroke: 'hsl(var(--border))',
-      strokeWidth: '1',
-      cursor: 'pointer',
-      transition: 'all 0.2s ease'
-    };
-  };
-
-  const handleCountryClick = (countryId: string) => {
-    const owner = getCountryOwner(countryId);
-    if (!owner) {
-      onCountrySelect(countryId);
-    }
-  };
-
-  // Zoom and pan handlers
-  const handleWheel = (e: React.WheelEvent) => {
-    e.preventDefault();
-    const zoomFactor = 1.2;
-    const curZ = zoomRef.current;
-    const curVC = viewCenterRef.current;
-    const newZoom = Math.max(0.5, Math.min(10, e.deltaY > 0 ? curZ / zoomFactor : curZ * zoomFactor));
-    
-    const container = mapContainerRef.current;
-    if (container) {
-      const rect = container.getBoundingClientRect();
-      const { width: origW, height: origH } = svgDimsRef.current;
-      const bfs = Math.min(rect.width / origW, rect.height / origH);
-      const offsetX = (rect.width - origW * bfs) / 2;
-      const offsetY = (rect.height - origH * bfs) / 2;
-      
-      const msX = (e.clientX - rect.left - offsetX) / bfs;
-      const msY = (e.clientY - rect.top - offsetY) / bfs;
-      
-      const svgX = curVC.x - origW / (2 * curZ) + msX / curZ;
-      const svgY = curVC.y - origH / (2 * curZ) + msY / curZ;
-      
-      const newVC = {
-        x: svgX + origW / (2 * newZoom) - msX / newZoom,
-        y: svgY + origH / (2 * newZoom) - msY / newZoom,
-      };
-      applyZoom(newZoom, newVC);
-    } else {
-      applyZoom(newZoom);
-    }
-  };
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    isDraggingRef.current = true;
-    lastMousePosRef.current = { x: e.clientX, y: e.clientY };
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDraggingRef.current) return;
-    
-    const deltaX = e.clientX - lastMousePosRef.current.x;
-    const deltaY = e.clientY - lastMousePosRef.current.y;
-    const bfs = getBaseFitScale();
-    const curZ = zoomRef.current;
-    
-    const newVC = {
-      x: viewCenterRef.current.x - deltaX / (bfs * curZ),
-      y: viewCenterRef.current.y - deltaY / (bfs * curZ),
-    };
-    applyVC(newVC);
-    
-    lastMousePosRef.current = { x: e.clientX, y: e.clientY };
-  };
-
-  const handleMouseUp = () => {
-    isDraggingRef.current = false;
-  };
-
-  const handleZoomIn = () => {
-    applyZoom(Math.min(10, zoomRef.current + 0.5));
-  };
-
-  const handleZoomOut = () => {
-    applyZoom(Math.max(0.5, zoomRef.current - 0.5));
-  };
-
-  const handleResetView = () => {
-    const { width, height } = svgDimsRef.current;
-    const newVC = { x: width / 2, y: height / 2 };
-    applyZoom(1, newVC);
-  };
-
-  // Helper function to calculate center between two touch points
-  const getTouchCenter = (touch1: Touch, touch2: Touch) => {
-    return {
-      x: (touch1.clientX + touch2.clientX) / 2,
-      y: (touch1.clientY + touch2.clientY) / 2
-    };
-  };
-
-  // Helper function to calculate distance between two touch points
-  const getDistance = (touch1: Touch, touch2: Touch) => {
-    const dx = touch1.clientX - touch2.clientX;
-    const dy = touch1.clientY - touch2.clientY;
-    return Math.sqrt(dx * dx + dy * dy);
-  };
-
-  // Touch event handlers for pinch zoom
-  
-  // Momentum animation driven entirely by refs + rAF
-  const startMomentum = useCallback(() => {
-    if (isAnimatingRef.current) return;
-    isAnimatingRef.current = true;
-
-    const deceleration = 0.95;
-    const minVelocity = 0.0001;
-
-    const animate = () => {
-      const vel = velocityRef.current;
-      const newVel = {
-        x: vel.x * deceleration,
-        y: vel.y * deceleration,
-      };
-
-      if (Math.abs(newVel.x) < minVelocity && Math.abs(newVel.y) < minVelocity) {
-        isAnimatingRef.current = false;
-        velocityRef.current = { x: 0, y: 0 };
-        return;
-      }
-
-      velocityRef.current = newVel;
-      const newVC = {
-        x: viewCenterRef.current.x + newVel.x,
-        y: viewCenterRef.current.y + newVel.y,
-      };
-      viewCenterRef.current = newVC;
-      setViewCenter(newVC);
-      updateViewBox(undefined, newVC);
-
-      animationFrameRef.current = requestAnimationFrame(animate);
-    };
-
-    animationFrameRef.current = requestAnimationFrame(animate);
-  }, [updateViewBox]);
-
-  const stopMomentum = useCallback(() => {
-    isAnimatingRef.current = false;
-    velocityRef.current = { x: 0, y: 0 };
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
-    }
-  }, []);
-
-  const handleTouchStart = useCallback((e: TouchEvent) => {
-    e.preventDefault();
-    isTouchRef.current = true;
-    touchCountRef.current = e.touches.length;
-    touchStartTimeRef.current = Date.now();
-    touchMovedRef.current = false;
-    stopMomentum();
-    
-    if (e.touches.length === 2) {
-      const distance = getDistance(e.touches[0], e.touches[1]);
-      const center = getTouchCenter(e.touches[0], e.touches[1]);
-      
-      initialPinchDistanceRef.current = distance;
-      initialZoomRef.current = zoomRef.current;
-      initialPinchCenterRef.current = center;
-      initialViewCenterRef.current = { ...viewCenterRef.current };
-    } else if (e.touches.length === 1) {
-      const touch = e.touches[0];
-      lastMousePosRef.current = { x: touch.clientX, y: touch.clientY };
-      lastTouchTime.current = Date.now();
-      lastTouchPos.current = { x: touch.clientX, y: touch.clientY };
-    }
-  }, [stopMomentum]);
-
-  const handleTouchMove = useCallback((e: TouchEvent) => {
-    e.preventDefault();
-    if (e.touches.length === 2 && initialPinchDistanceRef.current > 0) {
-      // Pinch zoom
-      const currentDistance = getDistance(e.touches[0], e.touches[1]);
-      const currentCenter = getTouchCenter(e.touches[0], e.touches[1]);
-
-      const rawScale = currentDistance / initialPinchDistanceRef.current;
-      const scale = Math.pow(rawScale, 0.9);
-      const iZoom = initialZoomRef.current;
-      const newZoom = Math.max(0.5, Math.min(10, iZoom * scale));
-
-      const container = mapContainerRef.current;
-      if (container) {
-        const rect = container.getBoundingClientRect();
-        const { width: origW, height: origH } = svgDimsRef.current;
-        const bfs = Math.min(rect.width / origW, rect.height / origH);
-        const offsetX = (rect.width - origW * bfs) / 2;
-        const offsetY = (rect.height - origH * bfs) / 2;
-        const iVC = initialViewCenterRef.current;
-        const iPC = initialPinchCenterRef.current;
-
-        const pcX = (iPC.x - rect.left - offsetX) / bfs;
-        const pcY = (iPC.y - rect.top - offsetY) / bfs;
-
-        const svgX = iVC.x - origW / (2 * iZoom) + pcX / iZoom;
-        const svgY = iVC.y - origH / (2 * iZoom) + pcY / iZoom;
-
-        const curPcX = (currentCenter.x - rect.left - offsetX) / bfs;
-        const curPcY = (currentCenter.y - rect.top - offsetY) / bfs;
-
-        const newVC = {
-          x: svgX + origW / (2 * newZoom) - curPcX / newZoom,
-          y: svgY + origH / (2 * newZoom) - curPcY / newZoom,
-        };
-        applyZoom(newZoom, newVC);
-      } else {
-        applyZoom(newZoom);
-      }
-
-      touchMovedRef.current = true;
-    } else if (e.touches.length === 1 && initialPinchDistanceRef.current === 0 && !isAnimatingRef.current) {
-      // Single finger pan
-      const touch = e.touches[0];
-      const deltaX = touch.clientX - lastMousePosRef.current.x;
-      const deltaY = touch.clientY - lastMousePosRef.current.y;
-      const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-
-      if (distance > 3) {
-        if (!touchMovedRef.current) {
-          touchMovedRef.current = true;
-          isDraggingRef.current = true;
-        }
-
-        const now = Date.now();
-        if (now - lastTouchTime.current > 16) {
-          const bfs = getBaseFitScale();
-          const curZ = zoomRef.current;
-          const svgDeltaX = deltaX / (bfs * curZ);
-          const svgDeltaY = deltaY / (bfs * curZ);
-
-          const newVC = {
-            x: viewCenterRef.current.x - svgDeltaX,
-            y: viewCenterRef.current.y - svgDeltaY,
-          };
-          applyVC(newVC);
-
-          velocityRef.current = {
-            x: -svgDeltaX * 0.8,
-            y: -svgDeltaY * 0.8,
-          };
-
-          lastMousePosRef.current = { x: touch.clientX, y: touch.clientY };
-          lastTouchTime.current = now;
-        }
-      }
-    }
-  }, [applyZoom, applyVC, getBaseFitScale]);
-
-  const handleTouchEnd = useCallback((e: TouchEvent) => {
-    if (e.touches.length === 0) {
-      const touchDuration = Date.now() - touchStartTimeRef.current;
-      
-      if (!touchMovedRef.current && touchDuration < 300 && touchCountRef.current === 1) {
-        const target = e.target as Element;
-        if (target && target.tagName === 'path' && target.id) {
-          const countryId = target.id.toLowerCase();
-          handleCountryClick(countryId);
-        }
-      } else if (touchMovedRef.current && touchCountRef.current === 1) {
-        const vel = velocityRef.current;
-        const mag = Math.sqrt(vel.x * vel.x + vel.y * vel.y);
-        if (mag > 0.01) {
-          startMomentum();
-        }
-      }
-      
-      isDraggingRef.current = false;
-      isTouchRef.current = false;
-      initialPinchDistanceRef.current = 0;
-      touchCountRef.current = 0;
-      touchMovedRef.current = false;
-    } else if (e.touches.length === 1 && touchCountRef.current === 2) {
-      initialPinchDistanceRef.current = 0;
-      touchCountRef.current = 1;
-      lastMousePosRef.current = { 
-        x: e.touches[0].clientX, 
-        y: e.touches[0].clientY 
-      };
-      lastTouchTime.current = Date.now();
-      lastTouchPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-    }
-  }, [startMomentum]);
-
-  // Register native touch listeners with { passive: false } so preventDefault() works on mobile
   useEffect(() => {
-    const container = mapContainerRef.current;
-    if (!container) return;
+    const container = containerRef.current;
+    if (!container || !svgContent) return;
 
-    container.addEventListener('touchstart', handleTouchStart, { passive: false });
-    container.addEventListener('touchmove', handleTouchMove, { passive: false });
-    container.addEventListener('touchend', handleTouchEnd, { passive: false });
+    const s = stateRef.current;
+
+    // --- Wheel ---
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const factor = 1.2;
+      const newZ = Math.max(0.5, Math.min(10, e.deltaY > 0 ? s.zoom / factor : s.zoom * factor));
+
+      const rect = container.getBoundingClientRect();
+      const bfs = Math.min(rect.width / s.origW, rect.height / s.origH);
+      const offX = (rect.width - s.origW * bfs) / 2;
+      const offY = (rect.height - s.origH * bfs) / 2;
+      const msX = (e.clientX - rect.left - offX) / bfs;
+      const msY = (e.clientY - rect.top - offY) / bfs;
+
+      const svgX = s.vcX - s.origW / (2 * s.zoom) + msX / s.zoom;
+      const svgY = s.vcY - s.origH / (2 * s.zoom) + msY / s.zoom;
+      setZoomAndVC(
+        newZ,
+        svgX + s.origW / (2 * newZ) - msX / newZ,
+        svgY + s.origH / (2 * newZ) - msY / newZ
+      );
+    };
+
+    // --- Mouse ---
+    const onMouseDown = (e: MouseEvent) => {
+      s.isDragging = true;
+      s.lastX = e.clientX;
+      s.lastY = e.clientY;
+    };
+    const onMouseMove = (e: MouseEvent) => {
+      if (!s.isDragging) return;
+      const bfs = getBFS();
+      setVC(
+        s.vcX - (e.clientX - s.lastX) / (bfs * s.zoom),
+        s.vcY - (e.clientY - s.lastY) / (bfs * s.zoom)
+      );
+      s.lastX = e.clientX;
+      s.lastY = e.clientY;
+    };
+    const onMouseUp = () => {
+      s.isDragging = false;
+    };
+
+    // --- Touch helpers ---
+    const dist = (a: Touch, b: Touch) => {
+      const dx = a.clientX - b.clientX;
+      const dy = a.clientY - b.clientY;
+      return Math.sqrt(dx * dx + dy * dy);
+    };
+
+    const stopMomentum = () => {
+      s.animating = false;
+      s.velX = 0;
+      s.velY = 0;
+      if (s.animFrame) cancelAnimationFrame(s.animFrame);
+    };
+
+    const startMomentum = () => {
+      if (s.animating) return;
+      s.animating = true;
+      const tick = () => {
+        s.velX *= 0.95;
+        s.velY *= 0.95;
+        if (Math.abs(s.velX) < 0.0001 && Math.abs(s.velY) < 0.0001) {
+          s.animating = false;
+          return;
+        }
+        setVC(s.vcX + s.velX, s.vcY + s.velY);
+        s.animFrame = requestAnimationFrame(tick);
+      };
+      s.animFrame = requestAnimationFrame(tick);
+    };
+
+    // --- Touch ---
+    const onTouchStart = (e: TouchEvent) => {
+      e.preventDefault();
+      stopMomentum();
+      s.touchCount = e.touches.length;
+      s.touchStartTime = Date.now();
+      s.touchMoved = false;
+
+      if (e.touches.length === 2) {
+        s.pinchDist0 = dist(e.touches[0], e.touches[1]);
+        s.pinchZoom0 = s.zoom;
+        s.pinchCenterX0 = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+        s.pinchCenterY0 = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+        s.pinchVcX0 = s.vcX;
+        s.pinchVcY0 = s.vcY;
+      } else if (e.touches.length === 1) {
+        s.lastX = e.touches[0].clientX;
+        s.lastY = e.touches[0].clientY;
+        s.lastMoveTime = Date.now();
+      }
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      e.preventDefault();
+
+      if (e.touches.length === 2 && s.pinchDist0 > 0) {
+        // Pinch zoom
+        const curDist = dist(e.touches[0], e.touches[1]);
+        const rawScale = curDist / s.pinchDist0;
+        const newZ = Math.max(0.5, Math.min(10, s.pinchZoom0 * Math.pow(rawScale, 0.9)));
+
+        const rect = container.getBoundingClientRect();
+        const bfs = Math.min(rect.width / s.origW, rect.height / s.origH);
+        const offX = (rect.width - s.origW * bfs) / 2;
+        const offY = (rect.height - s.origH * bfs) / 2;
+
+        // Initial pinch center → SVG point
+        const pcX0 = (s.pinchCenterX0 - rect.left - offX) / bfs;
+        const pcY0 = (s.pinchCenterY0 - rect.top - offY) / bfs;
+        const svgX = s.pinchVcX0 - s.origW / (2 * s.pinchZoom0) + pcX0 / s.pinchZoom0;
+        const svgY = s.pinchVcY0 - s.origH / (2 * s.pinchZoom0) + pcY0 / s.pinchZoom0;
+
+        // Current pinch center
+        const cx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+        const cy = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+        const pcX1 = (cx - rect.left - offX) / bfs;
+        const pcY1 = (cy - rect.top - offY) / bfs;
+
+        setZoomAndVC(
+          newZ,
+          svgX + s.origW / (2 * newZ) - pcX1 / newZ,
+          svgY + s.origH / (2 * newZ) - pcY1 / newZ
+        );
+        s.touchMoved = true;
+      } else if (e.touches.length === 1 && s.pinchDist0 === 0 && !s.animating) {
+        // Single-finger pan
+        const tx = e.touches[0].clientX;
+        const ty = e.touches[0].clientY;
+        const dx = tx - s.lastX;
+        const dy = ty - s.lastY;
+        if (Math.abs(dx) > 2 || Math.abs(dy) > 2) {
+          s.touchMoved = true;
+          s.isDragging = true;
+          const now = Date.now();
+          if (now - s.lastMoveTime > 16) {
+            const bfs = getBFS();
+            const svgDx = dx / (bfs * s.zoom);
+            const svgDy = dy / (bfs * s.zoom);
+            setVC(s.vcX - svgDx, s.vcY - svgDy);
+            s.velX = -svgDx * 0.8;
+            s.velY = -svgDy * 0.8;
+            s.lastX = tx;
+            s.lastY = ty;
+            s.lastMoveTime = now;
+          }
+        }
+      }
+    };
+
+    const onTouchEnd = (e: TouchEvent) => {
+      if (e.touches.length === 0) {
+        const dur = Date.now() - s.touchStartTime;
+        if (!s.touchMoved && dur < 300 && s.touchCount === 1) {
+          // Tap → country select
+          const target = e.target as Element;
+          if (target?.tagName === 'path' && target.id) {
+            handleCountryClick(target.id.toLowerCase());
+          }
+        } else if (s.touchMoved && s.touchCount === 1) {
+          const mag = Math.sqrt(s.velX * s.velX + s.velY * s.velY);
+          if (mag > 0.01) startMomentum();
+        }
+        s.isDragging = false;
+        s.pinchDist0 = 0;
+        s.touchCount = 0;
+        s.touchMoved = false;
+      } else if (e.touches.length === 1 && s.touchCount === 2) {
+        // Went from 2 → 1 finger: start pan from current finger position
+        s.pinchDist0 = 0;
+        s.touchCount = 1;
+        s.lastX = e.touches[0].clientX;
+        s.lastY = e.touches[0].clientY;
+        s.lastMoveTime = Date.now();
+      }
+    };
+
+    // Register all listeners
+    container.addEventListener('wheel', onWheel, { passive: false });
+    container.addEventListener('mousedown', onMouseDown);
+    container.addEventListener('mousemove', onMouseMove);
+    container.addEventListener('mouseup', onMouseUp);
+    container.addEventListener('mouseleave', onMouseUp);
+    container.addEventListener('touchstart', onTouchStart, { passive: false });
+    container.addEventListener('touchmove', onTouchMove, { passive: false });
+    container.addEventListener('touchend', onTouchEnd, { passive: false });
 
     return () => {
-      container.removeEventListener('touchstart', handleTouchStart);
-      container.removeEventListener('touchmove', handleTouchMove);
-      container.removeEventListener('touchend', handleTouchEnd);
+      stopMomentum();
+      container.removeEventListener('wheel', onWheel);
+      container.removeEventListener('mousedown', onMouseDown);
+      container.removeEventListener('mousemove', onMouseMove);
+      container.removeEventListener('mouseup', onMouseUp);
+      container.removeEventListener('mouseleave', onMouseUp);
+      container.removeEventListener('touchstart', onTouchStart);
+      container.removeEventListener('touchmove', onTouchMove);
+      container.removeEventListener('touchend', onTouchEnd);
     };
-  }, [handleTouchStart, handleTouchMove, handleTouchEnd]);
+    // Re-run when svgContent loads so the container ref is valid
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [svgContent]);
+
+  // ─── Country Styling ──────────────────────────────────────
 
   useEffect(() => {
     if (!svgContent) return;
 
-    console.log('GameMap: Updating country styles, players:', players);
-    
-    // Debug player countries data
-    players.forEach((player, index) => {
-      console.log(`Player ${index + 1} (${player.name}):`, {
-        countries: player.countries,
-        color: player.color
-      });
-      
-      // Debug specific countries
-      if (player.countries && Array.isArray(player.countries)) {
-        player.countries.forEach(countryId => {
-          if (countryId && typeof countryId === 'string') {
-            console.log(`  Country ${countryId} -> CSS selector: #world-map-svg path#${countryId.toUpperCase()}, Color: ${player.color}`);
-          } else {
-            console.log(`  Invalid country ID:`, countryId);
-          }
-        });
-      }
-    });
-
-    // Add CSS styles for countries directly to the document
-    const styleElement = document.getElementById('map-country-styles') || document.createElement('style');
+    const styleElement =
+      document.getElementById('map-country-styles') || document.createElement('style');
     styleElement.id = 'map-country-styles';
-    
-    let cssRules = `
+
+    let css = `
       #world-map-svg path {
         fill: #000000 !important;
         stroke: #ffffff !important;
         stroke-width: 0.5px !important;
         cursor: pointer !important;
-        transition: ${isDraggingRef.current || isTouchRef.current ? 'none !important' : 'all 0.2s ease !important'};
+        transition: all 0.2s ease !important;
         opacity: 1 !important;
       }
     `;
-    
-    // Add specific rules for owned countries
-    players.forEach(player => {
+
+    players.forEach((player) => {
       if (player.countries && Array.isArray(player.countries)) {
-        player.countries.forEach(countryId => {
-          if (countryId && typeof countryId === 'string') {
-            cssRules += `
-              #world-map-svg path#${countryId.toUpperCase()} {
+        player.countries.forEach((cid) => {
+          if (cid && typeof cid === 'string') {
+            css += `
+              #world-map-svg path#${cid.toUpperCase()} {
                 fill: ${player.color} !important;
                 stroke: none !important;
                 stroke-width: 0 !important;
@@ -552,95 +417,86 @@ const GameMap: React.FC<GameMapProps> = ({
         });
       }
     });
-    
-    // Add white outlines for selected countries
-    selectedCountries.forEach(countryId => {
-      if (countryId && typeof countryId === 'string') {
-        cssRules += `
-          #world-map-svg path#${countryId.toUpperCase()} {
+
+    selectedCountries.forEach((cid) => {
+      if (cid && typeof cid === 'string') {
+        css += `
+          #world-map-svg path#${cid.toUpperCase()} {
             stroke: white !important;
             stroke-width: 0.5px !important;
           }
         `;
       }
     });
-    
-    // Add hover effects for unowned countries
-    const ownedCountries = players.flatMap(player => 
-      (player.countries || []).filter(id => id && typeof id === 'string').map(id => id.toUpperCase())
-    );
-    cssRules += `
-      #world-map-svg path:not(${ownedCountries.map(id => `#${id}`).join(', ')}):hover {
-        fill: hsl(var(--primary-glow)) !important;
-      }
-    `;
-    
-    styleElement.textContent = cssRules;
+
+    const owned = players
+      .flatMap((p) =>
+        (p.countries || []).filter((id) => id && typeof id === 'string').map((id) => id.toUpperCase())
+      );
+    if (owned.length > 0) {
+      css += `
+        #world-map-svg path:not(${owned.map((id) => `#${id}`).join(', ')}):hover {
+          fill: hsl(var(--primary-glow)) !important;
+        }
+      `;
+    }
+
+    styleElement.textContent = css;
     if (!document.getElementById('map-country-styles')) {
       document.head.appendChild(styleElement);
     }
 
-    // Add click handlers to all country paths
-    const svgElement = document.getElementById('world-map-svg');
-    if (!svgElement) return;
+    // Click handlers for country paths
+    const svgEl = document.getElementById('world-map-svg');
+    if (!svgEl) return;
 
-    const paths = svgElement.querySelectorAll('path[id]') as NodeListOf<SVGPathElement>;
-    
-    // Store event handlers for cleanup
-    const eventHandlers = new Map<SVGPathElement, { click?: () => void }>();
-    
-    paths.forEach(path => {
-      const countryId = path.id.toLowerCase();
-      
-      // Only add click handler - touch handling is done at container level
-      const clickHandler = () => handleCountryClick(countryId);
-      path.addEventListener('click', clickHandler);
-      
-      eventHandlers.set(path, { click: clickHandler });
+    const paths = svgEl.querySelectorAll('path[id]') as NodeListOf<SVGPathElement>;
+    const handlers = new Map<SVGPathElement, () => void>();
+    paths.forEach((path) => {
+      const cid = path.id.toLowerCase();
+      const handler = () => handleCountryClick(cid);
+      path.addEventListener('click', handler);
+      handlers.set(path, handler);
     });
 
-    // Cleanup function
     return () => {
-      paths.forEach(path => {
-        const handlers = eventHandlers.get(path);
-        if (handlers?.click) {
-          path.removeEventListener('click', handlers.click);
-        }
+      paths.forEach((path) => {
+        const h = handlers.get(path);
+        if (h) path.removeEventListener('click', h);
       });
-      eventHandlers.clear();
-      
-      // Remove the style element when component unmounts
-      const styleEl = document.getElementById('map-country-styles');
-      if (styleEl) {
-        styleEl.remove();
-      }
+      const el = document.getElementById('map-country-styles');
+      if (el) el.remove();
     };
   }, [svgContent, players, selectedCountries]);
+
+  // ─── Zoom button handlers ────────────────────────────────
+
+  const handleZoomIn = () => {
+    setZoomAndVC(Math.min(10, stateRef.current.zoom + 0.5));
+  };
+  const handleZoomOut = () => {
+    setZoomAndVC(Math.max(0.5, stateRef.current.zoom - 0.5));
+  };
+  const handleResetView = () => {
+    const s = stateRef.current;
+    setZoomAndVC(1, s.origW / 2, s.origH / 2);
+  };
+
+  // ─── Render ───────────────────────────────────────────────
 
   return (
     <Card className="w-full overflow-hidden md:h-full h-[70vh]" style={{ background: 'hsl(200 70% 85%)' }}>
       <div className="relative w-full h-full animate-map-zoom">
         {svgContent ? (
-          <div 
-            ref={mapContainerRef}
+          <div
+            ref={containerRef}
             className="w-full h-full overflow-hidden cursor-grab active:cursor-grabbing"
-            onWheel={handleWheel}
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
-
-            style={{ 
-              userSelect: 'none',
-              touchAction: 'none' // Prevent browser's default touch behaviors
-            }}
+            style={{ userSelect: 'none', touchAction: 'none' }}
           >
             <div
               id="world-map-container"
               className="w-full h-full"
-              dangerouslySetInnerHTML={{
-                __html: svgContent
-              }}
+              dangerouslySetInnerHTML={{ __html: svgContent }}
             />
           </div>
         ) : (
@@ -651,20 +507,10 @@ const GameMap: React.FC<GameMapProps> = ({
 
         {/* Zoom Controls */}
         <div className="absolute bottom-4 right-4 flex flex-col gap-2 pointer-events-auto">
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={handleZoomIn}
-            className="w-10 h-10 p-0"
-          >
+          <Button variant="secondary" size="sm" onClick={handleZoomIn} className="w-10 h-10 p-0">
             <ZoomIn className="w-4 h-4" />
           </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={handleZoomOut}
-            className="w-10 h-10 p-0"
-          >
+          <Button variant="secondary" size="sm" onClick={handleZoomOut} className="w-10 h-10 p-0">
             <ZoomOut className="w-4 h-4" />
           </Button>
           <Button
@@ -682,33 +528,33 @@ const GameMap: React.FC<GameMapProps> = ({
         <div className="absolute top-4 left-4 right-4 flex justify-between items-start pointer-events-none">
           <div className="bg-card/90 backdrop-blur-sm rounded-lg p-3 animate-strategic-fade-in">
             <p className="text-sm font-medium text-card-foreground">
-              Current Turn: <span 
-                className="font-bold" 
-                style={{ color: players.find(p => p.name === currentPlayer)?.color || 'hsl(var(--accent))' }}
+              Current Turn:{' '}
+              <span
+                className="font-bold"
+                style={{
+                  color:
+                    players.find((p) => p.name === currentPlayer)?.color || 'hsl(var(--accent))',
+                }}
               >
                 {currentPlayer}
               </span>
             </p>
           </div>
-          
           <div className="bg-card/90 backdrop-blur-sm rounded-lg p-3 animate-strategic-fade-in">
             <p className="text-sm font-medium text-card-foreground">
-              Countries Selected: <span className="text-primary font-bold">{selectedCountries.length}</span>
+              Countries Selected:{' '}
+              <span className="text-primary font-bold">{selectedCountries.length}</span>
             </p>
           </div>
         </div>
 
-
         {/* Zoom indicator */}
         <div className="absolute bottom-16 left-4 bg-card/90 backdrop-blur-sm rounded-lg p-2 pointer-events-none">
-          <p className="text-xs text-card-foreground">
-            Zoom: {Math.round(zoom * 100)}%
-          </p>
+          <p className="text-xs text-card-foreground">Zoom: {Math.round(zoomDisplay * 100)}%</p>
         </div>
       </div>
     </Card>
   );
 };
-
 
 export default GameMap;
