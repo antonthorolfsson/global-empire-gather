@@ -281,7 +281,7 @@ const GameMap: React.FC<GameMapProps> = ({
   };
 
   // Helper function to calculate center between two touch points
-  const getTouchCenter = (touch1: React.Touch, touch2: React.Touch) => {
+  const getTouchCenter = (touch1: Touch, touch2: Touch) => {
     return {
       x: (touch1.clientX + touch2.clientX) / 2,
       y: (touch1.clientY + touch2.clientY) / 2
@@ -289,7 +289,7 @@ const GameMap: React.FC<GameMapProps> = ({
   };
 
   // Helper function to calculate distance between two touch points
-  const getDistance = (touch1: React.Touch, touch2: React.Touch) => {
+  const getDistance = (touch1: Touch, touch2: Touch) => {
     const dx = touch1.clientX - touch2.clientX;
     const dy = touch1.clientY - touch2.clientY;
     return Math.sqrt(dx * dx + dy * dy);
@@ -341,7 +341,8 @@ const GameMap: React.FC<GameMapProps> = ({
     }
   }, []);
 
-  const handleTouchStart = (e: React.TouchEvent) => {
+  const handleTouchStart = useCallback((e: TouchEvent) => {
+    e.preventDefault();
     isTouchRef.current = true;
     touchCountRef.current = e.touches.length;
     touchStartTimeRef.current = Date.now();
@@ -356,19 +357,18 @@ const GameMap: React.FC<GameMapProps> = ({
       initialZoomRef.current = zoomRef.current;
       initialPinchCenterRef.current = center;
       initialViewCenterRef.current = { ...viewCenterRef.current };
-      e.preventDefault();
     } else if (e.touches.length === 1) {
       const touch = e.touches[0];
       lastMousePosRef.current = { x: touch.clientX, y: touch.clientY };
       lastTouchTime.current = Date.now();
       lastTouchPos.current = { x: touch.clientX, y: touch.clientY };
     }
-  };
+  }, [stopMomentum]);
 
-  const handleTouchMove = (e: React.TouchEvent) => {
+  const handleTouchMove = useCallback((e: TouchEvent) => {
+    e.preventDefault();
     if (e.touches.length === 2 && initialPinchDistanceRef.current > 0) {
       // Pinch zoom
-      e.preventDefault();
       const currentDistance = getDistance(e.touches[0], e.touches[1]);
       const currentCenter = getTouchCenter(e.touches[0], e.touches[1]);
 
@@ -418,7 +418,6 @@ const GameMap: React.FC<GameMapProps> = ({
           touchMovedRef.current = true;
           isDraggingRef.current = true;
         }
-        e.preventDefault();
 
         const now = Date.now();
         if (now - lastTouchTime.current > 16) {
@@ -443,9 +442,9 @@ const GameMap: React.FC<GameMapProps> = ({
         }
       }
     }
-  };
+  }, [applyZoom, applyVC, getBaseFitScale]);
 
-  const handleTouchEnd = (e: React.TouchEvent) => {
+  const handleTouchEnd = useCallback((e: TouchEvent) => {
     if (e.touches.length === 0) {
       const touchDuration = Date.now() - touchStartTimeRef.current;
       
@@ -478,7 +477,23 @@ const GameMap: React.FC<GameMapProps> = ({
       lastTouchTime.current = Date.now();
       lastTouchPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
     }
-  };
+  }, [startMomentum]);
+
+  // Register native touch listeners with { passive: false } so preventDefault() works on mobile
+  useEffect(() => {
+    const container = mapContainerRef.current;
+    if (!container) return;
+
+    container.addEventListener('touchstart', handleTouchStart, { passive: false });
+    container.addEventListener('touchmove', handleTouchMove, { passive: false });
+    container.addEventListener('touchend', handleTouchEnd, { passive: false });
+
+    return () => {
+      container.removeEventListener('touchstart', handleTouchStart);
+      container.removeEventListener('touchmove', handleTouchMove);
+      container.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [handleTouchStart, handleTouchMove, handleTouchEnd]);
 
   useEffect(() => {
     if (!svgContent) return;
@@ -614,9 +629,7 @@ const GameMap: React.FC<GameMapProps> = ({
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
+
             style={{ 
               userSelect: 'none',
               touchAction: 'none' // Prevent browser's default touch behaviors
