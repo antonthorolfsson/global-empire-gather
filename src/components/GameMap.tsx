@@ -80,7 +80,19 @@ const GameMap: React.FC<GameMapProps> = ({
     const s = stateRef.current;
     const vbW = s.origW / s.zoom;
     const vbH = s.origH / s.zoom;
-    svg.setAttribute('viewBox', `${s.vcX - vbW / 2} ${s.vcY - vbH / 2} ${vbW} ${vbH}`);
+    const x = s.vcX - vbW / 2;
+    const y = s.vcY - vbH / 2;
+
+    // Use SVG DOM API (works better on mobile Safari than setAttribute)
+    const svgEl = svg as unknown as SVGSVGElement;
+    if (svgEl.viewBox?.baseVal) {
+      svgEl.viewBox.baseVal.x = x;
+      svgEl.viewBox.baseVal.y = y;
+      svgEl.viewBox.baseVal.width = vbW;
+      svgEl.viewBox.baseVal.height = vbH;
+    } else {
+      svg.setAttribute('viewBox', `${x} ${y} ${vbW} ${vbH}`);
+    }
   };
 
   const getBFS = () => {
@@ -139,8 +151,17 @@ const GameMap: React.FC<GameMapProps> = ({
           return;
         }
 
-        const w = parseFloat(el.getAttribute('width') || '1009.6727');
-        const h = parseFloat(el.getAttribute('height') || '665.96301');
+        // Use viewBox dimensions as source of truth (falls back to width/height)
+        const existingVB = el.getAttribute('viewBox');
+        let w: number, h: number;
+        if (existingVB) {
+          const parts = existingVB.split(/[\s,]+/).map(Number);
+          w = parts[2] || parseFloat(el.getAttribute('width') || '1009.6727');
+          h = parts[3] || parseFloat(el.getAttribute('height') || '665.96301');
+        } else {
+          w = parseFloat(el.getAttribute('width') || '1009.6727');
+          h = parseFloat(el.getAttribute('height') || '665.96301');
+        }
 
         const s = stateRef.current;
         s.origW = w;
@@ -152,9 +173,8 @@ const GameMap: React.FC<GameMapProps> = ({
         el.setAttribute('width', '100%');
         el.setAttribute('height', '100%');
         el.setAttribute('preserveAspectRatio', 'xMidYMid meet');
-        if (!el.getAttribute('viewBox')) {
-          el.setAttribute('viewBox', `0 0 ${w} ${h}`);
-        }
+        // Always set viewBox to our known dimensions
+        el.setAttribute('viewBox', `0 0 ${w} ${h}`);
         el.setAttribute('shape-rendering', 'geometricPrecision');
         el.setAttribute('text-rendering', 'geometricPrecision');
         el.setAttribute(
@@ -482,13 +502,17 @@ const GameMap: React.FC<GameMapProps> = ({
 
   const handleZoomIn = () => {
     const newZ = Math.min(10, stateRef.current.zoom + 0.5);
-    addDebug(`+btn z=${newZ} svg=${!!document.getElementById('world-map-svg')}`);
     setZoomAndVC(newZ);
+    const svgEl = document.getElementById('world-map-svg') as unknown as SVGSVGElement | null;
+    const vb = svgEl?.viewBox?.baseVal;
+    addDebug(`+z=${newZ.toFixed(1)} vb=${vb ? `${vb.width.toFixed(0)}x${vb.height.toFixed(0)}` : 'null'}`);
   };
   const handleZoomOut = () => {
     const newZ = Math.max(0.5, stateRef.current.zoom - 0.5);
-    addDebug(`-btn z=${newZ}`);
     setZoomAndVC(newZ);
+    const svgEl = document.getElementById('world-map-svg') as unknown as SVGSVGElement | null;
+    const vb = svgEl?.viewBox?.baseVal;
+    addDebug(`-z=${newZ.toFixed(1)} vb=${vb ? `${vb.width.toFixed(0)}x${vb.height.toFixed(0)}` : 'null'}`);
   };
   const handleResetView = () => {
     const s = stateRef.current;
