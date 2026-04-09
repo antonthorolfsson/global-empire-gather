@@ -988,12 +988,6 @@ export const GAME_COUNTRIES: CountryData[] = [
     ...createDefaultCulturalData("Christianity", "Spanish", 85, 97)
   },
   {
-    id: "co", name: "Colombia", population: 51000000, area: 1141748, gdp: 314,
-    militarySize: 295000, tanks: 0, aircraft: 454, navySize: 46,
-    energyProduction: 75, oilProduction: 0.89, gasProduction: 11,
-    ...createDefaultCulturalData("Christianity", "Spanish", 81, 95)
-  },
-  {
     id: "km", name: "Comoros", population: 870000, area: 2235, gdp: 1,
     militarySize: 500, tanks: 0, aircraft: 0, navySize: 0,
     energyProduction: 0, oilProduction: 0.0, gasProduction: 0,
@@ -1174,12 +1168,6 @@ export const GAME_COUNTRIES: CountryData[] = [
     ...createDefaultCulturalData("Christianity", "English", 57, 97)
   },
   {
-    id: "kp", name: "North Korea", population: 25800000, area: 120538, gdp: 18,
-    militarySize: 1320000, tanks: 3500, aircraft: 545, navySize: 967,
-    energyProduction: 26, oilProduction: 0.0, gasProduction: 0,
-    ...createDefaultCulturalData("No Religion", "Korean", 61, 100)
-  },
-  {
     id: "kg", name: "Kyrgyzstan", population: 6600000, area: 199951, gdp: 8,
     militarySize: 10900, tanks: 150, aircraft: 33, navySize: 0,
     energyProduction: 15, oilProduction: 0.0, gasProduction: 0,
@@ -1226,18 +1214,6 @@ export const GAME_COUNTRIES: CountryData[] = [
     militarySize: 860, tanks: 0, aircraft: 0, navySize: 26,
     energyProduction: 2, oilProduction: 0.0, gasProduction: 0,
     ...createDefaultCulturalData("Christianity", "English", 83, 96)
-  },
-  {
-    id: "cv", name: "Cabo Verde", population: 557000, area: 4033, gdp: 2,
-    militarySize: 1200, tanks: 0, aircraft: 0, navySize: 10,
-    energyProduction: 1, oilProduction: 0.0, gasProduction: 0,
-    ...createDefaultCulturalData("Christianity", "Portuguese", 66, 86)
-  },
-  {
-    id: "cg", name: "Congo (Congo-Brazzaville)", population: 5518000, area: 342000, gdp: 12,
-    militarySize: 10000, tanks: 25, aircraft: 12, navySize: 0,
-    energyProduction: 2, oilProduction: 0.3, gasProduction: 1,
-    ...createDefaultCulturalData("Christianity", "French", 67, 80)
   },
   {
     id: "mh", name: "Marshall Islands", population: 59000, area: 181, gdp: 0.2,
@@ -1382,12 +1358,6 @@ export const GAME_COUNTRIES: CountryData[] = [
     militarySize: 0, tanks: 0, aircraft: 0, navySize: 0,
     energyProduction: 0, oilProduction: 0.0, gasProduction: 0,
     ...createDefaultCulturalData("Christianity", "Tuvaluan", 64, 99)
-  },
-  {
-    id: "ae", name: "United Arab Emirates", population: 9890000, area: 83600, gdp: 507,
-    militarySize: 63000, tanks: 354, aircraft: 551, navySize: 75,
-    energyProduction: 135, oilProduction: 4.0, gasProduction: 62,
-    ...createDefaultCulturalData("Islam", "Arabic", 87, 95)
   },
   {
     id: "vu", name: "Vanuatu", population: 307000, area: 12189, gdp: 1,

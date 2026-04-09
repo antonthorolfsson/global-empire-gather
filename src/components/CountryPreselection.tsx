@@ -32,9 +32,11 @@ const CountryPreselection = ({ onCountrySelect, selectedCountries, isPlayerTurn,
   }, [isPreselectionMode]);
 
 
-  // Filter out already selected countries
+  // Filter out already selected countries and deduplicate by id
   const unselectedCountries = GAME_COUNTRIES.filter(
-    country => !selectedCountries.includes(country.id)
+    (country, index, self) => 
+      !selectedCountries.includes(country.id) &&
+      index === self.findIndex(c => c.id === country.id)
   ).sort((a, b) => a.name.localeCompare(b.name));
 
   const handleCountryClick = (countryId: string) => {
